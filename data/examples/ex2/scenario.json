@@ -1,146 +1,121 @@
 {
   "tools": {
-    "find_doctors": {
-      "description": "Search for doctors by specialty and location",
+    "search_restaurants": {
+      "description": "Search for restaurants matching cuisine and location criteria",
       "parameters": {
-        "specialty": {
+        "cuisine": {
           "type": "string",
-          "description": "Medical specialty (e.g., 'dermatology', 'cardiology', 'primary care')",
+          "description": "Type of cuisine",
           "required": true
         },
         "location": {
           "type": "string",
           "description": "City or area to search in",
           "required": true
-        },
-        "insurance": {
-          "type": "string",
-          "description": "Insurance provider (optional)",
-          "required": false
         }
       },
       "returns": {
         "type": "array",
-        "description": "List of matching doctors",
+        "description": "List of matching restaurants",
         "items": {
           "type": "object",
           "properties": {
-            "doctor_id": {
+            "restaurant_id": {
               "type": "string",
-              "description": "Unique identifier for the doctor"
+              "description": "6-digit alphanumeric unique identifier for the restaurant"
             },
             "name": {
               "type": "string",
-              "description": "Doctor's full name"
+              "description": "Restaurant name"
             },
-            "specialty": {
+            "cuisine": {
               "type": "string",
-              "description": "Medical specialty"
+              "description": "Description of cuisine"
             },
-            "office_address": {
+            "address": {
               "type": "string",
-              "description": "Full office address"
+              "description": "Full address, including street address, city, state, and zip code"
             },
-            "phone": {
+            "hours": {
               "type": "string",
-              "description": "Office phone number"
-            },
-            "accepts_insurance": {
-              "type": "array",
-              "description": "List of accepted insurance providers",
-              "items": {
-                "type": "string"
-              }
+              "description": "Hours of operation (e.g., 'Mon-Fri 11am-10pm, Sat-Sun 10am-11pm')"
             }
           },
-          "required": ["doctor_id", "name", "specialty", "office_address", "phone", "accepts_insurance"]
+          "required": ["restaurant_id", "name", "cuisine", "address", "hours"]
         }
       }
     },
     "check_availability": {
-      "description": "Check available appointment slots for a specific doctor",
+      "description": "Check if a table is available at a specific restaurant for given date, time, and party size. Return a list of available time slots within a 2 hour window.",
       "parameters": {
-        "doctor_id": {
+        "restaurant_id": {
           "type": "string",
-          "description": "Unique identifier for the doctor",
+          "description": "Unique identifier for the restaurant",
           "required": true
         },
-        "date_range": {
+        "date": {
           "type": "string",
-          "description": "Preferred date range (e.g., 'next week', 'this month', 'ASAP')",
+          "description": "Date for the reservation (e.g., 'tomorrow', '2024-01-15')",
           "required": true
         },
-        "appointment_type": {
+        "time": {
           "type": "string",
-          "description": "Type of appointment (e.g., 'consultation', 'follow-up', 'routine check')",
-          "required": false
+          "description": "Time for the reservation (e.g., '11 AM', '7:30 PM')",
+          "required": true
+        },
+        "party_size": {
+          "type": "integer",
+          "description": "Number of people in the party",
+          "required": true
         }
       },
       "returns": {
         "type": "object",
         "properties": {
-          "available_slots": {
+          "available_times": {
             "type": "array",
-            "description": "List of available appointment slots",
+            "description": "List of available time slots for the reservation within a 2 hour window, e.g. ['6:15 PM', '6:30 PM', '6:45 PM']",
             "items": {
-              "type": "object",
-              "properties": {
-                "date": {
-                  "type": "string",
-                  "description": "Date of appointment"
-                },
-                "time": {
-                  "type": "string",
-                  "description": "Time of appointment"
-                },
-                "appointment_type": {
               "type": "string",
-                  "description": "Type of appointment slot"
-                }
-              }
+              "description": "Time for the reservation, e.g. '6:15 PM'"
             }
           }
         },
-        "required": ["available_slots"]
+        "required": ["available_times"]
       }
     },
-    "book_appointment": {
-      "description": "Book a medical appointment",
+    "make_reservation": {
+      "description": "Book a reservation at a restaurant",
       "parameters": {
-        "doctor_id": {
+        "restaurant_id": {
           "type": "string",
-          "description": "Unique identifier for the doctor",
+          "description": "Unique identifier for the restaurant",
           "required": true
         },
         "date": {
           "type": "string",
-          "description": "Date of appointment",
+          "description": "Date for the reservation (e.g., 'tomorrow', '2024-01-15')",
           "required": true
         },
         "time": {
           "type": "string",
-          "description": "Time of appointment",
+          "description": "Time for the reservation (e.g., '11 AM', '7:30 PM')",
           "required": true
         },
-        "patient_name": {
-          "type": "string",
-          "description": "Patient's full name",
+        "party_size": {
+          "type": "integer",
+          "description": "Number of people in the party",
           "required": true
         },
-        "patient_phone": {
+        "name": {
           "type": "string",
-          "description": "Patient's phone number",
+          "description": "Name for the reservation",
           "required": true
         },
-        "reason": {
+        "phone": {
           "type": "string",
-          "description": "Brief reason for the appointment",
+          "description": "Phone number for the reservation",
           "required": true
-        },
-        "insurance": {
-          "type": "string",
-          "description": "Insurance provider",
-          "required": false
         }
       },
       "returns": {
@@ -148,29 +123,66 @@
         "properties": {
           "success": {
             "type": "boolean",
-            "description": "True if appointment was booked successfully"
+            "description": "True if reservation was made, False otherwise"
           },
-          "appointment_id": {
+          "confirmation_code": {
             "type": "string",
-            "description": "Unique appointment confirmation ID"
-          },
-          "confirmation_details": {
-            "type": "object",
-            "description": "Appointment confirmation details",
-            "properties": {
-              "date": {"type": "string"},
-              "time": {"type": "string"},
-              "doctor_name": {"type": "string"},
-              "office_address": {"type": "string"}
-            }
+            "description": "Confirmation code for the reservation (if successful)"
           }
         },
         "required": ["success"]
       }
+    },
+    "get_restaurant_details": {
+      "description": "Get detailed information about a specific restaurant",
+      "parameters": {
+        "restaurant_id": {
+          "type": "string",
+          "description": "Unique identifier for the restaurant",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Detailed description/blurb about the restaurant"
+          },
+          "rating": {
+            "type": "number",
+            "description": "Restaurant rating out of 5 stars (e.g., 4.2)"
+          },
+          "price": {
+            "type": "string",
+            "description": "Price range indicator (e.g., '$', '$$', '$$$', '$$$$')"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Restaurant phone number"
+          },
+          "website": {
+            "type": "string",
+            "description": "Restaurant website URL"
+          },
+          "specialties": {
+            "type": "array",
+            "description": "Notable dishes or specialties",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ambiance": {
+            "type": "string",
+            "description": "Description of atmosphere/ambiance (e.g., 'casual', 'romantic', 'family-friendly')"
+          }
+        },
+        "required": ["description", "rating", "price"]
+      }
     }
   },
   "user_context": {
-    "objective": "Schedule a dermatologist appointment for next week to check a concerning mole that has changed color recently.",
-    "behavior": "health-anxious, wants earliest available appointment, asks questions about what to expect, mentions insurance concerns"
+    "objective": "Find and book a restaurant for August 1st in San Francisco, Italian.",
+    "behavior": "asks a lot of questions about the restaurants and is indecisive."
   }
 }
