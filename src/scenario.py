@@ -27,14 +27,14 @@ class ExampleScenario:
             user_context=scenario_data.get('user_context', {})
         )
 
-def load_system_prompts(prompts_dir: str) -> Dict[str, str]:
+def load_system_prompts(prompts_dir: str, version: str = "v1") -> Dict[str, str]:
     """Load system prompts for each agent type"""
     prompts_path = Path(prompts_dir)
     prompts = {}
     
     # Load each agent's system prompt
     for agent_type in ['system_agent', 'user_agent', 'tool_agent']:
-        prompt_file = prompts_path / agent_type / "v1.txt"
+        prompt_file = prompts_path / agent_type / f"{version}.txt"
         with open(prompt_file, 'r') as f:
             prompts[agent_type] = f.read().strip()
     

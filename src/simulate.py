@@ -21,6 +21,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
+    parser.add_argument('--system-prompts-dir', help='Path to system prompts directory (default: data/system_prompts)')
+    parser.add_argument('--system-agent-prompt', help='Path to system agent prompt file')
+    parser.add_argument('--user-agent-prompt', help='Path to user agent prompt file') 
+    parser.add_argument('--tool-agent-prompt', help='Path to tool agent prompt file')
+    parser.add_argument('--prompt-version', default='v1', help='Version of prompts to use (default: v1)')
     return parser.parse_args()
 
 def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, str]:
@@ -48,19 +53,49 @@ def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, s
     
     return str(output_file), str(log_file), str(agent_flow_file)
 
-def load_scenario_and_prompts(example_path: str) -> Tuple[ExampleScenario, Dict[str, str]]:
+def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tuple[ExampleScenario, Dict[str, str]]:
     """Load scenario and system prompts"""
     try:
         # Load scenario from example_path
         scenario = ExampleScenario.load(example_path)
         
-        # Load system prompts from data/system_prompts
-        # Assume prompts are in data/system_prompts relative to example path
-        example_dir = Path(example_path)
-        data_dir = example_dir.parent.parent  # Go up from examples/ex1 to data/
-        prompts_dir = data_dir / "system_prompts"
-        
-        system_prompts = load_system_prompts(str(prompts_dir))
+        # Load system prompts
+        if args.system_agent_prompt or args.user_agent_prompt or args.tool_agent_prompt:
+            # Load individual prompt files if specified
+            system_prompts = {}
+            custom_prompts = {
+                'system_agent': args.system_agent_prompt,
+                'user_agent': args.user_agent_prompt,
+                'tool_agent': args.tool_agent_prompt
+            }
+            
+            for agent_type, custom_path in custom_prompts.items():
+                if custom_path:
+                    # Use custom path
+                    with open(custom_path, 'r') as f:
+                        system_prompts[agent_type] = f.read().strip()
+                else:
+                    # Fall back to default location
+                    if args.system_prompts_dir:
+                        prompts_dir = Path(args.system_prompts_dir)
+                    else:
+                        example_dir = Path(example_path)
+                        data_dir = example_dir.parent.parent  # Go up from examples/ex1 to data/
+                        prompts_dir = data_dir / "system_prompts"
+                    
+                    prompt_file = prompts_dir / agent_type / f"{args.prompt_version}.txt"
+                    with open(prompt_file, 'r') as f:
+                        system_prompts[agent_type] = f.read().strip()
+        else:
+            # Use directory-based loading
+            if args.system_prompts_dir:
+                prompts_dir = Path(args.system_prompts_dir)
+            else:
+                example_dir = Path(example_path)
+                data_dir = example_dir.parent.parent  # Go up from examples/ex1 to data/
+                prompts_dir = data_dir / "system_prompts"
+            
+            system_prompts = load_system_prompts(str(prompts_dir), args.prompt_version)
         
         return scenario, system_prompts
         
@@ -265,7 +300,7 @@ def main():
         logger.info(f"Starting simulation with model: {args.model}")
 
         # Load scenario and prompts
-        scenario, system_prompts = load_scenario_and_prompts(args.example_path)
+        scenario, system_prompts = load_scenario_and_prompts(args.example_path, args)
         
         logger.info(f"Loaded scenario: {scenario.name}")
         
