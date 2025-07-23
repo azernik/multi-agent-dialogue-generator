@@ -1,0 +1,131 @@
+{
+    "tools": {
+      "search_providers": {
+        "description": "Search for healthcare providers matching specialty and location criteria",
+        "parameters": {
+          "specialty": {
+            "type": "string",
+            "description": "Medical specialty (e.g., general practice, neurology)",
+            "required": true
+          },
+          "location": {
+            "type": "string",
+            "description": "City or area to search in",
+            "required": true
+          }
+        },
+        "returns": {
+          "type": "array",
+          "description": "List of matching healthcare providers",
+          "items": {
+            "type": "object",
+            "properties": {
+              "provider_id": {
+                "type": "string",
+                "description": "6-digit alphanumeric unique identifier for the provider"
+              },
+              "name": {
+                "type": "string",
+                "description": "Provider's full name"
+              },
+              "specialty": {
+                "type": "string",
+                "description": "Medical specialty"
+              },
+              "address": {
+                "type": "string",
+                "description": "Full address including clinic name, street, city, state, and zip code"
+              },
+              "hours": {
+                "type": "string",
+                "description": "Clinic hours (e.g., 'Mon-Fri 9am-5pm')"
+              }
+            },
+            "required": ["provider_id", "name", "specialty", "address", "hours"]
+          }
+        }
+      },
+      "check_appointment_availability": {
+        "description": "Check if an appointment is available for a specific provider on a given date and time range",
+        "parameters": {
+          "provider_id": {
+            "type": "string",
+            "description": "Unique identifier for the provider",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "description": "Date for the appointment (e.g., 'tomorrow', 'next Monday')",
+            "required": true
+          },
+          "time_range": {
+            "type": "string",
+            "description": "Time range (e.g., 'afternoon', 'anytime')",
+            "required": true
+          }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "available_slots": {
+              "type": "array",
+              "description": "List of available appointment slots",
+              "items": {
+                "type": "string",
+                "description": "Time for appointment, e.g. '3:00 PM'"
+              }
+            }
+          },
+          "required": ["available_slots"]
+        }
+      },
+      "book_appointment": {
+        "description": "Book an appointment with a healthcare provider",
+        "parameters": {
+          "provider_id": {
+            "type": "string",
+            "description": "Unique identifier for the provider",
+            "required": true
+          },
+          "date": {
+            "type": "string",
+            "description": "Date for the appointment",
+            "required": true
+          },
+          "time": {
+            "type": "string",
+            "description": "Time of the appointment",
+            "required": true
+          },
+          "patient_name": {
+            "type": "string",
+            "description": "Name of the patient",
+            "required": true
+          },
+          "patient_phone": {
+            "type": "string",
+            "description": "Phone number of the patient",
+            "required": true
+          }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "True if appointment was successfully booked"
+            },
+            "appointment_id": {
+              "type": "string",
+              "description": "Appointment confirmation ID (if successful)"
+            }
+          },
+          "required": ["success"]
+        }
+      }
+    },
+    "user_context": {
+      "objective": "Find a doctor for something weird going on — maybe a neurologist? Or dermatologist? Not sure. Preferably this week but flexible.",
+      "behavior": "User gives vague symptoms, initially asks for neurology, later switches to dermatology, and doesn’t specify a time or location clearly."
+    }
+  }
