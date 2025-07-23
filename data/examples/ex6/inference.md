@@ -52,5 +52,5 @@ This is a great example of **non-linear tool flow**. Tools must be **idempotent 
 - Systems should **allow deferred commitment** — collect all inputs but delay irreversible steps (like booking) until final user confirmation.
 - LLMs must be trained or prompted to expect **mid-dialogue goal changes**, even from friendly users.
 
-📌 **Recommendation**: Always include a “Confirm before book?” step, especially in travel, healthcare, or payment domains.
+**Recommendation**: Always include a “Confirm before book?” step, especially in travel, healthcare, or payment domains.
 
