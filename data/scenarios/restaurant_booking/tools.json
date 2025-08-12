@@ -1,0 +1,94 @@
+{
+  "id": "toolset.restaurant.v1",
+  "tools": {
+    "search_restaurants": {
+      "description": "Search for restaurants matching cuisine and location criteria",
+      "parameters": {
+        "cuisine": { "type": "string", "description": "Type of cuisine", "required": false },
+        "location": { "type": "string", "description": "City or area to search in", "required": true },
+        "date": { "type": "string", "description": "Date (e.g., 'tomorrow', '2025-01-15')", "required": false },
+        "time_window": { "type": "string", "description": "Time window (e.g., '18:00-21:00')", "required": false },
+        "party_size": { "type": "integer", "description": "Number of people in the party", "required": false }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching restaurants",
+        "items": {
+          "type": "object",
+          "properties": {
+            "restaurant_id": { "type": "string", "description": "6-digit alphanumeric unique identifier for the restaurant" },
+            "name": { "type": "string", "description": "Restaurant name" },
+            "cuisine": { "type": "string", "description": "Description of cuisine" },
+            "address": { "type": "string", "description": "Full address" },
+            "rating": { "type": "number", "description": "Average rating 1-5" },
+            "price_range": { "type": "string", "description": "$, $$, $$$" }
+          },
+          "required": ["restaurant_id", "name", "cuisine", "address"]
+        }
+      }
+    },
+    "check_availability": {
+      "description": "Check if a table is available at a specific restaurant for given date, time_window, and party size. Return available time slots.",
+      "parameters": {
+        "restaurant_id": { "type": "string", "description": "Unique identifier for the restaurant", "required": true },
+        "date": { "type": "string", "description": "Date for the reservation (e.g., 'tomorrow', '2025-01-15')", "required": true },
+        "time_window": { "type": "string", "description": "Time window for the reservation (e.g., '18:00-21:00')", "required": true },
+        "party_size": { "type": "integer", "description": "Number of people in the party", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "available_times": {
+            "type": "array",
+            "description": "List of available time slots (e.g., ['18:15', '18:30'])",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["available_times"]
+      }
+    },
+    "make_reservation": {
+      "description": "Book a reservation at a restaurant",
+      "parameters": {
+        "restaurant_id": { "type": "string", "description": "Unique identifier for the restaurant", "required": true },
+        "date": { "type": "string", "description": "Date for the reservation (e.g., 'tomorrow', '2025-01-15')", "required": true },
+        "time": { "type": "string", "description": "Time for the reservation (e.g., '19:30')", "required": true },
+        "party_size": { "type": "integer", "description": "Number of people in the party", "required": true },
+        "name": { "type": "string", "description": "Name for the reservation", "required": true },
+        "phone": { "type": "string", "description": "Phone number for the reservation", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "description": "True if reservation was made" },
+          "confirmation_code": { "type": "string", "description": "Confirmation code if successful" }
+        },
+        "required": ["success"]
+      }
+    },
+    "cancel_reservation": {
+      "description": "Cancel an existing reservation",
+      "parameters": {
+        "confirmation_code": { "type": "string", "description": "Reservation confirmation code", "required": true },
+        "reason": { "type": "string", "description": "Optional cancellation reason", "required": false }
+      },
+      "returns": { "type": "object", "properties": { "success": { "type": "boolean" } }, "required": ["success"] }
+    },
+    "get_reservation_status": {
+      "description": "Get the status/details of an existing reservation",
+      "parameters": {
+        "confirmation_code": { "type": "string", "description": "Reservation confirmation code", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "description": "e.g., confirmed, canceled" },
+          "date": { "type": "string" },
+          "time": { "type": "string" },
+          "party_size": { "type": "integer" },
+          "restaurant_id": { "type": "string" }
+        }
+      }
+    }
+  }
+} 

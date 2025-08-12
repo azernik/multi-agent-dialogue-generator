@@ -16,7 +16,7 @@ from runner import ConversationRunner, ConversationResult
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
-    parser.add_argument('example_path', help='Path to example directory (e.g., data/examples/ex1)')
+    parser.add_argument('example_path', help='Path to scenario directory (e.g., data/scenarios/restaurant_booking/dine_in/rb_001)')
     parser.add_argument('--model', default='gpt-4o-mini', help='LLM model to use')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
@@ -53,6 +53,24 @@ def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, s
     
     return str(output_file), str(log_file), str(agent_flow_file)
 
+
+def _resolve_prompts_dir(example_path: str) -> Path:
+    """Resolve the prompts directory robustly when a custom dir is not provided."""
+    # Prefer repo-root/data/system_prompts if present
+    cwd = Path(__file__).resolve().parent.parent  # src/ -> repo root
+    candidate = cwd / 'data' / 'system_prompts'
+    if candidate.exists():
+        return candidate
+    # Else, walk up from the example path to find a sibling data/system_prompts
+    cur = Path(example_path).resolve()
+    for parent in [cur] + list(cur.parents):
+        sibling = parent.parent / 'data' / 'system_prompts'
+        if sibling.exists():
+            return sibling
+    # Fallback to relative default (may fail later with clear error)
+    return Path('data/system_prompts')
+
+
 def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tuple[ExampleScenario, Dict[str, str]]:
     """Load scenario and system prompts"""
     try:
@@ -76,25 +94,13 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
                         system_prompts[agent_type] = f.read().strip()
                 else:
                     # Fall back to default location
-                    if args.system_prompts_dir:
-                        prompts_dir = Path(args.system_prompts_dir)
-                    else:
-                        example_dir = Path(example_path)
-                        data_dir = example_dir.parent.parent  # Go up from examples/ex1 to data/
-                        prompts_dir = data_dir / "system_prompts"
-                    
+                    prompts_dir = Path(args.system_prompts_dir) if args.system_prompts_dir else _resolve_prompts_dir(example_path)
                     prompt_file = prompts_dir / agent_type / f"{args.prompt_version}.txt"
                     with open(prompt_file, 'r') as f:
                         system_prompts[agent_type] = f.read().strip()
         else:
             # Use directory-based loading
-            if args.system_prompts_dir:
-                prompts_dir = Path(args.system_prompts_dir)
-            else:
-                example_dir = Path(example_path)
-                data_dir = example_dir.parent.parent  # Go up from examples/ex1 to data/
-                prompts_dir = data_dir / "system_prompts"
-            
+            prompts_dir = Path(args.system_prompts_dir) if args.system_prompts_dir else _resolve_prompts_dir(example_path)
             system_prompts = load_system_prompts(str(prompts_dir), args.prompt_version)
         
         return scenario, system_prompts
@@ -120,11 +126,11 @@ def create_agents(scenario: ExampleScenario,
         )
         system_agent.flow_logger = flow_logger
         
-        # Create UserAgent with raw user context JSON
+        # Create UserAgent with new user_agent JSON
         user_agent = UserAgent(
             system_prompts['user_agent'],
             llm_client,
-            scenario.user_context
+            scenario.user_agent
         )
         user_agent.flow_logger = flow_logger
         
