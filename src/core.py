@@ -7,6 +7,7 @@ import os
 class MessageRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
+    TOOL = "tool"
 
 @dataclass
 class Message:
