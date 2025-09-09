@@ -102,7 +102,7 @@ class ConversationRunner:
                 had_tool_call = True
                 self.system_history.append(Message(MessageRole.ASSISTANT, system_response))
                 tool_result = self.process_tool_call(system_response, turn_number)
-                self.system_history.append(Message(MessageRole.ASSISTANT, tool_result))
+                self.system_history.append(Message(MessageRole.TOOL, tool_result))
                 continue
             else:
                 user_facing_message = self.system_agent.get_user_facing_message(system_response)
