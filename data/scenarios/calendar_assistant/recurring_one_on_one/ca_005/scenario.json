@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "recurring_one_on_one",
+    "scenario_id": "ca_005"
+  },
+  "limits": { "max_turns": 20 },
+  "domain_ref": { "toolset_path": "../../tools.json" },
+  
+  "user_agent": {
+    "objective": "Set up recurring daily 1-on-1 meetings with many direct reports",
+    "slots": {
+      "meeting_title": "Daily Sync - [Name]",
+      "direct_reports": [
+        {"name": "Alex Kim", "email": "alex.kim@company.com"},
+        {"name": "Jordan Davis", "email": "jordan.davis@company.com"},
+        {"name": "Pat Murphy", "email": "pat.murphy@company.com"},
+        {"name": "Sam Lee", "email": "sam.lee@company.com"},
+        {"name": "Chris Chen", "email": "chris.chen@company.com"},
+        {"name": "Morgan Smith", "email": "morgan.smith@company.com"},
+        {"name": "Taylor Johnson", "email": "taylor.johnson@company.com"},
+        {"name": "Casey Brown", "email": "casey.brown@company.com"},
+        {"name": "Jamie Wilson", "email": "jamie.wilson@company.com"},
+        {"name": "Drew Martinez", "email": "drew.martinez@company.com"}
+      ],
+      "duration": "30 minutes",
+      "frequency": "daily",
+      "preferred_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      "preferred_times": "9:00 AM - 5:00 PM",
+      "start_date": "next week",
+      "num_occurrences": 60,
+      "skip_dates": [],
+      "description": "Daily sync meetings"
+    },
+    "initial_message": "I need to set up daily 1-on-1s with all 10 of my direct reports.",
+    "user_persona": "Engineering manager with unrealistic meeting expectations",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.impossible_request",
+        "instructions": "Insist on daily 30-minute 1-on-1s with 10 people, which would take 5 hours per day"
+      }
+    ]
+  },
+  
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.timeout",
+        "instructions": "When find_available_slots is called for this complex request, timeout: {\"error\": \"Computation timeout\", \"message\": \"Too many constraints to process\"}"
+      }
+    ]
+  },
+  
+  "eval": {
+    "success_criteria": [
+      "system calculates time requirements (5 hours/day)",
+      "system suggests this is unrealistic",
+      "system recommends weekly or biweekly instead",
+      "more reasonable schedule is eventually created"
+    ]
+  }
+}

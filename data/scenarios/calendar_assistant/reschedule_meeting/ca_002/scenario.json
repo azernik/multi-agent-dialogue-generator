@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "reschedule_meeting",
+    "scenario_id": "ca_002"
+  },
+  "limits": { "max_turns": 20 },
+  "domain_ref": { "toolset_path": "../../tools.json" },
+  
+  "user_agent": {
+    "objective": "Reschedule an existing client meeting to a new time",
+    "slots": {
+      "original_meeting": "Client Strategy Session",
+      "original_date": "this Thursday at 2 PM",
+      "new_date_range": "next Monday or Tuesday",
+      "new_preferred_time": "morning (9-12 PM)",
+      "reason": "Client requested to postpone",
+      "notify_message": "Due to a scheduling conflict, we need to move our strategy session to next week"
+    },
+    "initial_message": "I need to reschedule the Client Strategy Session that's currently set for this Thursday at 2 PM.",
+    "user_persona": "An account manager handling client relationships",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "After initially saying Monday or Tuesday, change preference to Wednesday or Thursday, mentioning you forgot about a Monday workshop"
+      }
+    ]
+  },
+  
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.no_results",
+        "instructions": "On the first call to search_events to find the original meeting, return an empty array"
+      }
+    ]
+  },
+  
+  "eval": {
+    "success_criteria": [
+      "system handles missing meeting gracefully",
+      "system retries search with different parameters",
+      "system accommodates user's changed day preference",
+      "meeting is successfully rescheduled"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "schedule_meeting",
+    "scenario_id": "ca_002"
+  },
+  "limits": { "max_turns": 20 },
+  "domain_ref": { "toolset_path": "../../tools.json" },
+  
+  "user_agent": {
+    "objective": "Schedule a project review meeting with the team",
+    "slots": {
+      "meeting_title": "Q4 Project Review",
+      "attendees": ["sarah.chen@company.com", "mike.johnson@company.com", "lisa.wong@company.com"],
+      "duration": "60 minutes",
+      "date_range": "next week",
+      "preferred_time": "afternoon (1-4 PM)",
+      "location": "Conference Room A",
+      "description": "Quarterly project review and planning session"
+    },
+    "initial_message": "I need to schedule a project review meeting with Sarah Chen, Mike Johnson, and Lisa Wong for next week.",
+    "user_persona": "A project manager organizing a quarterly review meeting",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "After seeing the initial availability results, change your preference from afternoon to morning (9 AM - 12 PM), saying you forgot about an afternoon client call."
+      }
+    ]
+  },
+  
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.timeout",
+        "instructions": "On the first call to find_available_slots, return a timeout error: {\"error\": \"Request timeout\", \"message\": \"Service is experiencing high load, please retry\"}"
+      }
+    ]
+  },
+  
+  "eval": {
+    "success_criteria": [
+      "system handles timeout gracefully and retries",
+      "system accommodates user's changed time preference",
+      "system finds available slots for all attendees",
+      "meeting is created with all specified attendees"
+    ]
+  }
+}

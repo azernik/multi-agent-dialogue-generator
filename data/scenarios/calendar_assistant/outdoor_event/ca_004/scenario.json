@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "outdoor_event",
+    "scenario_id": "ca_004"
+  },
+  "limits": { "max_turns": 25 },
+  "domain_ref": { "toolset_path": "../../tools.json" },
+  
+  "user_agent": {
+    "objective": "Schedule an outdoor team building event with weather contingency",
+    "slots": {
+      "event_title": "Engineering Team Building Day",
+      "attendees": ["entire-engineering@company.com"],
+      "duration": "4 hours",
+      "date_options": ["sometime next month", "whenever it's sunny"],
+      "time": "12:00 PM - 4:00 PM",
+      "primary_location": "Golden Gate Park, San Francisco",
+      "backup_location": "Indoor Recreation Center - Building 5",
+      "weather_threshold": "less than 30% chance of rain",
+      "description": "Quarterly team building activities and BBQ"
+    },
+    "initial_message": "I want to organize an outdoor team building event for the engineering team, but we need to check the weather forecast first.",
+    "user_persona": "HR coordinator planning a team event",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked for specific dates, provide vague inputs like 'sometime next month' or 'whenever the weather is nice'"
+      }
+    ]
+  },
+  
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.unexpected_output",
+        "instructions": "When get_weather_forecast is called, return weather data for wrong location (e.g., New York instead of San Francisco)"
+      }
+    ]
+  },
+  
+  "eval": {
+    "success_criteria": [
+      "system asks for specific dates",
+      "system detects wrong location in weather data",
+      "system retries with correct location",
+      "event is scheduled successfully"
+    ]
+  }
+}
