@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "business_travel_optimization",
+    "scenario_id": "gtp_business_003"
+  },
+  "limits": {
+    "max_turns": 8
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 4-day business trip to London with meetings, expense tracking, and corporate travel policies compliance.",
+    "slots": {
+      "origin": "JFK",
+      "destination_city": "London",
+      "destination_country": "UK",
+      "start_date": "2025-03-15",
+      "end_date": "2025-03-18",
+      "traveler_type": "business_executive",
+      "budget_total_usd": 5000,
+      "hotel_min_stars": 4,
+      "flight_class": "business",
+      "meeting_schedule": [
+        "2025-03-16T09:00:00",
+        "2025-03-16T14:00:00",
+        "2025-03-17T10:00:00"
+      ],
+      "expense_categories": ["flights", "hotel", "meals", "transportation"],
+      "company_policy": "budget_friendly_but_comfortable",
+      "must_do": ["City center location", "Airport proximity", "Business center access"],
+      "dietary_restrictions": ["vegetarian"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "Europe/London",
+      "passport_country": "USA",
+      "purpose": "business"
+    },
+    "initial_message": "Hi! I need to plan a business trip to London from March 15-18. I have three important meetings scheduled and need to stay within our corporate travel budget. Can you help me find suitable flights and accommodations?",
+    "user_persona": "Professional business executive focused on efficiency and cost-effectiveness; wants premium comfort but respects company policies.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially request luxury 5-star hotels, then switch to 4-star budget-friendly options when reminded of company policy constraints."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about meeting times, provide invalid timezone format '2025-03-16T09:00:00EST' first; after system flags it, correct to proper format."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request same-day flight changes for a meeting that's already scheduled, then accept the explanation about advance booking requirements."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.validation_error",
+        "instructions": "The first call to search_flights fails due to missing cabin class parameter; retry with business class specified should succeed."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Hotel search request times out initially; retry succeeds with comprehensive business hotel options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Distance matrix returns coordinates for wrong London (Ontario instead of UK); system should detect and request corrected location."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System searches for business class flights with proper cabin specification and handles validation error by retrying with correct parameters.",
+      "System finds 4-star hotels suitable for business travel within budget constraints and handles timeout by retrying search.",
+      "System detects wrong location coordinates from distance_matrix and requests corrected London UK coordinates.",
+      "System handles user.change_mind by pivoting from luxury to budget-friendly hotels while maintaining business travel standards.",
+      "System validates and corrects invalid timezone format in meeting schedule and converts times appropriately.",
+      "System explains impossibility of same-day flight changes and provides realistic booking timeline expectations.",
+      "System plans efficient daily schedules around meeting times using optimize_day_plan with business-appropriate activities.",
+      "System provides comprehensive expense breakdown and currency conversion for UK pricing transparency.",
+      "System checks visa requirements for business travel and provides appropriate documentation guidance.",
+      "System exports business itinerary with meeting schedules, expense tracking, and corporate travel compliance notes."
+    ]
+  }
+}

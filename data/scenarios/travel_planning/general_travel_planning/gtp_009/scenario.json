@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "wellness_retreat",
+    "scenario_id": "gtp_wellness_009"
+  },
+  "limits": {
+    "max_turns": 9
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 7-day wellness retreat to Costa Rica focusing on yoga, meditation, healthy cuisine, and natural healing experiences.",
+    "slots": {
+      "origin": "MIA",
+      "destination": "Costa Rica",
+      "destination_country": "Costa Rica",
+      "start_date": "2025-06-01",
+      "end_date": "2025-06-07",
+      "traveler_type": "wellness_seeker",
+      "budget_total_usd": 6000,
+      "accommodation_preference": "wellness_resort",
+      "wellness_activities": ["yoga_classes", "meditation_sessions", "spa_treatments", "nature_walks"],
+      "dietary_preferences": ["organic", "vegetarian", "detox_foods", "fresh_local"],
+      "must_do": ["Daily yoga", "Meditation", "Healthy meals", "Nature immersion"],
+      "avoid_activities": ["stressful_tours", "processed_foods", "crowded_areas"],
+      "health_focus": ["stress_relief", "mindfulness", "physical_wellness", "mental_clarity"],
+      "natural_therapies": ["hot_springs", "forest_bathing", "sound_healing"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "America/Costa_Rica",
+      "passport_country": "USA",
+      "purpose": "wellness_tourism"
+    },
+    "initial_message": "I need a complete wellness retreat in Costa Rica. I want daily yoga, meditation, healthy organic food, and natural healing experiences. Can you help me plan this rejuvenating trip?",
+    "user_persona": "Health-conscious individual seeking stress relief and holistic wellness; values natural experiences and mindful living.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want intensive 8-hour daily programs, then reduce to 4-5 hours when reminded of the need for rest and relaxation."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about dietary restrictions, provide contradictory requirements 'vegan but also eat fish' first; after system flags it, clarify to vegetarian."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request private yoga instructor available 24/7, then accept group classes and scheduled private sessions when explained about realistic availability."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.no_results",
+        "instructions": "Wellness resort search returns empty results due to overly specific filters; broadening wellness criteria finds suitable retreat options."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Wellness activity search times out initially; retry succeeds with comprehensive yoga, meditation, and spa options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Restaurant search returns fast food options instead of healthy cuisine; system should detect and request organic/healthy dining alternatives."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds wellness resorts and retreat centers with comprehensive yoga, meditation, and spa facilities.",
+      "System handles user.change_mind by reducing intensive programs to balanced 4-5 hour daily schedules for proper rest.",
+      "System validates and corrects contradictory dietary requirements before proceeding with meal planning.",
+      "System explains impossibility of 24/7 private yoga instruction and provides realistic class and private session options.",
+      "System handles tool.no_results by broadening wellness resort search criteria and finding suitable retreat accommodations.",
+      "System handles tool.timeout on wellness activities by retrying and providing comprehensive yoga, meditation, and spa options.",
+      "System detects inappropriate restaurant results and requests healthy, organic dining alternatives.",
+      "System plans balanced daily schedules with appropriate rest periods and wellness activity timing.",
+      "System includes natural therapies and outdoor wellness experiences specific to Costa Rica's environment.",
+      "System creates comprehensive wellness itinerary with daily schedules, healthy dining, and holistic healing experiences."
+    ]
+  }
+}
