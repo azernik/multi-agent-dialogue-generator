@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "domain": "restaurant_booking",
+    "use_case": "dine_in",
+    "scenario_id": "rb_003"
+  },
+  "limits": { "max_turns": 25 },
+  "domain_ref": { "toolset_path": "../../tools.json" },
+
+  "user_agent": {
+    "objective": "Find and book a restaurant for a special dinner",
+    "slots": {
+      "date": "next Saturday",
+      "time_window": ">=19:30",
+      "party_size": 5,
+      "location": "Palo Alto",
+      "cuisine": "Japanese"
+    },
+    "initial_message": "Hi, I need to make a restaurant reservation for a special dinner.",
+    "user_persona": "Someone planning a birthday dinner who wants to make sure they pick the perfect place",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.gradual_information",
+        "instructions": "Don't mention the cuisine type, party size, or specific time in the first 3 exchanges. Reveal these details one at a time when asked. First mention just the date and location, then party size when asked again, then time preference, and finally cuisine preference."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.comparison_seeking",
+        "instructions": "When presented with restaurant options, ask for more details about at least 2 of them individually. Ask about things like: parking availability, if they take reservations for large groups, ambiance, price range details, and popular dishes. Only make a choice after getting these details."
+      }
+    ]
+  },
+
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.api_error",
+        "instructions": "On the first call to search_restaurants, return an error response: {\"error\": \"Service temporarily unavailable\", \"message\": \"Connection timeout - please retry\"}"
+      }
+    ]
+  },
+
+  "eval": {
+    "success_criteria": [
+      "conversation extends beyond 15 messages",
+      "system maintains proper role throughout",
+      "user agent maintains proper role throughout",
+      "system checks availability before booking",
+      "system confirms all details with user before final booking"
+    ]
+  }
+}

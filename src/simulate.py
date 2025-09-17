@@ -219,6 +219,8 @@ def format_transcript_as_markdown(transcript: List, transcript_name: str, scenar
             markdown += f"## 👤 User (Message {i})\n\n"
         elif role == 'assistant':
             markdown += f"## 🤖 Assistant (Message {i})\n\n"
+        elif role == 'tool':
+            markdown += f"## 🔧 Tool (Message {i})\n\n"
         else:
             markdown += f"## 🔧 {role.title()} (Message {i})\n\n"
         

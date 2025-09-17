@@ -105,7 +105,20 @@ class UserAgent(BaseAgent):
         
         system_content = ''.join(parts)
         messages.append({"role": "system", "content": system_content})
-        self._add_conversation_history(messages, context)
+        
+        # Add conversation history with periodic system prompt reinforcement
+        reinforcement_interval = 8  # Reinforce every 8 messages
+        for i, msg in enumerate(context.messages):
+            # Add periodic system prompt reinforcement
+            if i > 0 and i % reinforcement_interval == 0:
+                messages.append({"role": "system", "content": system_content})
+            
+            # Add the actual message
+            messages.append({
+                "role": "user" if msg.role == MessageRole.USER else "assistant",
+                "content": msg.content
+            })
+        
         if not context.messages and initial_message:
             messages.append({"role": "user", "content": initial_message})
         return messages
