@@ -51,13 +51,18 @@ class SystemAgent(BaseAgent):
         return messages
     
     def get_user_facing_message(self, system_response: str) -> str:
-        lines = system_response.split('\n')
-        for line in lines:
-            if line.strip().startswith('say('):
-                start = line.find('say("') + 5
-                end = line.rfind('")')
-                if start > 4 and end > start:
-                    return line[start:end]
+        # Look for say() call anywhere in the response, not just at line beginnings
+        say_start = system_response.find('say("')
+        if say_start != -1:
+            # Find the opening quote after say("
+            quote_start = say_start + 5
+            # Find the closing quote and parenthesis (with possible space)
+            quote_end = system_response.find('")', quote_start)
+            if quote_end == -1:
+                # Try with space before parenthesis
+                quote_end = system_response.find('" )', quote_start)
+            if quote_end != -1:
+                return system_response[quote_start:quote_end]
         return ""
 
 class UserAgent(BaseAgent):
@@ -119,8 +124,8 @@ class UserAgent(BaseAgent):
                 "content": msg.content
             })
         
-        if not context.messages and initial_message:
-            messages.append({"role": "user", "content": initial_message})
+        # Don't add initial_message as a user message - let the User Agent generate it
+        # The initial_message is already provided in the system prompt context
         return messages
 
 class ToolAgent(BaseAgent):

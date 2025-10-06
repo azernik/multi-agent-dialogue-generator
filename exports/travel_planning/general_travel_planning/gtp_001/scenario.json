@@ -1,0 +1,79 @@
+{
+    "metadata": {
+      "domain": "travel_itinerary",
+      "use_case": "itinerary_planning",
+      "scenario_id": "ti_001"
+    },
+    "limits": { "max_turns": 15 },
+    "domain_ref": { "toolset_path": "../../tools.json" },
+  
+    "user_agent": {
+      "objective": "Plan a 5-day city break, confirm visa needs, align time zones, book one marquee event, and save/export the itinerary.",
+      "slots": {
+        "origin": "SFO",
+        "destination_city": "Tokyo",
+        "destination_country": "Japan",
+        "start_date": "2025-09-10",
+        "end_date": "2025-09-14",
+        "guests": 2,
+        "budget_total_usd": 3000,
+        "hotel_min_stars": 3,
+        "interests": ["art", "food", "tech", "temples"],
+        "must_do": ["teamLab Planets", "Shibuya Sky at sunset", "Tsukiji breakfast"],
+        "event_categories": ["music", "art"],
+        "meeting_to_schedule_local": "2025-09-11T10:00:00",
+        "home_time_zone": "America/Los_Angeles",
+        "target_time_zone": "Asia/Tokyo",
+        "passport_country": "India",
+        "purpose": "tourism"
+      },
+      "initial_message": "Hi! I want a 5-day Tokyo plan for two people (Sept 10–14). Please check my visa needs (American passport), find good hotels and flights within a $3000 total budget, include teamLab Planets, and add one cool evening event. Also, I need to know what time a 10:00 AM meeting in SF would be in Tokyo.",
+      "user_persona": "Budget-conscious traveler who loves art/tech experiences, open to walking and public transit, prefers concise confirmations before any booking.",
+      "injected_behaviors": [
+        {
+          "id": "UB1",
+          "type_id": "user.change_mind",
+          "instructions": "Exactly once, after flights/hotels are proposed, change trip dates to 2025-09-11 through 2025-09-15 and ask to keep the same plan if possible."
+        },
+        {
+          "id": "UB2",
+          "type_id": "user.invalid_input",
+          "instructions": "When asked to confirm the meeting time for conversion, provide an invalid value '2025-09-11T25:00:00' first; after the system flags it, correct it to '2025-09-11T10:00:00'."
+        },
+        {
+          "id": "UB3",
+          "type_id": "user.impossible_request",
+          "instructions": "Request something infeasible, e.g., 'Can you add a Northern Lights viewing in Tokyo one evening?' Insist once, then accept a realistic alternative."
+        }
+      ]
+    },
+  
+    "tool_agent": {
+      "injected_behaviors": [
+        {
+          "id": "TA1",
+          "type_id": "tool.no_results",
+          "instructions": "The first call to search_events returns an empty array for the requested window; an identical retry should return normal results."
+        },
+        {
+          "id": "TA2",
+          "type_id": "tool.timeout",
+          "instructions": "The first call to distance_matrix times out; a single retry should succeed."
+        }
+      ]
+    },
+  
+    "eval": {
+      "success_criteria": [
+        "System checks visa via check_visa_requirements before proposing or booking flights and handles the validation error by retrying with the missing field.",
+        "System converts time correctly using get_timezones or convert_time after detecting and correcting the user's invalid meeting time input.",
+        "System declines the infeasible request (Northern Lights in Tokyo) and proposes a realistic alternative activity with rationale.",
+        "System handles tool.no_results from search_events by retrying or broadening filters, then proceeds when results are available.",
+        "System retries once after tool.timeout on distance_matrix and continues planning.",
+        "Day plans are created with optimize_day_plan and are feasible based on distance_matrix and get_place_details (opening hours respected).",
+        "System adapts once to the user's date change (user.change_mind), updating flights/hotels/events/plan consistently.",
+        "System provides a clear summary cost estimate and optional currency_convert for transparency.",
+        "Final itinerary is persisted with save_itinerary and export_itinerary (ics or json), and details match user-confirmed choices."
+      ]
+    }
+  }

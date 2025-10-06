@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "emergency_travel",
+    "scenario_id": "gtp_emergency_004"
+  },
+  "limits": {
+    "max_turns": 10
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Arrange urgent travel to Chicago due to family emergency with flexible dates and immediate departure needs.",
+    "slots": {
+      "origin": "LAX",
+      "destination_city": "Chicago",
+      "destination_country": "USA",
+      "preferred_departure": "today_or_tomorrow",
+      "flexible_dates": true,
+      "max_stay_days": 7,
+      "min_stay_days": 3,
+      "traveler_type": "emergency_traveler",
+      "budget_total_usd": 2000,
+      "accommodation_preference": "near_hospital",
+      "transportation_needs": "reliable_and_fast",
+      "must_do": ["Flexible scheduling", "Quick booking", "Emergency contact info"],
+      "special_requirements": ["last_minute_booking", "cancellation_flexibility"],
+      "home_time_zone": "America/Los_Angeles",
+      "target_time_zone": "America/Chicago",
+      "passport_country": "USA",
+      "purpose": "family_emergency"
+    },
+    "initial_message": "I need to get to Chicago ASAP - there's a family emergency. I can leave today or tomorrow and need to stay for at least 3 days but maybe up to a week. Can you help me find the quickest options?",
+    "user_persona": "Stressed family member needing immediate travel arrangements; focused on speed and flexibility over luxury.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked for preferred departure time, provide impossible time '2025-03-15T25:00:00' first; after system flags it, correct to valid time."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to stay 7 days, then change to 3 days when reminded of work commitments."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request guaranteed same-day flight with specific seat preferences, then accept available options when explained about emergency booking limitations."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Initial hotel search times out due to high demand; retry succeeds with limited but available options."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.no_results",
+        "instructions": "First flight search for same-day departure returns empty; broadening to next-day finds available options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Hotel booking fails due to missing guest count; retry with proper guest information succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System handles emergency travel urgency by prioritizing speed and flexibility over luxury options.",
+      "System detects invalid departure time format and requests corrected valid time before proceeding.",
+      "System handles user.change_mind by adapting stay duration from 7 to 3 days while maintaining emergency travel focus.",
+      "System explains limitations of same-day guaranteed bookings and provides realistic emergency travel options.",
+      "System handles tool.timeout on hotel search by retrying and finding available emergency accommodations.",
+      "System handles tool.no_results on same-day flights by broadening search to next-day departures.",
+      "System handles tool.validation_error on hotel booking by retrying with complete guest information.",
+      "System finds accommodations near hospital/medical facilities when specified as priority.",
+      "System provides flexible booking options with cancellation policies suitable for emergency situations.",
+      "System creates efficient emergency travel itinerary with clear contact information and contingency plans."
+    ]
+  }
+}
