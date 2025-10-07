@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "budget_backpacking",
+    "scenario_id": "gtp_backpacker_006"
+  },
+  "limits": {
+    "max_turns": 10
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan an ultra-budget 3-month backpacking trip across Southeast Asia with maximum value and minimal costs.",
+    "slots": {
+      "origin": "LAX",
+      "region": "Southeast Asia",
+      "countries_of_interest": ["Thailand", "Vietnam", "Cambodia", "Laos", "Malaysia"],
+      "start_date": "2025-06-01",
+      "end_date": "2025-08-31",
+      "traveler_type": "budget_backpacker",
+      "budget_total_usd": 3000,
+      "accommodation_preference": "hostels_guesthouses",
+      "transportation_preference": "budget_buses_trains",
+      "must_do": ["Maximum value", "Local experiences", "Budget-friendly activities"],
+      "avoid_activities": ["luxury_tours", "expensive_restaurants", "premium_transportation"],
+      "interests": ["culture", "nature", "local_food", "temples", "beaches"],
+      "travel_style": "flexible_itinerary",
+      "home_time_zone": "America/Los_Angeles",
+      "target_time_zones": ["Asia/Bangkok", "Asia/Ho_Chi_Minh", "Asia/Phnom_Penh"],
+      "passport_country": "USA",
+      "purpose": "tourism"
+    },
+    "initial_message": "I want to backpack through Southeast Asia for 3 months on a super tight budget. I'm looking for the cheapest flights, hostels, and local experiences. Can you help me plan this adventure?",
+    "user_persona": "Young budget-conscious traveler seeking authentic experiences and maximum value; flexible with dates and destinations.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially focus on Thailand and Vietnam only, then expand to include Cambodia and Laos when shown budget-friendly options."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about daily budget, provide unrealistic amount '$5 per day for everything'; after system challenges, correct to realistic budget."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request free accommodation for entire 3-month trip, then accept hostel recommendations when explained about realistic budget constraints."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.no_results",
+        "instructions": "Initial hostel search returns empty results due to overly restrictive filters; broadening search criteria finds budget options."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Budget flight search times out initially; retry succeeds with comprehensive low-cost carrier options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Currency conversion returns wrong exchange rates; system should detect anomaly and request corrected rates."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds ultra-budget accommodations (hostels, guesthouses) across multiple Southeast Asian countries.",
+      "System handles user.change_mind by expanding from 2 countries to 4 countries while maintaining budget constraints.",
+      "System challenges unrealistic daily budget and guides user to realistic budget allocation for 3-month trip.",
+      "System explains impossibility of free accommodation and provides realistic budget-friendly alternatives.",
+      "System handles tool.no_results by broadening hostel search criteria and finding suitable budget options.",
+      "System handles tool.timeout on budget flights by retrying and providing low-cost carrier options.",
+      "System detects incorrect currency conversion rates and requests corrected exchange rates for accurate budgeting.",
+      "System provides visa requirements for multiple Southeast Asian countries and budget-friendly visa options.",
+      "System creates flexible itinerary allowing for spontaneous changes while maintaining budget discipline.",
+      "System includes budget-friendly activities, local transportation, and authentic cultural experiences within budget constraints."
+    ]
+  }
+}

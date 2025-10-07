@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "multi_city_business",
+    "scenario_id": "gtp_multicity_005"
+  },
+  "limits": {
+    "max_turns": 12
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 10-day multi-city business tour across Singapore, Hong Kong, and Tokyo with meetings, conferences, and efficient city transfers.",
+    "slots": {
+      "origin": "SFO",
+      "cities": ["Singapore", "Hong Kong", "Tokyo"],
+      "countries": ["Singapore", "Hong Kong", "Japan"],
+      "start_date": "2025-04-10",
+      "end_date": "2025-04-19",
+      "traveler_type": "executive",
+      "budget_total_usd": 15000,
+      "hotel_min_stars": 4,
+      "flight_class": "business",
+      "city_stays": {
+        "Singapore": 3,
+        "Hong Kong": 3,
+        "Tokyo": 4
+      },
+      "meeting_schedule": [
+        "Singapore: 2025-04-11T09:00:00",
+        "Hong Kong: 2025-04-14T14:00:00",
+        "Tokyo: 2025-04-17T10:00:00"
+      ],
+      "conference_attendance": ["Singapore Tech Summit", "Hong Kong Finance Forum"],
+      "must_do": ["Efficient transfers", "Business centers", "Airport proximity"],
+      "transportation_preference": "business_class_flights",
+      "home_time_zone": "America/Los_Angeles",
+      "target_time_zones": ["Asia/Singapore", "Asia/Hong_Kong", "Asia/Tokyo"],
+      "passport_country": "USA",
+      "purpose": "business"
+    },
+    "initial_message": "I need to plan a comprehensive business tour across Singapore, Hong Kong, and Tokyo over 10 days. I have important meetings and conferences in each city. Can you help me coordinate flights, hotels, and transfers efficiently?",
+    "user_persona": "Senior executive managing complex international business relationships; values efficiency and seamless logistics.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.impossible_request",
+        "instructions": "Request 6-hour layover in Hong Kong for sightseeing when minimum connection time is 2 hours; accept realistic connection time after explanation."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to spend 4 days in Singapore, then change to 3 days to accommodate Hong Kong conference schedule."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about conference dates, provide invalid date '2025-04-32' first; after system flags it, correct to valid date."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Distance matrix returns coordinates for wrong cities (e.g., Singapore, Illinois instead of Singapore city); system should detect and request corrected locations."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Multi-city flight search times out initially; retry succeeds with comprehensive routing options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Hotel search fails due to missing check-in dates for specific cities; retry with proper date ranges succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System plans efficient multi-city routing with appropriate layover times and connection schedules.",
+      "System explains impossibility of 6-hour layover for sightseeing and provides realistic connection time expectations.",
+      "System handles user.change_mind by adjusting Singapore stay from 4 to 3 days while maintaining overall itinerary coherence.",
+      "System detects invalid conference date and requests corrected valid date before proceeding with planning.",
+      "System handles tool.unexpected_output by detecting wrong city coordinates and requesting corrected multi-city locations.",
+      "System handles tool.timeout on multi-city flights by retrying and providing comprehensive routing options.",
+      "System handles tool.validation_error on hotel searches by retrying with proper city-specific date ranges.",
+      "System coordinates time zone conversions across multiple cities for meeting scheduling.",
+      "System provides visa requirements for all three countries and necessary documentation.",
+      "System creates comprehensive multi-city itinerary with efficient transfers, meeting schedules, and business-appropriate accommodations."
+    ]
+  }
+}

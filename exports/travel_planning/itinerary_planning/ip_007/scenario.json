@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "pet_friendly_family",
+    "scenario_id": "ip_pet_family_007"
+  },
+  "limits": {
+    "max_turns": 13
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 10-day family vacation to Colorado with two dogs, requiring pet-friendly accommodations, activities, and comprehensive pet care services.",
+    "slots": {
+      "destination": "Colorado",
+      "cities": ["Denver", "Aspen", "Boulder", "Colorado Springs"],
+      "start_date": "2025-08-01",
+      "end_date": "2025-08-10",
+      "family_composition": {
+        "adults": 2,
+        "children": 2,
+        "dogs": 2
+      },
+      "pet_details": {
+        "breeds": ["Golden Retriever", "Border Collie"],
+        "sizes": ["large", "medium"],
+        "ages": [3, 5]
+      },
+      "pet_requirements": ["pet_friendly_hotels", "dog_parks", "pet_sitting", "veterinary_access"],
+      "budget_total": 12000,
+      "accommodation_preference": "pet_friendly_resorts",
+      "must_do": ["Pet-friendly hiking", "Dog parks", "Pet-friendly restaurants", "Family activities"],
+      "avoid_activities": ["non_pet_friendly_attractions", "restricted_areas"],
+      "pet_activities": ["hiking_trails", "dog_beaches", "pet_friendly_tours"],
+      "pet_care_services": ["pet_sitting", "grooming", "emergency_vet", "pet_supplies"],
+      "transportation_needs": "pet_friendly_rental_car",
+      "home_time_zone": "America/Chicago",
+      "target_time_zone": "America/Denver",
+      "passport_country": "USA",
+      "purpose": "family_tourism"
+    },
+    "initial_message": "We're planning a family vacation to Colorado with our two dogs - a Golden Retriever and Border Collie. We need pet-friendly hotels, activities, and services. Can you help us plan this pet-friendly family trip?",
+    "user_persona": "Family-oriented pet owner who considers pets as family members; wants comprehensive pet care and family-friendly activities.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want beach destinations, then switch to mountain destinations when shown better pet-friendly hiking and outdoor options."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about pet sizes, provide unrealistic measurements '50 feet tall' first; after system flags it, correct to realistic dog sizes."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request pet-friendly access to all national parks without restrictions, then accept realistic pet-friendly outdoor alternatives when explained."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Pet policy information request times out; retry succeeds with detailed pet-friendly accommodation options."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.no_results",
+        "instructions": "Pet-friendly restaurant search returns empty results; broadening search criteria finds suitable dining options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Pet activity booking fails due to missing pet vaccination records; retry with proper documentation succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds comprehensive pet-friendly accommodations with appropriate amenities for large and medium dogs.",
+      "System handles user.change_mind by pivoting from beach to mountain destinations based on pet-friendly outdoor activities.",
+      "System validates and corrects unrealistic pet size measurements before proceeding with pet-friendly planning.",
+      "System explains pet access limitations in national parks and provides realistic pet-friendly outdoor alternatives.",
+      "System handles tool.timeout on pet policies by retrying and providing detailed pet-friendly accommodation information.",
+      "System handles tool.no_results on pet-friendly restaurants by broadening search and finding suitable dining options.",
+      "System handles tool.validation_error on pet activities by retrying with complete vaccination documentation.",
+      "System plans pet-friendly activities including hiking trails, dog parks, and pet-friendly tours.",
+      "System includes comprehensive pet care services including veterinary access, pet sitting, and emergency protocols.",
+      "System creates detailed pet-friendly family itinerary with accommodations, activities, and pet care services coordination."
+    ]
+  }
+}

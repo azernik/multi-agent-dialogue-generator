@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "family_accessibility_planning",
+    "scenario_id": "ip_family_accessibility_001"
+  },
+  "limits": {
+    "max_turns": 15
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 7-day family vacation to Orlando that accommodates wheelchair accessibility, dietary restrictions, sensory needs, and multi-generational preferences while staying within budget.",
+    "slots": {
+      "destination": "Orlando, Florida",
+      "start_date": "2025-06-15",
+      "end_date": "2025-06-22",
+      "family_composition": {
+        "grandparents": 2,
+        "parents": 2,
+        "children": 2
+      },
+      "accessibility_needs": ["wheelchair_access", "elevator_access", "accessible_bathrooms"],
+      "dietary_restrictions": ["gluten_free", "vegetarian", "nut_allergies"],
+      "sensory_needs": ["quiet_spaces", "low_stimulation", "predictable_routines"],
+      "budget_total": 8000,
+      "accommodation_preference": "resort_with_kitchen",
+      "must_do_activities": ["Disney World", "Universal Studios", "beach_day"],
+      "transportation_needs": "accessible_van_rental",
+      "medical_considerations": ["diabetes_management", "mobility_assistance"]
+    },
+    "initial_message": "Hi! I need help planning a family vacation to Orlando for 6 people including my elderly parents who use wheelchairs and my autistic son who needs quiet spaces. We need accessible accommodations and restaurants that can handle our dietary restrictions. Can you help?",
+    "user_persona": "Stressed but organized parent trying to coordinate complex family needs; wants everything planned perfectly to avoid issues during the trip.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially request Disney World as main focus, then switch to Universal Studios after learning about accessibility features, then change back to Disney when told about special needs programs."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about budget breakdown, provide unrealistic amounts (e.g., $500 for 6 people for 7 days), then correct to realistic figures when challenged."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request guaranteed same-day wheelchair rental at the airport, then accept advance booking when explained."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.no_results",
+        "instructions": "First search for accessible hotels returns no results due to filter mismatch; broadening accessibility criteria returns normal results."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Disney accessibility information request times out; retry succeeds with comprehensive accessibility details."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Restaurant search returns venues without accessibility information; system must request clarification or use alternative search methods."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System identifies and recommends wheelchair-accessible accommodations with kitchen facilities within budget constraints",
+      "System finds restaurants accommodating all dietary restrictions (gluten-free, vegetarian, nut-free) with accessibility features",
+      "System plans theme park visits with accessibility information, quiet spaces, and sensory-friendly options",
+      "System arranges accessible transportation (van rental) with proper equipment for mobility needs",
+      "System handles user.change_mind by pivoting between Disney and Universal based on accessibility features",
+      "System detects unrealistic budget allocation and guides user to realistic cost breakdown",
+      "System explains wheelchair rental limitations and recommends advance booking alternatives",
+      "System handles tool.no_results by adjusting accessibility search criteria and finding suitable options",
+      "System retries after tool.timeout on Disney accessibility info and provides comprehensive details",
+      "System detects missing accessibility data from restaurants and uses alternative search methods",
+      "System creates balanced itinerary accommodating different family member needs and preferences",
+      "System provides clear accessibility information for all planned activities and locations",
+      "System includes medical consideration planning (diabetes management, mobility assistance)",
+      "System offers backup plans and alternatives for accessibility-dependent activities",
+      "System summarizes total costs and confirms budget feasibility before finalizing plan",
+      "System exports accessible itinerary with clear notes on accessibility features and requirements"
+    ]
+  }
+}

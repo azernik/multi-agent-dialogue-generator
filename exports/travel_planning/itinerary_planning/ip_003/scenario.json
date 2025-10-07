@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "senior_group_accessibility",
+    "scenario_id": "ip_senior_group_003"
+  },
+  "limits": {
+    "max_turns": 16
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 8-day group tour for 12 senior citizens (ages 65-80) to Italy with comprehensive accessibility accommodations and health considerations.",
+    "slots": {
+      "destination": "Italy",
+      "cities": ["Rome", "Florence", "Venice"],
+      "start_date": "2025-09-15",
+      "end_date": "2025-09-22",
+      "group_size": 12,
+      "age_range": "65-80",
+      "accessibility_needs": ["wheelchair_access", "elevator_access", "accessible_bathrooms", "mobility_assistance"],
+      "health_considerations": ["diabetes_management", "heart_conditions", "medication_schedules", "rest_periods"],
+      "dietary_restrictions": ["low_sodium", "diabetic_friendly", "soft_foods"],
+      "mobility_requirements": ["walking_aids", "wheelchair_rental", "accessible_transportation"],
+      "budget_total": 18000,
+      "accommodation_preference": "accessible_hotels",
+      "transportation_preference": "accessible_buses_trains",
+      "must_do": ["Accessible museums", "Guided tours", "Comfortable pacing", "Medical facilities nearby"],
+      "avoid_activities": ["strenuous_hiking", "crowded_areas", "long_walks"],
+      "medical_requirements": ["pharmacy_access", "hospital_proximity", "emergency_contacts"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "Europe/Rome",
+      "passport_country": "USA",
+      "purpose": "tourism"
+    },
+    "initial_message": "I'm organizing a group tour to Italy for 12 senior citizens, ages 65-80. We need everything to be accessible - hotels, transportation, attractions. Many have mobility issues and health conditions. Can you help plan this carefully?",
+    "user_persona": "Group organizer concerned about safety and accessibility; wants comprehensive planning to avoid any issues during the trip.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.impossible_request",
+        "instructions": "Request wheelchair-accessible hiking trails in the mountains, then accept realistic accessible alternatives when explained."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to visit 5 cities, then reduce to 3 cities when reminded of group mobility limitations."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about group size, provide unrealistic number '50 people' first; after system challenges, correct to actual group size of 12."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Accessibility information request for museums times out; retry succeeds with comprehensive accessibility details."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.no_results",
+        "instructions": "Initial accessible hotel search returns no results due to overly restrictive filters; broadening criteria finds suitable options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Transportation search returns non-accessible options; system should detect and request accessible transportation alternatives."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System identifies wheelchair-accessible accommodations, museums, and attractions across all three Italian cities.",
+      "System explains impossibility of wheelchair-accessible mountain hiking and provides realistic accessible alternatives.",
+      "System handles user.change_mind by reducing from 5 to 3 cities while maintaining comprehensive accessibility planning.",
+      "System challenges unrealistic group size and guides user to appropriate group size for senior accessibility planning.",
+      "System handles tool.timeout on accessibility information by retrying and providing comprehensive accessibility details.",
+      "System handles tool.no_results by broadening accessible hotel search criteria and finding suitable accommodations.",
+      "System detects non-accessible transportation options and requests accessible alternatives for group mobility needs.",
+      "System plans appropriate pacing with rest periods and medical facility proximity for senior health considerations.",
+      "System includes dietary accommodations for health conditions (low sodium, diabetic-friendly) in all meal planning.",
+      "System creates comprehensive accessible itinerary with emergency contacts, medical facilities, and mobility assistance coordination."
+    ]
+  }
+}

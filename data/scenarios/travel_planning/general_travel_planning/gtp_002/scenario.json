@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "itinerary_planning",
+    "scenario_id": "ti_nyc_thanksgiving_001"
+  },
+  "limits": {
+    "max_turns": 10
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 5-day NYC Thanksgiving trip, propose flights and a Midtown hotel, find a marquee evening event, keep the plan walkable, convert a home-time call to local time, and save/export the itinerary.",
+    "slots": {
+      "origin": "SFO",
+      "destination_city": "New York City",
+      "destination_country": "USA",
+      "start_date": "2025-11-26",
+      "end_date": "2025-11-30",
+      "guests": 2,
+      "hotel_area_preference": "Midtown",
+      "event_categories": ["theatre"],
+      "walkability": "high",
+      "home_time_zone": "America/Los_Angeles",
+      "target_time_zone": "America/New_York",
+      "call_home_time": "2025-11-27T09:00:00-08:00",
+      "must_do": ["Central Park loop", "High Line", "Top of the Rock at sunset"]
+    },
+    "initial_message": "NYC for Thanksgiving—find a decent Midtown hotel, one marquee evening event, and plan walkable days. Also, I'll have a family call at 9:00 AM PT on Nov 27—what time is that in New York?",
+    "user_persona": "Pragmatic traveler aiming for central location and short walks; wants concise confirmations before any booking.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "After you propose theatre options, switch preference to sports events instead and ask for updated suggestions with minimal changes to the rest of the plan."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked to confirm the preferred event date, provide the invalid date '2025-11-31'. After the system flags it, correct to a valid date within the trip window."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request guaranteed face-value opening-night Broadway tickets on the same day. Push once, then accept a realistic alternative after the system explains feasibility."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.no_results",
+        "instructions": "The first call to search_events for theatre on the target evening returns an empty array; an identical retry or a broadened search (adjacent nights or category) should return normal results."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "The first call to check_event_availability times out; a single retry should succeed."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "A call to get_timezones returns fields with unexpected names (e.g., 'utcOffset' instead of 'utc_offset', 'localTime' instead of 'local_datetime'). The system should normalize or request corrected output before answering."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System proposes flight options via search_flights and Midtown hotels via search_hotels that match dates and guest count; asks for explicit confirmation before any booking.",
+      "System plans walkable days using search_places, get_place_details, distance_matrix, and optimize_day_plan, respecting opening hours and feasible travel times.",
+      "System handles user.change_mind by pivoting from theatre to sports events with minimal disruption to the itinerary.",
+      "System detects the invalid event date (2025-11-31) from user.invalid_input and obtains a corrected valid date before proceeding.",
+      "System explains why guaranteed face-value opening-night Broadway tickets are infeasible (user.impossible_request) and offers realistic alternatives (different show/date/price tier).",
+      "System handles tool.no_results from search_events by retrying or broadening filters (adjacent dates or switching to sports) and proceeds once results are available.",
+      "System retries once after tool.timeout on check_event_availability and continues planning.",
+      "System detects and normalizes unexpected field names from get_timezones (tool.unexpected_output) and returns a correct PT→ET conversion for the family call.",
+      "System summarizes estimated costs and optionally uses currency_convert if needed; provides a clear, user-approved final plan.",
+      "System persists the final itinerary with save_itinerary and exports it via export_itinerary (ics or json), matching user-confirmed choices."
+    ]
+  }
+}

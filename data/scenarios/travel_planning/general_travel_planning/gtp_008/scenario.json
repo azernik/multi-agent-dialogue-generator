@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "festival_event_travel",
+    "scenario_id": "gtp_festival_008"
+  },
+  "limits": {
+    "max_turns": 11
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 5-day trip to Edinburgh for the Fringe Festival with event tickets, accommodation near venues, and cultural experiences.",
+    "slots": {
+      "origin": "LHR",
+      "destination_city": "Edinburgh",
+      "destination_country": "Scotland",
+      "start_date": "2025-08-15",
+      "end_date": "2025-08-19",
+      "traveler_type": "festival_goer",
+      "budget_total_usd": 4000,
+      "accommodation_preference": "near_festival_venues",
+      "must_do": ["Fringe Festival shows", "Royal Mile", "Edinburgh Castle", "Festival atmosphere"],
+      "event_interests": ["comedy", "theatre", "music", "street_performances"],
+      "ticket_preferences": ["multiple_shows", "variety_acts", "local_venues"],
+      "cultural_activities": ["whisky_tasting", "traditional_music", "local_cuisine"],
+      "avoid_activities": ["crowded_tours", "expensive_restaurants"],
+      "home_time_zone": "Europe/London",
+      "target_time_zone": "Europe/London",
+      "passport_country": "UK",
+      "purpose": "festival_tourism"
+    },
+    "initial_message": "I'm planning to attend the Edinburgh Fringe Festival! I want to see multiple shows, stay near the venues, and experience the festival atmosphere. Can you help me plan this cultural adventure?",
+    "user_persona": "Culture enthusiast who loves festivals and live performances; wants to maximize show attendance while staying within budget.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to see 10 shows per day, then reduce to 3-4 shows when reminded of travel time between venues."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about show preferences, provide invalid category 'quantum physics lectures' first; after system flags it, correct to valid festival categories."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request guaranteed front-row seats for all sold-out shows, then accept available alternatives when explained about ticket availability."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Event search for festival shows times out initially; retry succeeds with comprehensive show listings and venues."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.no_results",
+        "instructions": "Accommodation search near festival venues returns empty; broadening search radius finds suitable options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Event booking fails due to missing show preferences; retry with proper category specifications succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds festival events and shows across multiple categories (comedy, theatre, music) with venue information.",
+      "System handles user.change_mind by reducing from 10 to 3-4 shows per day based on realistic venue travel times.",
+      "System validates and corrects invalid show category preferences before proceeding with event search.",
+      "System explains impossibility of guaranteed front-row seats for sold-out shows and provides available alternatives.",
+      "System handles tool.timeout on event search by retrying and providing comprehensive festival show listings.",
+      "System handles tool.no_results on accommodation by broadening search radius and finding festival-appropriate lodging.",
+      "System handles tool.validation_error on event booking by retrying with proper show category specifications.",
+      "System plans efficient daily schedules considering venue locations and show timing for maximum festival experience.",
+      "System includes cultural activities and local experiences that complement the festival atmosphere.",
+      "System creates comprehensive festival itinerary with show schedules, venue information, and cultural activities."
+    ]
+  }
+}

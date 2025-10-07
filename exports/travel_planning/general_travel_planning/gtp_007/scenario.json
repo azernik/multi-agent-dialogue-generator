@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "luxury_honeymoon",
+    "scenario_id": "gtp_honeymoon_007"
+  },
+  "limits": {
+    "max_turns": 13
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a romantic 10-day luxury honeymoon to the Maldives with premium accommodations, private experiences, and special anniversary celebrations.",
+    "slots": {
+      "origin": "JFK",
+      "destination": "Maldives",
+      "destination_country": "Maldives",
+      "start_date": "2025-05-20",
+      "end_date": "2025-05-29",
+      "traveler_type": "honeymoon_couple",
+      "budget_total_usd": 25000,
+      "accommodation_preference": "luxury_resort_overwater_villa",
+      "transportation_preference": "first_class_flights",
+      "must_do": ["Overwater villa", "Private beach dinner", "Couples spa", "Sunset cruise"],
+      "special_occasions": ["Anniversary dinner", "Romantic surprises"],
+      "dietary_restrictions": ["vegetarian", "gluten_free"],
+      "interests": ["romance", "luxury", "privacy", "beach", "spa"],
+      "avoid_activities": ["crowded_tours", "budget_options"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "Indian/Maldives",
+      "passport_country": "USA",
+      "purpose": "tourism",
+      "anniversary_date": "2025-05-25"
+    },
+    "initial_message": "We're planning our dream honeymoon to the Maldives! We want an overwater villa, first-class flights, and the most romantic experiences possible. Our anniversary is May 25th, so we'd love something special that day. Can you help us plan this perfect trip?",
+    "user_persona": "Romantic couple celebrating their honeymoon; willing to spend generously for premium experiences and privacy.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about anniversary date, provide invalid format 'May 25th, 2025' first; after system flags it, correct to proper date format."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want all-inclusive resort, then switch to à la carte dining when shown premium restaurant options."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request private island rental for just the two of them, then accept luxury resort overwater villa when explained about availability."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.validation_error",
+        "instructions": "Restaurant booking fails due to missing dietary preferences; retry with vegetarian and gluten-free specifications succeeds."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.timeout",
+        "instructions": "Luxury resort search times out initially; retry succeeds with comprehensive overwater villa options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Weather forecast returns data for wrong location; system should detect and request corrected Maldives weather information."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds luxury overwater villa accommodations with premium amenities and privacy features.",
+      "System validates and corrects invalid anniversary date format before proceeding with special occasion planning.",
+      "System handles user.change_mind by pivoting from all-inclusive to à la carte dining while maintaining luxury standards.",
+      "System explains impossibility of private island rental and provides realistic luxury resort alternatives.",
+      "System handles tool.validation_error on restaurant booking by retrying with complete dietary preference information.",
+      "System handles tool.timeout on luxury resort search by retrying and providing comprehensive overwater villa options.",
+      "System detects incorrect weather forecast location and requests corrected Maldives weather information.",
+      "System plans special anniversary celebration with romantic activities and premium experiences.",
+      "System provides comprehensive luxury itinerary with private experiences, couples activities, and romantic surprises.",
+      "System includes dietary accommodations for vegetarian and gluten-free requirements in all dining recommendations."
+    ]
+  }
+}
