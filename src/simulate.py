@@ -5,7 +5,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional, Any
 from dotenv import load_dotenv
 
 from core import LLMClient
@@ -302,6 +302,78 @@ def write_markdown_transcripts(result: ConversationResult, base_filename: str) -
     
     return markdown_files
 
+def _infer_domain_id(example_path: str) -> Optional[str]:
+    """Infer domain id from an example path like data/scenarios/<domain>/..."""
+    try:
+        p = Path(example_path).resolve()
+        parts = list(p.parts)
+        if 'scenarios' in parts:
+            idx = parts.index('scenarios')
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+    except Exception:
+        pass
+    return None
+
+def write_single_conversation_file(
+    result: ConversationResult,
+    scenario: ExampleScenario,
+    example_path: str,
+    output_dir: Path,
+    model: str,
+    prompt_version: str,
+    custom_prompt_paths: Optional[Dict[str, Optional[str]]] = None,
+    seed: Optional[int] = None,
+    toolset_id: Optional[str] = None
+) -> str:
+    """Write a single-file JSON conversation artifact optimized for SFT.
+
+    Includes meta/config/outcome. Per-turn traces will be added in a later task.
+    Returns the file path as a string.
+    """
+    domain_id = _infer_domain_id(example_path)
+    prompt_versions = {
+        'system_agent': prompt_version,
+        'user_agent': prompt_version,
+        'tool_agent': prompt_version
+    }
+    meta: Dict[str, Any] = {
+        'conversation_id': f"{domain_id}.{scenario.name}" if domain_id else scenario.name,
+        'domain_id': domain_id,
+        'toolset_id': toolset_id,
+        'model': model,
+        'prompt_versions': prompt_versions,
+        'seed': seed,
+        'simulator_version': '0.1.0'
+    }
+    if custom_prompt_paths:
+        meta['prompt_files'] = custom_prompt_paths
+
+    conversation_obj: Dict[str, Any] = {
+        'meta': meta,
+        'config': {
+            'scenario_name': scenario.name,
+            'user_agent_config': scenario.user_agent,
+            'tool_agent_config': scenario.tool_agent
+        },
+        'turns': result.turn_traces or [],
+        'outcome': {
+            'success': result.success,
+            'reason': result.termination_reason,
+            'total_turns': result.metadata.get('total_turns', 0),
+            'had_tool_calls': result.metadata.get('had_tool_calls', False)
+        },
+        'quality': {
+            'ok': True,
+            'reasons': []
+        }
+    }
+
+    conversation_file = output_dir / 'conversation.json'
+    with open(conversation_file, 'w') as f:
+        json.dump(conversation_obj, f, indent=2)
+    return str(conversation_file)
+
 def main():
     """Main CLI entry point"""
     try:
@@ -352,6 +424,28 @@ def main():
             json.dump(output_data, f, indent=2)
         logger.info(f"JSON results saved to: {output_file}")
         
+        # Write single-file conversation artifact (conversation.json)
+        run_dir = Path(output_file).parent
+        # Detect whether custom prompt files were used
+        custom_prompt_paths = {
+            'system_agent': args.system_agent_prompt,
+            'user_agent': args.user_agent_prompt,
+            'tool_agent': args.tool_agent_prompt
+        } if (args.system_agent_prompt or args.user_agent_prompt or args.tool_agent_prompt) else None
+
+        conversation_file = write_single_conversation_file(
+            result=result,
+            scenario=scenario,
+            example_path=args.example_path,
+            output_dir=run_dir,
+            model=args.model,
+            prompt_version=args.prompt_version,
+            custom_prompt_paths=custom_prompt_paths,
+            seed=None,
+            toolset_id=None
+        )
+        logger.info(f"Conversation file saved to: {conversation_file}")
+
         # Write markdown transcripts
         markdown_files = write_markdown_transcripts(result, output_file)
         logger.info(f"Markdown transcripts saved:")
