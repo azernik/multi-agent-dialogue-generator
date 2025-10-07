@@ -26,6 +26,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--user-agent-prompt', help='Path to user agent prompt file') 
     parser.add_argument('--tool-agent-prompt', help='Path to tool agent prompt file')
     parser.add_argument('--prompt-version', default='v1', help='Version of prompts to use (default: v1)')
+    parser.add_argument('--debug-transcripts', action='store_true', help='Write system.md/user.md/tool.md and agent_flow.log')
+    parser.add_argument('--export-steps-jsonl', action='store_true', help='Write turns.jsonl (one JSONL record per system turn)')
     return parser.parse_args()
 
 def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, str]:
@@ -404,25 +406,22 @@ def main():
         llm_client = LLMClient(model=args.model, api_key=api_key)
         logger.info(f"Initialized LLM client with model: {args.model}")
         
-        # Create agents with flow logger
-        with open(agent_flow_file, 'w') as flow_logger:
-            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
+        # Create agents; only open flow logger in debug mode
+        if args.debug_transcripts:
+            with open(agent_flow_file, 'w') as flow_logger:
+                system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
+                logger.info("Created all three agents")
+                runner = ConversationRunner(scenario, system_agent, user_agent, tool_agent, args.max_turns)
+                logger.info("Starting conversation simulation")
+                result = runner.run_conversation()
+        else:
+            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, None)
             logger.info("Created all three agents")
-            
-            # Run conversation
             runner = ConversationRunner(scenario, system_agent, user_agent, tool_agent, args.max_turns)
             logger.info("Starting conversation simulation")
             result = runner.run_conversation()
         
         logger.info(f"Conversation completed. Success: {result.success}, Reason: {result.termination_reason}")
-        
-        # Format output
-        output_data = format_output(result, args.verbose)
-        
-        # Write JSON output to file
-        with open(output_file, 'w') as f:
-            json.dump(output_data, f, indent=2)
-        logger.info(f"JSON results saved to: {output_file}")
         
         # Write single-file conversation artifact (conversation.json)
         run_dir = Path(output_file).parent
@@ -446,11 +445,31 @@ def main():
         )
         logger.info(f"Conversation file saved to: {conversation_file}")
 
-        # Write markdown transcripts
-        markdown_files = write_markdown_transcripts(result, output_file)
-        logger.info(f"Markdown transcripts saved:")
-        for transcript_type, file_path in markdown_files.items():
-            logger.info(f"  {transcript_type}: {file_path}")
+        # Write markdown transcripts only in debug mode
+        if args.debug_transcripts:
+            markdown_files = write_markdown_transcripts(result, output_file)
+            logger.info(f"Markdown transcripts saved:")
+            for transcript_type, file_path in markdown_files.items():
+                logger.info(f"  {transcript_type}: {file_path}")
+
+        # Optional: per-turn JSONL export
+        if args.export_steps_jsonl:
+            turns_path = run_dir / 'turns.jsonl'
+            with open(turns_path, 'w') as jf:
+                for i, t in enumerate(result.turn_traces or []):
+                    target_text = '\n'.join(t.get('system_messages_raw', []))
+                    rec = {
+                        'meta': {
+                            'conversation_id': f"{_infer_domain_id(args.example_path)}.{scenario.name}",
+                            'step_index': i
+                        },
+                        'history_before': t.get('history_before', []),
+                        'target_text': target_text,
+                        'actions_structured': t.get('actions_structured', []),
+                        'tool_results': t.get('tool_results', [])
+                    }
+                    jf.write(json.dumps(rec) + '\n')
+            logger.info(f"Per-turn JSONL saved to: {turns_path}")
         
         # Exit with appropriate code
         sys.exit(0 if result.success else 1)
