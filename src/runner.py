@@ -13,6 +13,7 @@ class ConversationResult:
     metadata: Dict[str, Any]
     success: bool
     termination_reason: str
+    turn_traces: List[Dict[str, Any]] = None
 
 class ConversationRunner:
     def __init__(self, 
@@ -32,6 +33,8 @@ class ConversationRunner:
         self.user_history: List[Message] = []
         self.system_history: List[Message] = []
         self.tool_history: List[Message] = []
+        # Aggregated per-system-turn traces for training/export
+        self.turn_traces: List[Dict[str, Any]] = []
         
         self.logger.info(f"ConversationRunner initialized with max_turns={max_turns}")
         self.logger.info(f"Scenario: {scenario.name}")
@@ -54,7 +57,8 @@ class ConversationRunner:
                     tool_transcript=self.tool_history.copy(),
                     metadata={"total_turns": turn + 1, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
                     success=success,
-                    termination_reason=termination_reason
+                    termination_reason=termination_reason,
+                    turn_traces=self.turn_traces.copy()
                 )
             
             self.logger.info("Processing system turn")
@@ -71,7 +75,8 @@ class ConversationRunner:
                     tool_transcript=self.tool_history.copy(),
                     metadata={"total_turns": turn + 1, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
                     success=success,
-                    termination_reason=termination_reason
+                    termination_reason=termination_reason,
+                    turn_traces=self.turn_traces.copy()
                 )
         
         return ConversationResult(
@@ -80,7 +85,8 @@ class ConversationRunner:
             tool_transcript=self.tool_history.copy(),
             metadata={"total_turns": self.max_turns, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
             success=False,
-            termination_reason="max_turns_reached"
+            termination_reason="max_turns_reached",
+            turn_traces=self.turn_traces.copy()
         )
         
     def process_user_turn(self, turn_number: int) -> Message:
@@ -94,15 +100,29 @@ class ConversationRunner:
         
     def process_system_turn(self, turn_number: int) -> Tuple[Message, bool]:
         had_tool_call = False
+        # Accumulators for this system turn
+        pre_turn_user_history = [
+            { 'role': msg.role.value, 'content': msg.content }
+            for msg in self.user_history
+        ]
+        system_messages_raw: List[str] = []
+        actions_structured: List[Dict[str, Any]] = []
+        tool_results: List[str] = []
         while True:
             system_context = self.build_system_context(turn_number)
             system_response = self.system_agent.generate_response(system_context)
             self.logger.info(f"\nsystem_agent response: {system_response}\n")
+            system_messages_raw.append(system_response)
             if self.has_tool_call(system_response):
                 had_tool_call = True
                 self.system_history.append(Message(MessageRole.ASSISTANT, system_response))
+                # Record the tool call line in actions_structured
+                tool_call_only = self.extract_tool_call(system_response)
+                if tool_call_only:
+                    actions_structured.append({ 'type': 'tool_call', 'raw': tool_call_only })
                 tool_result = self.process_tool_call(system_response, turn_number)
                 self.system_history.append(Message(MessageRole.TOOL, tool_result))
+                tool_results.append(tool_result)
                 continue
             else:
                 user_facing_message = self.system_agent.get_user_facing_message(system_response)
@@ -110,6 +130,19 @@ class ConversationRunner:
                 full_system_message = Message(MessageRole.ASSISTANT, system_response)
                 self.user_history.append(system_message)
                 self.system_history.append(full_system_message)
+                # Record final say action
+                actions_structured.append({ 'type': 'say', 'text': user_facing_message })
+                # Build turn trace for export
+                turn_trace: Dict[str, Any] = {
+                    'history_before': pre_turn_user_history,
+                    'system_messages_raw': system_messages_raw,
+                    'actions_structured': actions_structured,
+                    'tool_results': tool_results,
+                    'termination': {
+                        'final_in_conversation': ('[DONE_SUCCESS]' in user_facing_message) or ('[DONE_FAILURE]' in user_facing_message)
+                    }
+                }
+                self.turn_traces.append(turn_trace)
             return system_message, had_tool_call
         
     def process_tool_call(self, system_response: str, turn_number: int) -> str:
