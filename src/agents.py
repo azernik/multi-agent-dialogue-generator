@@ -63,7 +63,17 @@ class SystemAgent(BaseAgent):
 class UserAgent(BaseAgent):
     def __init__(self, system_prompt: str, llm_client: LLMClient, user_context: Dict[str, Any]):
         super().__init__(system_prompt, llm_client)
-    
+        self.user_context = user_context
+
+    def generate_response(self, context: ConversationContext) -> str:
+        # On the first turn (no messages), return the initial message directly
+        if not context.messages and context.agent_config and context.agent_config.get('initial_message'):
+            initial_message = context.agent_config['initial_message']
+            self._log_agent_flow([], initial_message, 'USER')
+            return initial_message
+        # Otherwise, generate response normally
+        return super().generate_response(context)
+
     def build_prompt(self, context: ConversationContext) -> List[Dict[str, str]]:
         messages = []
         ua = context.agent_config or {}
@@ -118,9 +128,7 @@ class UserAgent(BaseAgent):
                 "role": "user" if msg.role == MessageRole.USER else "assistant",
                 "content": msg.content
             })
-        
-        if not context.messages and initial_message:
-            messages.append({"role": "user", "content": initial_message})
+
         return messages
 
 class ToolAgent(BaseAgent):
