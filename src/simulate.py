@@ -240,6 +240,7 @@ def format_transcript_as_markdown(transcript: List, transcript_name: str, scenar
                 # Escape XML-like tags so they show up in markdown preview
                 escaped_line = line.replace('<think>', '&lt;think&gt;').replace('</think>', '&lt;/think&gt;')
                 escaped_line = escaped_line.replace('<plan>', '&lt;plan&gt;').replace('</plan>', '&lt;/plan&gt;')
+                escaped_line = escaped_line.replace('<reflect>', '&lt;reflect&gt;').replace('</reflect>', '&lt;/reflect&gt;')
                 
                 # Escape other markdown special characters in content
                 escaped_line = escaped_line.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
