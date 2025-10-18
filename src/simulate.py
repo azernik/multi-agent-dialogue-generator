@@ -164,21 +164,24 @@ def format_output(result: ConversationResult, verbose: bool = False) -> Dict:
         'system_transcript': [
             {
                 'role': msg.role.value,
-                'content': msg.content
+                'content': msg.content,
+                **({'metadata': msg.metadata} if getattr(msg, 'metadata', None) else {})
             }
             for msg in result.system_transcript
         ],
         'user_transcript': [
             {
                 'role': msg.role.value,
-                'content': msg.content
+                'content': msg.content,
+                **({'metadata': msg.metadata} if getattr(msg, 'metadata', None) else {})
             }
             for msg in result.user_transcript
         ],
         'tool_transcript': [
             {
                 'role': msg.role.value,
-                'content': msg.content
+                'content': msg.content,
+                **({'metadata': msg.metadata} if getattr(msg, 'metadata', None) else {})
             }
             for msg in result.tool_transcript
         ],
