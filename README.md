@@ -65,8 +65,8 @@ data/examples/
 
 **Agent Prompts:**
 ```
-data/system_prompts/
+prompts/
 ├── system_agent/v1.txt         # System agent instructions
 ├── user_agent/v1.txt           # User simulation instructions  
 └── tool_agent/v1.txt           # Tool response instructions
-``` 
+```

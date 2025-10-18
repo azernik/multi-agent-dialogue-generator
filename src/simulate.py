@@ -21,7 +21,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
-    parser.add_argument('--system-prompts-dir', help='Path to system prompts directory (default: data/system_prompts)')
+    parser.add_argument('--system-prompts-dir', help='Path to system prompts directory (default: prompts)')
     parser.add_argument('--system-agent-prompt', help='Path to system agent prompt file')
     parser.add_argument('--user-agent-prompt', help='Path to user agent prompt file') 
     parser.add_argument('--tool-agent-prompt', help='Path to tool agent prompt file')
@@ -56,19 +56,25 @@ def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, s
 
 def _resolve_prompts_dir(example_path: str) -> Path:
     """Resolve the prompts directory robustly when a custom dir is not provided."""
-    # Prefer repo-root/data/system_prompts if present
+    # Prefer repo-root/prompts if present; fallback to legacy data/system_prompts
     cwd = Path(__file__).resolve().parent.parent  # src/ -> repo root
-    candidate = cwd / 'data' / 'system_prompts'
-    if candidate.exists():
-        return candidate
-    # Else, walk up from the example path to find a sibling data/system_prompts
+    candidate_new = cwd / 'prompts'
+    if candidate_new.exists():
+        return candidate_new
+    candidate_old = cwd / 'data' / 'system_prompts'
+    if candidate_old.exists():
+        return candidate_old
+    # Else, walk up from the example path to find siblings
     cur = Path(example_path).resolve()
     for parent in [cur] + list(cur.parents):
-        sibling = parent.parent / 'data' / 'system_prompts'
-        if sibling.exists():
-            return sibling
-    # Fallback to relative default (may fail later with clear error)
-    return Path('data/system_prompts')
+        sibling_new = parent.parent / 'prompts'
+        if sibling_new.exists():
+            return sibling_new
+        sibling_old = parent.parent / 'data' / 'system_prompts'
+        if sibling_old.exists():
+            return sibling_old
+    # Fallback to new default
+    return Path('prompts')
 
 
 def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tuple[ExampleScenario, Dict[str, str]]:
