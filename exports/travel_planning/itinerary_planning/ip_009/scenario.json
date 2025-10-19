@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "educational_study_tour",
+    "scenario_id": "ip_educational_study_009"
+  },
+  "limits": {
+    "max_turns": 15
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 10-day educational study tour to Greece for university students focusing on ancient history, archaeology, and classical studies.",
+    "slots": {
+      "destination": "Greece",
+      "cities": ["Athens", "Delphi", "Olympia", "Mycenae"],
+      "start_date": "2025-05-15",
+      "end_date": "2025-05-24",
+      "group_size": 25,
+      "traveler_type": "university_students",
+      "educational_focus": ["ancient_history", "archaeology", "classical_studies", "mythology"],
+      "budget_total": 35000,
+      "accommodation_preference": "student_friendly_hostels",
+      "must_do": ["Archaeological sites", "Museums", "Historical lectures", "Group learning"],
+      "educational_activities": ["site_visits", "museum_tours", "academic_lectures", "research_sessions"],
+      "avoid_activities": ["party_tours", "luxury_experiences"],
+      "learning_objectives": ["historical_knowledge", "cultural_understanding", "academic_credit"],
+      "special_requirements": ["group_discounts", "educational_materials", "academic_supervision"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "Europe/Athens",
+      "passport_country": "USA",
+      "purpose": "educational_tourism"
+    },
+    "initial_message": "I'm organizing a 10-day educational study tour to Greece for 25 university students. We need to visit archaeological sites, museums, and have academic lectures. Can you help me plan this educational experience?",
+    "user_persona": "Academic coordinator focused on educational value and student learning; wants comprehensive historical and cultural experiences.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to visit 15 archaeological sites, then reduce to 8 key sites when reminded of group logistics and learning depth."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about group size, provide unrealistic number '500 students' first; after system challenges, correct to actual group size of 25."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request private access to closed archaeological sites, then accept public site visits and guided tours when explained about access restrictions."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Educational site information request times out; retry succeeds with comprehensive archaeological site and museum details."
+      },
+      {
+        "type_id": "tool.no_results",
+        "instructions": "Student accommodation search returns empty results; broadening criteria finds suitable group lodging options."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Group booking fails due to missing student identification requirements; retry with proper student group documentation succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds educational accommodations suitable for large student groups with group discounts and academic facilities.",
+      "System handles user.change_mind by reducing from 15 to 8 archaeological sites for better group logistics and learning depth.",
+      "System challenges unrealistic group size and guides user to appropriate group size for educational tour planning.",
+      "System explains impossibility of private archaeological site access and provides realistic public site visit options.",
+      "System handles tool.timeout on educational sites by retrying and providing comprehensive archaeological and museum information.",
+      "System handles tool.no_results on student accommodations by broadening search and finding suitable group lodging.",
+      "System handles tool.validation_error on group bookings by retrying with complete student group documentation.",
+      "System plans educational activities with appropriate pacing for student learning and group management.",
+      "System includes academic lectures, museum visits, and research opportunities aligned with classical studies curriculum.",
+      "System creates comprehensive educational itinerary with site visits, learning objectives, and group coordination."
+    ]
+  }
+}

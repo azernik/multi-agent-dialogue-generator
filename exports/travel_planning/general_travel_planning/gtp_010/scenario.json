@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "photography_expedition",
+    "scenario_id": "gtp_photography_010"
+  },
+  "limits": {
+    "max_turns": 10
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 12-day photography expedition to Iceland focusing on landscape photography, northern lights, and optimal lighting conditions.",
+    "slots": {
+      "origin": "KEF",
+      "destination": "Iceland",
+      "destination_country": "Iceland",
+      "start_date": "2025-10-15",
+      "end_date": "2025-10-26",
+      "traveler_type": "photography_enthusiast",
+      "budget_total_usd": 8000,
+      "accommodation_preference": "photography_friendly_lodging",
+      "photography_focus": ["landscapes", "northern_lights", "waterfalls", "glaciers"],
+      "equipment_needs": ["tripod_spaces", "charging_stations", "equipment_storage"],
+      "must_do": ["Golden hour shoots", "Northern lights", "Glacier photography", "Waterfall captures"],
+      "avoid_activities": ["crowded_tours", "midday_shooting"],
+      "lighting_requirements": ["sunrise_sunset", "low_light_conditions", "aurora_viewing"],
+      "weather_dependencies": ["clear_skies_for_aurora", "good_visibility"],
+      "photography_locations": ["Jökulsárlón", "Skógafoss", "Kirkjufell", "Reynisfjara"],
+      "home_time_zone": "America/Los_Angeles",
+      "target_time_zone": "Atlantic/Reykjavik",
+      "passport_country": "USA",
+      "purpose": "photography_tourism"
+    },
+    "initial_message": "I'm planning a photography expedition to Iceland! I want to capture landscapes, northern lights, and waterfalls during optimal lighting conditions. Can you help me plan this photography-focused trip?",
+    "user_persona": "Serious photography enthusiast focused on capturing perfect shots; willing to wake early and stay late for ideal lighting conditions.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to visit 20 photography locations, then reduce to 8-10 key spots when reminded of travel time and lighting windows."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about preferred shooting times, provide impossible schedule 'sunrise at 3 PM' first; after system flags it, correct to realistic sunrise times."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request guaranteed clear skies and northern lights every night, then accept weather-dependent planning when explained about natural conditions."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Weather forecast request for photography conditions times out; retry succeeds with detailed weather and aurora predictions."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.unexpected_output",
+        "instructions": "Photography location search returns indoor venues instead of landscape sites; system should detect and request outdoor photography locations."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Accommodation booking fails due to missing photography equipment requirements; retry with proper equipment storage specifications succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds photography-friendly accommodations with equipment storage and charging facilities.",
+      "System handles user.change_mind by reducing from 20 to 8-10 key photography locations based on realistic travel and lighting considerations.",
+      "System validates and corrects impossible shooting schedule times before proceeding with photography planning.",
+      "System explains impossibility of guaranteed weather conditions and provides weather-dependent photography strategies.",
+      "System handles tool.timeout on weather forecasts by retrying and providing detailed aurora and weather predictions.",
+      "System handles tool.unexpected_output by detecting inappropriate indoor venues and requesting outdoor photography locations.",
+      "System handles tool.validation_error on accommodation booking by retrying with complete photography equipment requirements.",
+      "System plans photography schedules around optimal lighting conditions (golden hour, aurora viewing times).",
+      "System includes backup photography locations and weather contingency plans for changing conditions.",
+      "System creates comprehensive photography itinerary with location schedules, lighting conditions, and equipment considerations."
+    ]
+  }
+}

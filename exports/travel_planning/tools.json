@@ -1,0 +1,456 @@
+{
+    "id": "toolset.travel_itinerary.v1",
+    "tools": {
+      "search_places": {
+        "description": "Find points of interest (POIs) like attractions, museums, landmarks, cafes within an area, filtered by tags and rating.",
+        "parameters": {
+          "location": { "type": "string", "description": "City or 'lat,lng' (e.g., 'Paris' or '48.8566,2.3522')", "required": true },
+          "query": { "type": "string", "description": "Free-text like 'art museums', 'best coffee'", "required": false },
+          "tags": { "type": "array", "description": "Categories like ['museum','landmark','park']", "required": false },
+          "radius_m": { "type": "integer", "description": "Search radius in meters (if lat,lng given)", "required": false },
+          "min_rating": { "type": "number", "description": "Minimum average rating 0–5", "required": false },
+          "open_on": { "type": "string", "description": "ISO date to ensure open that day (YYYY-MM-DD)", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "description": "List of matching places",
+          "items": {
+            "type": "object",
+            "properties": {
+              "place_id": { "type": "string", "description": "Unique identifier" },
+              "name": { "type": "string" },
+              "type": { "type": "string", "description": "Primary type e.g., 'museum'" },
+              "address": { "type": "string" },
+              "rating": { "type": "number" },
+              "price_level": { "type": "string", "description": "$ to $$$$" },
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            },
+            "required": ["place_id", "name", "type", "address"]
+          }
+        }
+      },
+  
+      "get_place_details": {
+        "description": "Get rich details for a place, including hours and ticket info if available.",
+        "parameters": {
+          "place_id": { "type": "string", "description": "Place identifier", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "place_id": { "type": "string" },
+            "name": { "type": "string" },
+            "address": { "type": "string" },
+            "phone": { "type": "string" },
+            "website": { "type": "string" },
+            "opening_hours": {
+              "type": "array",
+              "description": "Weekly hours",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "day": { "type": "string" },
+                  "open": { "type": "string" },
+                  "close": { "type": "string" }
+                },
+                "required": ["day", "open", "close"]
+              }
+            },
+            "ticket_info": { "type": "string", "description": "Notes on pricing/booking if known" }
+          }
+        }
+      },
+  
+      "distance_matrix": {
+        "description": "Compute pairwise travel time and distance between multiple points for a given mode and departure.",
+        "parameters": {
+          "origins": { "type": "array", "description": "List of 'lat,lng' or place_ids", "required": true },
+          "destinations": { "type": "array", "description": "List of 'lat,lng' or place_ids", "required": true },
+          "mode": { "type": "string", "description": "driving|walking|transit|bicycling", "required": true },
+          "departure_time": { "type": "string", "description": "ISO datetime or 'now'", "required": false }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "description": "rows[i].elements[j] corresponds to origins[i]→destinations[j]",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "elements": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "duration_min": { "type": "number" },
+                        "distance_km": { "type": "number" }
+                      },
+                      "required": ["duration_min", "distance_km"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": ["rows"]
+        }
+      },
+  
+      "get_weather_forecast": {
+        "description": "Fetch daily weather for a location across a date range to inform outdoor plans.",
+        "parameters": {
+          "location": { "type": "string", "description": "City or 'lat,lng'", "required": true },
+          "start_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "end_date": { "type": "string", "description": "YYYY-MM-DD", "required": true }
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "high_c": { "type": "number" },
+              "low_c": { "type": "number" },
+              "precip_prob": { "type": "number", "description": "0–1" },
+              "summary": { "type": "string" }
+            },
+            "required": ["date", "high_c", "low_c"]
+          }
+        }
+      },
+  
+      "currency_convert": {
+        "description": "Convert an amount between currencies (mid-market estimate).",
+        "parameters": {
+          "amount": { "type": "number", "description": "Amount in source currency", "required": true },
+          "from": { "type": "string", "description": "ISO 4217 code (e.g., USD)", "required": true },
+          "to": { "type": "string", "description": "ISO 4217 code (e.g., EUR)", "required": true },
+          "date": { "type": "string", "description": "Optional historical date YYYY-MM-DD", "required": false }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "converted_amount": { "type": "number" },
+            "rate": { "type": "number" }
+          },
+          "required": ["converted_amount", "rate"]
+        }
+      },
+  
+      "search_hotels": {
+        "description": "Find hotels/lodging for given dates and constraints.",
+        "parameters": {
+          "destination": { "type": "string", "description": "City or area", "required": true },
+          "checkin": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "checkout": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "guests": { "type": "integer", "description": "Total guests", "required": true },
+          "rooms": { "type": "integer", "description": "Number of rooms", "required": false },
+          "budget_per_night": { "type": "number", "description": "Max nightly price in destination currency", "required": false },
+          "min_stars": { "type": "integer", "description": "1–5", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hotel_id": { "type": "string" },
+              "name": { "type": "string" },
+              "address": { "type": "string" },
+              "stars": { "type": "number" },
+              "nightly_price": { "type": "number" },
+              "rating": { "type": "number" }
+            },
+            "required": ["hotel_id", "name", "address", "nightly_price"]
+          }
+        }
+      },
+  
+      "search_flights": {
+        "description": "Find round-trip or one-way flights.",
+        "parameters": {
+          "origin": { "type": "string", "description": "IATA code (e.g., SFO)", "required": true },
+          "destination": { "type": "string", "description": "IATA code (e.g., CDG)", "required": true },
+          "depart_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "return_date": { "type": "string", "description": "YYYY-MM-DD for round-trip", "required": false },
+          "adults": { "type": "integer", "description": "Number of adult passengers", "required": true },
+          "cabin": { "type": "string", "description": "economy|premium|business|first", "required": false },
+          "nonstop": { "type": "boolean", "description": "Direct flights only", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "flight_id": { "type": "string" },
+              "carrier": { "type": "string" },
+              "depart_time": { "type": "string" },
+              "arrive_time": { "type": "string" },
+              "stops": { "type": "integer" },
+              "price_total": { "type": "number" }
+            },
+            "required": ["flight_id", "carrier", "depart_time", "arrive_time", "price_total"]
+          }
+        }
+      },
+  
+      "optimize_day_plan": {
+        "description": "Given a list of places and constraints, produce an ordered day schedule with times and travel legs.",
+        "parameters": {
+          "date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "place_ids": { "type": "array", "description": "Unordered or ordered set of desired stops", "required": true },
+          "start_location": { "type": "string", "description": "Place_id or 'lat,lng'", "required": false },
+          "end_location": { "type": "string", "description": "Place_id or 'lat,lng'", "required": false },
+          "day_start": { "type": "string", "description": "HH:MM local", "required": false },
+          "day_end": { "type": "string", "description": "HH:MM local", "required": false },
+          "stay_minutes": { "type": "integer", "description": "Default time per stop if unknown", "required": false },
+          "mode": { "type": "string", "description": "driving|walking|transit|bicycling", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "description": "Chronological items for the day",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start_time": { "type": "string" },
+              "end_time": { "type": "string" },
+              "activity": { "type": "string", "description": "visit|travel|meal|break" },
+              "place_id": { "type": "string" },
+              "notes": { "type": "string" },
+              "mode": { "type": "string" }
+            },
+            "required": ["start_time", "end_time", "activity"]
+          }
+        }
+      },
+  
+      "save_itinerary": {
+        "description": "Persist a multi-day plan with metadata.",
+        "parameters": {
+          "trip_name": { "type": "string", "description": "Human-friendly title", "required": true },
+          "start_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "end_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "home_base": { "type": "string", "description": "City or address", "required": false },
+          "days": { "type": "array", "description": "Array of day objects from optimize_day_plan", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "itinerary_id": { "type": "string" }
+          },
+          "required": ["success"]
+        }
+      },
+  
+      "get_itinerary": {
+        "description": "Fetch an existing itinerary by ID.",
+        "parameters": {
+          "itinerary_id": { "type": "string", "description": "Identifier from save_itinerary", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "trip_name": { "type": "string" },
+            "start_date": { "type": "string" },
+            "end_date": { "type": "string" },
+            "home_base": { "type": "string" },
+            "days": { "type": "array", "description": "Array of day items as above" }
+          }
+        }
+      },
+  
+      "export_itinerary": {
+        "description": "Export an itinerary to a portable format.",
+        "parameters": {
+          "itinerary_id": { "type": "string", "required": true },
+          "format": { "type": "string", "description": "pdf|ics|json", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "download_url": { "type": "string", "description": "Where the file can be retrieved" }
+          },
+          "required": ["success"]
+        }
+      },
+  
+      "check_visa_requirements": {
+        "description": "Determine visa requirements for a traveler based on nationality, destination, and trip details.",
+        "parameters": {
+          "passport_country": { "type": "string", "description": "ISO 3166-1 alpha-2 or country name (e.g., 'IN' or 'India')", "required": true },
+          "destination_country": { "type": "string", "description": "ISO 3166-1 alpha-2 or country name", "required": true },
+          "purpose": { "type": "string", "description": "tourism|business|transit|study|work", "required": true },
+          "length_of_stay_days": { "type": "integer", "description": "Planned number of days", "required": true },
+          "entry_date": { "type": "string", "description": "Planned entry date YYYY-MM-DD", "required": false }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "visa_required": { "type": "boolean" },
+            "visa_type": { "type": "string", "description": "e.g., eVisa, visa on arrival, Schengen short-stay" },
+            "max_stay_days": { "type": "integer" },
+            "processing_time_days": { "type": "integer" },
+            "documents": { "type": "array", "description": "Typical required documents", "items": { "type": "string" } },
+            "notes": { "type": "string" },
+            "sources": { "type": "array", "description": "Reference links or authorities", "items": { "type": "string" } }
+          },
+          "required": ["visa_required"]
+        }
+      },
+  
+      "get_timezones": {
+        "description": "Return time zone and local time information for one or more locations on a specific date/time.",
+        "parameters": {
+          "locations": { "type": "array", "description": "List of cities or 'lat,lng'", "required": true },
+          "datetime": { "type": "string", "description": "ISO datetime in UTC or with offset; defaults to 'now' if omitted", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "location": { "type": "string" },
+              "time_zone": { "type": "string", "description": "IANA name, e.g., 'Europe/Paris'" },
+              "local_datetime": { "type": "string", "description": "ISO local datetime" },
+              "utc_offset": { "type": "string", "description": "e.g., +02:00" },
+              "is_dst": { "type": "boolean" }
+            },
+            "required": ["location", "time_zone", "local_datetime", "utc_offset"]
+          }
+        }
+      },
+  
+      "convert_time": {
+        "description": "Convert a datetime from a source timezone to one or more target timezones.",
+        "parameters": {
+          "datetime": { "type": "string", "description": "ISO datetime", "required": true },
+          "source_time_zone": { "type": "string", "description": "IANA tz name (e.g., 'America/Los_Angeles')", "required": true },
+          "target_time_zones": { "type": "array", "description": "List of IANA tz names to convert into", "required": true }
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time_zone": { "type": "string" },
+              "local_datetime": { "type": "string" },
+              "utc_offset": { "type": "string" }
+            },
+            "required": ["time_zone", "local_datetime", "utc_offset"]
+          }
+        }
+      },
+  
+      "search_events": {
+        "description": "Find events (concerts, festivals, exhibits, sports) in a destination during a date window.",
+        "parameters": {
+          "location": { "type": "string", "description": "City or area", "required": true },
+          "start_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "end_date": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+          "categories": { "type": "array", "description": "e.g., ['music','theatre','sports','art','food']", "required": false },
+          "min_rating": { "type": "number", "description": "0–5 if available", "required": false },
+          "price_ceiling": { "type": "number", "description": "Max ticket price in local currency", "required": false }
+        },
+        "returns": {
+          "type": "array",
+          "description": "List of matching events",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event_id": { "type": "string" },
+              "name": { "type": "string" },
+              "category": { "type": "string" },
+              "venue": { "type": "string" },
+              "address": { "type": "string" },
+              "start_time": { "type": "string", "description": "ISO datetime" },
+              "end_time": { "type": "string", "description": "ISO datetime" },
+              "rating": { "type": "number" },
+              "price_range": { "type": "string", "description": "$–$$$$" },
+              "ticket_url": { "type": "string" }
+            },
+            "required": ["event_id", "name", "venue", "address", "start_time", "end_time"]
+          }
+        }
+      },
+  
+      "check_event_availability": {
+        "description": "Check ticket availability and price tiers for a specific event.",
+        "parameters": {
+          "event_id": { "type": "string", "description": "Unique event identifier", "required": true },
+          "quantity": { "type": "integer", "description": "Number of tickets desired", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "available": { "type": "boolean" },
+            "available_sections": {
+              "type": "array",
+              "description": "Sections or categories with availability",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "section": { "type": "string" },
+                  "price": { "type": "number" },
+                  "currency": { "type": "string" }
+                },
+                "required": ["section", "price", "currency"]
+              }
+            }
+          },
+          "required": ["available"]
+        }
+      },
+  
+      "make_event_booking": {
+        "description": "Book tickets for an event.",
+        "parameters": {
+          "event_id": { "type": "string", "description": "Unique event identifier", "required": true },
+          "section": { "type": "string", "description": "Chosen section/category", "required": true },
+          "quantity": { "type": "integer", "description": "Number of tickets", "required": true },
+          "name": { "type": "string", "description": "Name for the booking", "required": true },
+          "phone": { "type": "string", "description": "Contact phone number", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean" },
+            "confirmation_code": { "type": "string", "description": "Booking confirmation code if successful" }
+          },
+          "required": ["success"]
+        }
+      },
+  
+      "cancel_event_booking": {
+        "description": "Cancel an existing event booking.",
+        "parameters": {
+          "confirmation_code": { "type": "string", "description": "Booking confirmation code", "required": true },
+          "reason": { "type": "string", "description": "Optional cancellation reason", "required": false }
+        },
+        "returns": {
+          "type": "object",
+          "properties": { "success": { "type": "boolean" } },
+          "required": ["success"]
+        }
+      },
+  
+      "get_event_booking_status": {
+        "description": "Get the status/details of an existing event booking.",
+        "parameters": {
+          "confirmation_code": { "type": "string", "description": "Booking confirmation code", "required": true }
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "description": "e.g., confirmed, canceled" },
+            "event_id": { "type": "string" },
+            "name": { "type": "string" },
+            "section": { "type": "string" },
+            "quantity": { "type": "integer" }
+          }
+        }
+      }
+    }
+  }

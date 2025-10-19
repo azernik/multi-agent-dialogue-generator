@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "domain": "travel_itinerary",
+    "use_case": "medical_tourism",
+    "scenario_id": "ip_medical_tourism_008"
+  },
+  "limits": {
+    "max_turns": 12
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "user_agent": {
+    "objective": "Plan a 14-day medical tourism trip to Thailand for dental procedures with pre/post-operative care, recovery accommodations, and medical facility coordination.",
+    "slots": {
+      "destination": "Thailand",
+      "cities": ["Bangkok", "Chiang Mai"],
+      "start_date": "2025-07-01",
+      "end_date": "2025-07-14",
+      "traveler_type": "medical_tourist",
+      "medical_procedures": ["dental_implants", "cosmetic_dentistry", "oral_surgery"],
+      "budget_total": 15000,
+      "accommodation_preference": "near_medical_facilities",
+      "medical_requirements": ["pre_op_consultation", "post_op_care", "follow_up_appointments"],
+      "must_do": ["Medical consultations", "Recovery time", "Comfortable accommodations", "Medical facility proximity"],
+      "avoid_activities": ["strenuous_activities", "alcohol", "hard_foods"],
+      "recovery_needs": ["soft_food_dining", "rest_periods", "medical_supplies"],
+      "special_requirements": ["wheelchair_access", "medical_equipment", "emergency_contacts"],
+      "home_time_zone": "America/New_York",
+      "target_time_zone": "Asia/Bangkok",
+      "passport_country": "USA",
+      "purpose": "medical_tourism"
+    },
+    "initial_message": "I'm planning a medical tourism trip to Thailand for dental procedures. I need accommodations near medical facilities, recovery-friendly dining, and proper post-operative care planning. Can you help me organize this medical trip?",
+    "user_persona": "Medical tourist seeking quality healthcare at affordable prices; concerned about safety, recovery, and medical facility standards.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.change_mind",
+        "instructions": "Initially want to schedule procedures on consecutive days, then spread across the trip when reminded of recovery time needs."
+      },
+      {
+        "id": "UB2",
+        "type_id": "user.invalid_input",
+        "instructions": "When asked about medical history, provide contradictory information 'no allergies but allergic to anesthesia' first; after system flags it, clarify actual allergy status."
+      },
+      {
+        "id": "UB3",
+        "type_id": "user.impossible_request",
+        "instructions": "Request immediate same-day procedure scheduling, then accept realistic medical consultation and scheduling timeline when explained."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TA1",
+        "type_id": "tool.timeout",
+        "instructions": "Medical facility information request times out; retry succeeds with comprehensive dental clinic and hospital options."
+      },
+      {
+        "id": "TA2",
+        "type_id": "tool.no_results",
+        "instructions": "Recovery-friendly accommodation search returns empty; broadening criteria finds suitable medical tourism lodging."
+      },
+      {
+        "id": "TA3",
+        "type_id": "tool.validation_error",
+        "instructions": "Medical appointment booking fails due to missing procedure details; retry with complete dental procedure specifications succeeds."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System finds accredited medical facilities and dental clinics with proper certifications and international standards.",
+      "System handles user.change_mind by spreading medical procedures across the trip timeline for proper recovery periods.",
+      "System validates and corrects contradictory medical history information before proceeding with medical planning.",
+      "System explains impossibility of immediate same-day procedures and provides realistic medical consultation scheduling.",
+      "System handles tool.timeout on medical facilities by retrying and providing comprehensive dental clinic information.",
+      "System handles tool.no_results on recovery accommodations by broadening search and finding medical tourism-friendly lodging.",
+      "System handles tool.validation_error on medical appointments by retrying with complete procedure specifications.",
+      "System plans appropriate recovery periods with soft food dining options and rest requirements.",
+      "System includes medical emergency contacts, insurance coordination, and post-operative care planning.",
+      "System creates comprehensive medical tourism itinerary with procedure schedules, recovery accommodations, and medical facility coordination."
+    ]
+  }
+}
