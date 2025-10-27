@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple
+import json
 import logging
 from core import Message, MessageRole, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
@@ -93,7 +94,8 @@ class ConversationRunner:
         user_context = self.build_user_context(turn_number)
         user_response = self.user_agent.generate_response(user_context)
         self.logger.info(f"\nuser_agent response: {user_response}\n")
-        user_message = Message(MessageRole.USER, user_response)
+        turn_id = turn_number + 1
+        user_message = Message(MessageRole.USER, user_response, metadata={"turn_id": turn_id})
         self.user_history.append(user_message)
         self.system_history.append(user_message)
         return user_message
@@ -108,6 +110,8 @@ class ConversationRunner:
         system_messages_raw: List[str] = []
         actions_structured: List[Dict[str, Any]] = []
         tool_results: List[str] = []
+        steps: List[Dict[str, Any]] = []
+        turn_id = turn_number + 1
         while True:
             # Build context and get assistant output for the current micro-step
             system_context = self.build_system_context(turn_number)
@@ -116,28 +120,69 @@ class ConversationRunner:
             system_messages_raw.append(system_response)
             if self.has_tool_call(system_response):
                 had_tool_call = True
-                self.system_history.append(Message(MessageRole.ASSISTANT, system_response))
+                self.system_history.append(
+                    Message(MessageRole.ASSISTANT, system_response, metadata={
+                        'turn_id': turn_id,
+                        'micro_step_index': len(steps)
+                    })
+                )
                 # Record the tool call line in actions_structured
                 tool_call_only = self.extract_tool_call(system_response)
                 if tool_call_only:
                     actions_structured.append({ 'type': 'tool_call', 'raw': tool_call_only })
                 tool_result = self.process_tool_call(system_response, turn_number)
-                self.system_history.append(Message(MessageRole.TOOL, tool_result))
+                self.system_history.append(
+                    Message(MessageRole.TOOL, tool_result, metadata={
+                        'turn_id': turn_id,
+                        'micro_step_index': len(steps)
+                    })
+                )
                 tool_results.append(tool_result)
+                # Normalize tool call for structured action (best-effort)
+                action_name, action_args = self._normalize_tool_call(tool_call_only)
+                # Append structured step (tool)
+                steps.append({
+                    'step_index': len(steps) + 1,
+                    'output_raw': system_response,
+                    'action_structured': {
+                        'type': 'tool_call',
+                        **({ 'name': action_name } if action_name else {}),
+                        **({ 'args': action_args } if action_args is not None else {}),
+                        'raw': tool_call_only
+                    },
+                    'observation': self._build_observation(tool_result)
+                })
                 continue
             else:
                 user_facing_message = self.system_agent.get_user_facing_message(system_response)
-                system_message = Message(MessageRole.ASSISTANT, user_facing_message, metadata={"turn_id": turn_id})
+                system_message = Message(MessageRole.ASSISTANT, user_facing_message, metadata={'turn_id': turn_id})
+                full_system_message = Message(
+                    MessageRole.ASSISTANT,
+                    system_response,
+                    metadata={
+                        'turn_id': turn_id,
+                        'micro_step_index': len(steps)
+                    }
+                )
                 self.user_history.append(system_message)
                 self.system_history.append(full_system_message)
                 # Record final say action
                 actions_structured.append({ 'type': 'say', 'text': user_facing_message })
-                # Build turn trace for export
+                # Append structured step (say)
+                steps.append({
+                    'step_index': len(steps) + 1,
+                    'output_raw': system_response,
+                    'action_structured': { 'type': 'say', 'text': user_facing_message },
+                    'observation': None
+                })
+                # Build turn trace for export (new minimal schema)
+                last_user_text = self.user_history[-2].content if len(self.user_history) >= 2 else ''
                 turn_trace: Dict[str, Any] = {
-                    'history_before': pre_turn_user_history,
-                    'system_messages_raw': system_messages_raw,
-                    'actions_structured': actions_structured,
-                    'tool_results': tool_results,
+                    'turn_id': turn_id,
+                    'user': last_user_text,
+                    'assistant': {
+                        'steps': steps
+                    },
                     'termination': {
                         'final_in_conversation': ('[DONE_SUCCESS]' in user_facing_message) or ('[DONE_FAILURE]' in user_facing_message)
                     }
@@ -219,38 +264,153 @@ class ConversationRunner:
             cfg['injected_behaviors'] = enriched
         return cfg
         
-    def _parse_actions(self, system_response: str, is_first_micro_step: bool) -> List[Dict[str, Any]]:
-        """Parse assistant response into ordered actions: tool or say.
-        First micro-step prefers parsing after </plan>; later steps parse from the start.
+    def has_tool_call(self, system_response: str) -> bool:
+        """Detect whether the assistant emitted a tool call.
+        Prefer explicit <action type="tool" ...> tags; else fallback to heuristic.
         """
+        if self._parse_action_tag(system_response).get('type') == 'tool':
+            return True
         text = system_response or ""
-        start_idx = 0
-        if is_first_micro_step:
-            plan_end = text.rfind('</plan>')
-            if plan_end != -1:
-                start_idx = plan_end + len('</plan>')
-        action_section = text[start_idx:].strip()
-        if not action_section:
-            return []
-        actions: List[Dict[str, Any]] = []
+        # Prefer the action section after </plan>
+        plan_end = text.rfind('</plan>')
+        action_section = text[plan_end + len('</plan>'):] if plan_end != -1 else text
+        allowed_tools = set(self.scenario.tools.keys())
+        candidate = None
         for raw in action_section.split('\n'):
             line = raw.strip()
             if not line:
                 continue
-            # Say terminator
             if line.startswith('say(') and line.endswith(')'):
-                # naive extract text inside the outermost quotes
-                text_start = line.find('"')
-                text_end = line.rfind('"')
-                say_text = line[text_start + 1:text_end] if text_start != -1 and text_end > text_start else ''
-                actions.append({"type": "say", "text": say_text})
-                # We still parse remaining lines in case they exist, but say will terminate the turn when executed
                 continue
-            # Tool call heuristic: looks like name(args), not starting with say(
-            if '(' in line and ')' in line and not line.startswith('say('):
-                name_part = line.split('(', 1)[0].strip()
-                if name_part:
-                    actions.append({"type": "tool", "name": name_part, "call": line})
+            if '(' in line and ')' in line:
+                name = line.split('(', 1)[0].strip()
+                if name in allowed_tools and (' ' not in name) and ('=' not in name):
+                    candidate = line
+        return candidate is not None
+    
+    def extract_tool_call(self, system_response: str) -> str:
+        """Extract a normalized tool call.
+        Prefer explicit <action type="tool" name>...</action> tag; else use heuristic
+        to find the LAST valid tool call line (matching known tools) after </plan>.
+        """
+        tag = self._parse_action_tag(system_response)
+        if tag.get('type') == 'tool' and tag.get('name'):
+            # Reconstruct a raw call line from tag JSON if possible
+            args_obj = tag.get('args')
+            if isinstance(args_obj, dict):
+                try:
+                    return f"{tag['name']}({json.dumps(args_obj, separators=(',', ':'))})"
+                except Exception:
+                    pass
+            return tag.get('raw', '') or ''
+        text = system_response or ""
+        plan_end = text.rfind('</plan>')
+        action_section = text[plan_end + len('</plan>'):] if plan_end != -1 else text
+        allowed_tools = set(self.scenario.tools.keys())
+        candidates: List[str] = []
+        for raw in action_section.split('\n'):
+            line = raw.strip()
+            if not line:
                 continue
-            # Ignore other lines (think/plan/etc.)
-        return actions
+            if line.startswith('say('):
+                continue
+            if '(' in line and ')' in line:
+                name = line.split('(', 1)[0].strip()
+                if name in allowed_tools and (' ' not in name) and ('=' not in name):
+                    candidates.append(line)
+        if candidates:
+            return candidates[-1]
+        # Fallback: scan entire text if nothing found (handles malformed plan tags)
+        if plan_end != -1:
+            for raw in text.split('\n'):
+                line = raw.strip()
+                if not line or line.startswith('say('):
+                    continue
+                if '(' in line and ')' in line:
+                    name = line.split('(', 1)[0].strip()
+                    if name in allowed_tools and (' ' not in name) and ('=' not in name):
+                        candidates.append(line)
+        return candidates[-1] if candidates else ""
+
+    def _parse_action_tag(self, text: str) -> Dict[str, Any]:
+        """Parse <action ...>...</action> blocks. Returns dict with keys:
+        { type: 'tool'|'say'|None, name?, args?, raw? }
+        Tolerates missing closing </action> for say actions.
+        """
+        if not text:
+            return {}
+        start = text.find('<action')
+        if start == -1:
+            return {}
+        # Find end of opening tag
+        open_end = text.find('>', start)
+        if open_end == -1:
+            return {}
+        header = text[start + len('<action'):open_end]
+        # Determine type and optional name
+        type_val = None
+        name_val = None
+        if 'type="tool"' in header:
+            type_val = 'tool'
+        elif 'type="say"' in header:
+            type_val = 'say'
+        npos = header.find('name="')
+        if npos != -1:
+            nend = header.find('"', npos + 6)
+            if nend != -1:
+                name_val = header[npos + 6:nend]
+        end_tag = '</action>'
+        end = text.find(end_tag, open_end + 1)
+        # Compute body depending on type and presence of closing tag
+        if type_val == 'say':
+            body = text[open_end + 1:end].strip() if end != -1 else text[open_end + 1:].strip()
+            return { 'type': 'say', 'raw': body, 'text': body }
+        if type_val == 'tool' and name_val and end != -1:
+            body = text[open_end + 1:end].strip()
+            result: Dict[str, Any] = { 'type': 'tool', 'raw': body, 'name': name_val }
+            try:
+                result['args'] = json.loads(body)
+            except Exception:
+                pass
+            return result
+        return {}
+
+    def _normalize_tool_call(self, call_line: str) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        """Attempt to split a call line into (name, args) with JSON args when possible.
+        Returns (name, args_dict_or_None).
+        Examples:
+          check_availability({"a":1}) -> ("check_availability", {"a":1})
+          check_availability(restaurant_id="A") -> ("check_availability", None)
+        """
+        if not call_line or '(' not in call_line or ')' not in call_line:
+            return None, None
+        name = call_line.split('(', 1)[0].strip()
+        inner = call_line[call_line.find('(') + 1: call_line.rfind(')')].strip()
+        if inner.startswith('{') and inner.endswith('}'):
+            try:
+                return name, json.loads(inner)
+            except Exception:
+                return name, None
+        return name, None
+
+    def _build_observation(self, tool_result: str) -> Dict[str, Any]:
+        """Return { raw, parsed } where parsed is JSON if possible, else None.
+        Strips simple code fences.
+        """
+        raw = tool_result or ""
+        text = raw.strip()
+        # Strip ```json ... ``` or ``` ... ``` fences
+        if text.startswith('```'):
+            # remove first line fence and last ``` if present
+            lines = text.split('\n')
+            # drop first line
+            body = '\n'.join(lines[1:])
+            if body.endswith('```'):
+                body = body[: -3]
+            text = body.strip()
+        parsed = None
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            parsed = None
+        return { 'raw': raw, 'parsed': parsed }

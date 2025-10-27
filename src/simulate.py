@@ -16,7 +16,7 @@ from runner import ConversationRunner, ConversationResult
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
-    parser.add_argument('example_path', help='Path to scenario directory (e.g., data/scenarios/restaurant_booking/dine_in/rb_001)')
+    parser.add_argument('example_path', help='Path to scenario directory (e.g., data/domains/restaurant_booking/dine_in/rb_001)')
     parser.add_argument('--model', default='gpt-4o-mini', help='LLM model to use')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
@@ -28,15 +28,62 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--prompt-version', default='v1', help='Version of prompts to use (default: v1)')
     parser.add_argument('--debug-transcripts', action='store_true', help='Write system.md/user.md/tool.md and agent_flow.log')
     parser.add_argument('--export-steps-jsonl', action='store_true', help='Write turns.jsonl (one JSONL record per system turn)')
+    parser.add_argument('--outputs-root', help='Root directory for outputs (default: env MADG_OUTPUT_ROOT or data/outputs)')
     return parser.parse_args()
 
-def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, str]:
-    """Set up logging and return output, log, and agent flow file paths"""
+def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
+    """Resolve outputs root directory with CLI > env > default precedence."""
+    # 1) CLI flag
+    if cli_outputs_root:
+        return Path(cli_outputs_root)
+    # 2) Environment variable
+    env_root = os.getenv('MADG_OUTPUT_ROOT')
+    if env_root:
+        return Path(env_root)
+    # 3) Default to repo-root/data/outputs
+    cwd = Path(__file__).resolve().parent.parent  # src/ -> repo root
+    return cwd / 'data' / 'outputs'
+
+def _relative_scenario_path(example_dir: Path) -> Path:
+    """Compute scenario-relative path under data/scenarios or data/examples if present.
+    Falls back to just the leaf directory name.
+    """
+    parts = example_dir.resolve().parts
+    rel = None
+    if 'domains' in parts:
+        idx = parts.index('domains')
+        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
+    elif 'scenarios' in parts:
+        idx = parts.index('scenarios')
+        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
+    elif 'examples' in parts:
+        idx = parts.index('examples')
+        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
+    return rel if rel and str(rel) else Path(example_dir.name)
+
+def _scenario_key(example_dir: Path) -> str:
+    """Canonical scenario key: domain.use_case.scenario_id derived from data/domains path."""
+    parts = example_dir.resolve().parts
+    if 'domains' in parts:
+        idx = parts.index('domains')
+        tail = [p for p in parts[idx+1:]]
+        if len(tail) >= 3:
+            domain, use_case, scenario_id = tail[0], tail[1], tail[2]
+            return f"{domain}.{use_case}.{scenario_id}"
+    # fallback: join remaining parts with dots
+    return '.'.join([example_dir.parent.name, example_dir.name])
+
+def setup_logging(example_path: str, outputs_root: Path, verbose: bool = False) -> Tuple[str, str, str, Path, str]:
+    """Set up logging and return output paths.
+    Returns: output_file, log_file, agent_flow_file, run_dir, run_id
+    """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     example_dir = Path(example_path)
-    
-    # Create new directory for this simulation run
-    run_dir = example_dir / "runs" / f"simulate_{timestamp}"
+    run_id = f"simulate_{timestamp}"
+
+    # Compute centralized outputs path mirroring scenario hierarchy
+    scenario_key = _scenario_key(example_dir)
+    run_dir = outputs_root / f"{scenario_key}__{run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
     
     log_file = run_dir / "simulate.log"
@@ -53,7 +100,7 @@ def setup_logging(example_path: str, verbose: bool = False) -> Tuple[str, str, s
         ]
     )
     
-    return str(output_file), str(log_file), str(agent_flow_file)
+    return str(output_file), str(log_file), str(agent_flow_file), run_dir, run_id
 
 
 def _resolve_prompts_dir(example_path: str) -> Path:
@@ -220,41 +267,252 @@ def format_transcript_as_markdown(transcript: List, transcript_name: str, scenar
     markdown += f"**Scenario:** {scenario_name}\n\n"
     markdown += f"**Messages:** {len(transcript)}\n\n"
     markdown += "---\n\n"
+
+    # Special grouped rendering for System Transcript
+    if transcript_name == "System Transcript":
+        # Group messages by turn_id in encountered order
+        turns: List[Dict[str, List[Dict]]]= []
+        turn_index: Dict[int, int] = {}
+
+        for msg in transcript:
+            meta = msg.get('metadata') or {}
+            t_id = meta.get('turn_id')
+            if t_id is None:
+                # Skip messages without turn metadata
+                continue
+            if t_id not in turn_index:
+                turn_index[t_id] = len(turns)
+                turns.append({"turn_id": t_id, "messages": []})
+            turns[turn_index[t_id]]["messages"].append(msg)
+
+        def _escape_inline(text: str) -> str:
+            return text.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
+
+        def _render_assistant_sections(content: str) -> str:
+            out = ""
+            think_start = content.find('<think>')
+            think_end = content.find('</think>')
+            plan_start = content.find('<plan>')
+            plan_end = content.find('</plan>')
+            think_text = ''
+            plan_text = ''
+            action_section = content
+            if think_start != -1 and think_end != -1 and think_end > think_start:
+                think_text = content[think_start + len('<think>'):think_end].strip()
+            if plan_start != -1 and plan_end != -1 and plan_end > plan_start:
+                plan_text = content[plan_start + len('<plan>'):plan_end].strip()
+                action_section = content[plan_end + len('</plan>'):].strip()
+            else:
+                if think_end != -1:
+                    action_section = content[think_end + len('</think>'):].strip()
+            if think_text:
+                out += "&lt;think&gt;\n" + _escape_inline(think_text) + "\n&lt;/think&gt;\n\n"
+            if plan_text:
+                out += "&lt;plan&gt;\n" + _escape_inline(plan_text) + "\n&lt;/plan&gt;\n\n"
+            # Parse <action ...> tag (current format)
+            def _parse_action_tag(text: str) -> Dict[str, Any]:
+                result: Dict[str, Any] = {}
+                if not text:
+                    return result
+                start = text.find('<action')
+                if start == -1:
+                    return result
+                open_end = text.find('>', start)
+                if open_end == -1:
+                    return result
+                header = text[start + len('<action'):open_end]
+                a_type = None
+                if 'type="tool"' in header:
+                    a_type = 'tool'
+                elif 'type="say"' in header:
+                    a_type = 'say'
+                name_val = None
+                npos = header.find('name="')
+                if npos != -1:
+                    nend = header.find('"', npos + 6)
+                    if nend != -1:
+                        name_val = header[npos + 6:nend]
+                end_tag = '</action>'
+                close = text.find(end_tag, open_end + 1)
+                if close != -1:
+                    body = text[open_end + 1:close].strip()
+                else:
+                    body = text[open_end + 1:].strip()
+                result['type'] = a_type
+                if name_val:
+                    result['name'] = name_val
+                result['body'] = body
+                if a_type == 'tool':
+                    try:
+                        result['args'] = json.loads(body)
+                    except Exception:
+                        result['args'] = None
+                return result
+
+            parsed = _parse_action_tag(action_section)
+            if parsed.get('type'):
+                out += "### Action\n\n"
+                if parsed['type'] == 'say':
+                    out += _escape_inline(parsed.get('body', '')) + "\n\n"
+                elif parsed['type'] == 'tool':
+                    name = parsed.get('name') or 'tool'
+                    args_obj = parsed.get('args')
+                    if isinstance(args_obj, dict):
+                        out += f"`{name}({json.dumps(args_obj, separators=(',', ':'))})`\n\n"
+                    else:
+                        out += f"`{name}(...)`\n\n"
+            return out
+
+        # Render each turn
+        for ti, t in enumerate(turns):
+            t_id = t["turn_id"]
+            msgs = t["messages"]
+            # User header and content
+            user_msg = next((m for m in msgs if m['role'] == 'user'), None)
+            if user_msg:
+                markdown += f"## 👤 User (Turn {t_id})\n\n"
+                markdown += _escape_inline(user_msg.get('content', '').strip()) + "\n\n"
+            # Assistant block with steps
+            markdown += f"## 🤖 Assistant (Turn {t_id})\n\n"
+            # Collect steps by micro_step_index
+            step_to_msgs: Dict[int, Dict[str, Dict]] = {}
+            for m in msgs:
+                if m['role'] not in ('assistant', 'tool'):
+                    continue
+                meta = m.get('metadata') or {}
+                step = meta.get('micro_step_index')
+                if isinstance(step, int):
+                    step_to_msgs.setdefault(step, {})[m['role']] = m
+            for step in sorted(step_to_msgs.keys()):
+                display_step = step + 1
+                markdown += f"### Turn {t_id}.{display_step}\n\n"
+                amsg = step_to_msgs[step].get('assistant')
+                if amsg:
+                    markdown += _render_assistant_sections(amsg.get('content', ''))
+                tmsg = step_to_msgs[step].get('tool')
+                if tmsg:
+                    markdown += "#### Observation\n\n"
+                    markdown += "```\n" + tmsg.get('content', '').strip() + "\n```\n\n"
+            if ti < len(turns) - 1:
+                markdown += "---\n\n"
+
+        return markdown
     
     for i, msg in enumerate(transcript, 1):
         role = msg['role']
         content = msg['content']
+        meta = msg.get('metadata') or {}
+        turn_id = meta.get('turn_id')
+        step = meta.get('micro_step_index')
+        display_step = (step + 1) if isinstance(step, int) else step
         
         # Format role as header
         if role == 'user':
-            markdown += f"## 👤 User (Message {i})\n\n"
+            markdown += f"## 👤 User (Turn {turn_id})\n\n"
         elif role == 'assistant':
-            markdown += f"## 🤖 Assistant (Message {i})\n\n"
+            markdown += f"## 🤖 Assistant (Turn {turn_id}, Step {display_step})\n\n"
         elif role == 'tool':
-            markdown += f"## 🔧 Tool (Message {i})\n\n"
+            markdown += f"## 🔧 Tool (Turn {turn_id}, Step {display_step})\n\n"
         else:
-            markdown += f"## 🔧 {role.title()} (Message {i})\n\n"
+            markdown += f"## 🔧 {role.title()} (Turn {turn_id})\n\n"
         
-        # Format content with proper escaping and structure
-        if content.strip():
-            # Handle multi-line content with proper indentation
-            lines = content.split('\n')
-            formatted_content = []
-            
-            for line in lines:
-                # Escape XML-like tags so they show up in markdown preview
-                escaped_line = line.replace('<think>', '&lt;think&gt;').replace('</think>', '&lt;/think&gt;')
-                escaped_line = escaped_line.replace('<plan>', '&lt;plan&gt;').replace('</plan>', '&lt;/plan&gt;')
-                escaped_line = escaped_line.replace('<reflect>', '&lt;reflect&gt;').replace('</reflect>', '&lt;/reflect&gt;')
-                
-                # Escape other markdown special characters in content
-                escaped_line = escaped_line.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
-                formatted_content.append(escaped_line)
-            
-            markdown += '\n'.join(formatted_content)
-            markdown += "\n\n"
-        else:
+        # Format content by role with subheaders
+        if not content.strip():
             markdown += "*[Empty message]*\n\n"
+        else:
+            if role == 'assistant':
+                think_start = content.find('<think>')
+                think_end = content.find('</think>')
+                plan_start = content.find('<plan>')
+                plan_end = content.find('</plan>')
+                # Extract sections safely
+                think_text = ''
+                plan_text = ''
+                action_section = content
+                if think_start != -1 and think_end != -1 and think_end > think_start:
+                    think_text = content[think_start + len('<think>'):think_end].strip()
+                if plan_start != -1 and plan_end != -1 and plan_end > plan_start:
+                    plan_text = content[plan_start + len('<plan>'):plan_end].strip()
+                    action_section = content[plan_end + len('</plan>'):].strip()
+                else:
+                    # If no plan, try after </think>
+                    if think_end != -1:
+                        action_section = content[think_end + len('</think>'):].strip()
+
+                # THINK
+                if think_text:
+                    markdown += f"### Think\n\n"
+                    # Escape basic markdown chars in text sections
+                    escaped = think_text.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
+                    markdown += escaped + "\n\n"
+
+                # PLAN (optional)
+                if plan_text:
+                    markdown += f"### Plan\n\n"
+                    escaped = plan_text.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
+                    markdown += escaped + "\n\n"
+
+                # ACTION (parse <action> tag from current format)
+                def _parse_action_tag2(text: str) -> Dict[str, Any]:
+                    result: Dict[str, Any] = {}
+                    if not text:
+                        return result
+                    start = text.find('<action')
+                    if start == -1:
+                        return result
+                    open_end = text.find('>', start)
+                    if open_end == -1:
+                        return result
+                    header = text[start + len('<action'):open_end]
+                    a_type = None
+                    if 'type="tool"' in header:
+                        a_type = 'tool'
+                    elif 'type="say"' in header:
+                        a_type = 'say'
+                    name_val = None
+                    npos = header.find('name="')
+                    if npos != -1:
+                        nend = header.find('"', npos + 6)
+                        if nend != -1:
+                            name_val = header[npos + 6:nend]
+                    end_tag = '</action>'
+                    close = text.find(end_tag, open_end + 1)
+                    if close != -1:
+                        body = text[open_end + 1:close].strip()
+                    else:
+                        body = text[open_end + 1:].strip()
+                    result['type'] = a_type
+                    if name_val:
+                        result['name'] = name_val
+                    result['body'] = body
+                    if a_type == 'tool':
+                        try:
+                            result['args'] = json.loads(body)
+                        except Exception:
+                            result['args'] = None
+                    return result
+
+                parsed = _parse_action_tag2(action_section)
+                if parsed.get('type'):
+                    markdown += f"### Action\n\n"
+                    if parsed['type'] == 'say':
+                        escaped = parsed.get('body', '').replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
+                        markdown += escaped + "\n\n"
+                    else:
+                        name = parsed.get('name') or 'tool'
+                        args_obj = parsed.get('args')
+                        if isinstance(args_obj, dict):
+                            markdown += f"`{name}({json.dumps(args_obj, separators=(',', ':'))})`\n\n"
+                        else:
+                            markdown += f"`{name}(...)`\n\n"
+            elif role == 'tool':
+                markdown += f"### Observation\n\n"
+                # Prefer code fence for tool JSON/text
+                markdown += "```\n" + content.strip() + "\n```\n\n"
+            else:
+                # User or other roles: render as plain text
+                escaped = content.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
+                markdown += escaped + "\n\n"
         
         # Add separator between messages
         if i < len(transcript):
@@ -281,7 +539,8 @@ def write_markdown_transcripts(result: ConversationResult, base_filename: str) -
         formatted_data = [
             {
                 'role': msg.role.value,
-                'content': msg.content
+                'content': msg.content,
+                'metadata': getattr(msg, 'metadata', None)
             }
             for msg in transcript_data
         ]
@@ -303,6 +562,37 @@ def write_markdown_transcripts(result: ConversationResult, base_filename: str) -
         markdown_files[file_suffix] = str(markdown_file)
     
     return markdown_files
+
+def write_system_markdown_transcript(result: ConversationResult, output_dir: Path) -> str:
+    """Write only the system transcript to system.md and return its path."""
+    formatted_data = [
+        {
+            'role': msg.role.value,
+            'content': msg.content,
+            'metadata': getattr(msg, 'metadata', None)
+        }
+        for msg in result.system_transcript
+    ]
+    markdown_content = format_transcript_as_markdown(
+        formatted_data,
+        "System Transcript",
+        result.metadata.get('scenario', 'unknown')
+    )
+    md_path = output_dir / 'system.md'
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+    return str(md_path)
+
+def write_conversation_log(result: ConversationResult, output_dir: Path) -> str:
+    """Write a simple conversational log with user-facing messages only."""
+    log_path = output_dir / 'conversation.log'
+    with open(log_path, 'w', encoding='utf-8') as f:
+        for msg in result.user_transcript:
+            role = msg.role.value
+            # Normalize role names
+            prefix = 'User' if role == 'user' else 'Assistant' if role == 'assistant' else role.title()
+            f.write(f"{prefix}: {msg.content}\n\n")
+    return str(log_path)
 
 def _infer_domain_id(example_path: str) -> Optional[str]:
     """Infer domain id from an example path like data/scenarios/<domain>/..."""
@@ -351,6 +641,26 @@ def write_single_conversation_file(
     if custom_prompt_paths:
         meta['prompt_files'] = custom_prompt_paths
 
+    # Transform per-turn traces to a role-based messages list
+    messages: List[Dict[str, Any]] = []
+    for t in (result.turn_traces or []):
+        turn_id = t.get('turn_id')
+        user_text = t.get('user', '')
+        assistant_obj = t.get('assistant', {}) or {}
+        steps = assistant_obj.get('steps', []) or []
+        # User message
+        messages.append({
+            'turn_id': turn_id,
+            'role': 'user',
+            'output_raw': user_text
+        })
+        # Assistant message with steps
+        messages.append({
+            'turn_id': turn_id,
+            'role': 'assistant',
+            'steps': steps
+        })
+
     conversation_obj: Dict[str, Any] = {
         'meta': meta,
         'config': {
@@ -358,7 +668,7 @@ def write_single_conversation_file(
             'user_agent_config': scenario.user_agent,
             'tool_agent_config': scenario.tool_agent
         },
-        'turns': result.turn_traces or [],
+        'messages': messages,
         'outcome': {
             'success': result.success,
             'reason': result.termination_reason,
@@ -385,8 +695,9 @@ def main():
         # Parse arguments
         args = parse_arguments()
         
-        # Set up logging and file paths
-        output_file, log_file, agent_flow_file = setup_logging(args.example_path, args.verbose)
+        # Resolve outputs root and set up logging/paths
+        outputs_root = _resolve_outputs_root(args.example_path, args.outputs_root)
+        output_file, log_file, agent_flow_file, run_dir, run_id = setup_logging(args.example_path, outputs_root, args.verbose)
         logger = logging.getLogger(__name__)
         
         logger.info(f"Starting simulation with model: {args.model}")
@@ -445,6 +756,12 @@ def main():
         )
         logger.info(f"Conversation file saved to: {conversation_file}")
 
+        # Always write system.md and conversation.log
+        system_md_path = write_system_markdown_transcript(result, run_dir)
+        conv_log_path = write_conversation_log(result, run_dir)
+        logger.info(f"System transcript saved to: {system_md_path}")
+        logger.info(f"Conversation log saved to: {conv_log_path}")
+
         # Write markdown transcripts only in debug mode
         if args.debug_transcripts:
             markdown_files = write_markdown_transcripts(result, output_file)
@@ -471,6 +788,31 @@ def main():
                     jf.write(json.dumps(rec) + '\n')
             logger.info(f"Per-turn JSONL saved to: {turns_path}")
         
+        # Append to global manifest
+        try:
+            scenario_rel = _relative_scenario_path(Path(args.example_path))
+            scenario_key = _scenario_key(Path(args.example_path))
+            manifest_line = {
+                "scenario_key": scenario_key,
+                "run_id": run_id,
+                "success": result.success,
+                "termination_reason": result.termination_reason,
+                "had_tool_calls": result.metadata.get('had_tool_calls', False),
+                "paths": {
+                    "output": str(Path(output_file)),
+                    "log": str(Path(log_file)),
+                    "agent_flow": str(Path(agent_flow_file)),
+                    "run_dir": str(run_dir)
+                }
+            }
+            manifest_path = outputs_root / 'index.jsonl'
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(manifest_path, 'a') as mf:
+                mf.write(json.dumps(manifest_line) + "\n")
+            logger.info(f"Manifest updated: {manifest_path}")
+        except Exception as _e:
+            logger.warning(f"Could not update manifest: {_e}")
+
         # Exit with appropriate code
         sys.exit(0 if result.success else 1)
         
