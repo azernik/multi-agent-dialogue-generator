@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from enum import Enum
 import openai
@@ -13,6 +13,7 @@ class MessageRole(Enum):
 class Message:
     role: MessageRole
     content: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class ConversationContext:

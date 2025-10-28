@@ -17,6 +17,7 @@ python src/simulate.py data/examples/ex1
 python src/simulate.py data/examples/ex1 \
   --model gpt-4o-mini \
   --max-turns 20 \
+  --outputs-root data/outputs \
   --verbose
 ```
 
@@ -45,22 +46,33 @@ The simulator orchestrates conversations between three specialized AI agents to 
 4. Terminates when user signals completion or max turns reached
 5. Outputs JSON results + readable markdown transcripts for each agent
 
+**Centralized Outputs (flattened):**
+```
+data/outputs/
+├── index.jsonl                               # Global manifest (one line per run)
+└── <scenario_key>__simulate_<timestamp>/     # e.g., restaurant_booking.dine_in.rb_003__simulate_20251018_163313
+    ├── simulate.out                          # JSON results (with metadata per message)
+    ├── simulate.log                          # Execution log
+    ├── agent_flow.log                        # Agent input/output actions
+    ├── system.md                             # System agent transcript
+    ├── user.md                               # User agent transcript
+    └── tool.md                               # Tool agent transcript
+```
+
 ## Project Structure
 
-**Scenarios:**
+**Domains and Scenarios:**
 ```
-data/examples/
-├── ex1/
-│   ├── scenario.json           # Tool definitions + user context
-│   └── runs/                   # Simulation outputs
-│       └── simulate_<timestamp>/
-│           ├── simulate.out    # JSON results
-│           ├── simulate.log    # Execution log
-│           ├── agent_flow.log  # Agent input/output
-│           ├── system.md       # System agent transcript
-│           ├── user.md         # User agent transcript
-│           └── tool.md         # Tool agent transcript
-└── ex2/...
+data/domains/
+├── restaurant_booking/
+│   ├── tools.json
+│   └── dine_in/
+│       └── rb_001/
+│           └── scenario.json
+└── calendar_assistant/
+    └── schedule_meeting/
+        └── ca_001/
+            └── scenario.json
 ```
 
 **Agent Prompts:**

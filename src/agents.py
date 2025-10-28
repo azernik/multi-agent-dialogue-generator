@@ -51,14 +51,26 @@ class SystemAgent(BaseAgent):
         return messages
     
     def get_user_facing_message(self, system_response: str) -> str:
-        lines = system_response.split('\n')
-        for line in lines:
-            if line.strip().startswith('say('):
-                start = line.find('say("') + 5
-                end = line.rfind('")')
-                if start > 4 and end > start:
-                    return line[start:end]
-        return ""
+        # Parse <action type="say">...</action>, tolerating missing closing tag
+        text = system_response or ""
+        start = text.find('<action')
+        if start == -1:
+            return ""
+        # Find end of opening tag
+        open_end = text.find('>', start)
+        if open_end == -1:
+            return ""
+        header = text[start + len('<action'):open_end]
+        if 'type="say"' not in header:
+            return ""
+        end_tag = '</action>'
+        end = text.find(end_tag, open_end + 1)
+        if end != -1:
+            body = text[open_end + 1:end].strip()
+        else:
+            # No closing tag; treat the rest of the text as the body
+            body = text[open_end + 1:].strip()
+        return body
 
 class UserAgent(BaseAgent):
     def __init__(self, system_prompt: str, llm_client: LLMClient, user_context: Dict[str, Any]):
