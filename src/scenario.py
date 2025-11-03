@@ -8,6 +8,7 @@ from pathlib import Path
 class ExampleScenario:
     name: str
     tools: Dict[str, Any]         # Structured tool definitions
+    task: Dict[str, Any] = field(default_factory=dict)        # Canonical task definition
     user_agent: Dict[str, Any] = field(default_factory=dict)  # User agent config
     tool_agent: Dict[str, Any] = field(default_factory=dict)  # Tool agent config
     behavior_types: Dict[str, Any] = field(default_factory=dict)  # Global behavior type index
@@ -53,9 +54,19 @@ class ExampleScenario:
                             'description': t.get('description', '')
                         }
         
+        # Load canonical task definition; fallback to legacy fields if absent
+        task = scenario_data.get('task', {}) or {}
+        if not task:
+            legacy_ua = scenario_data.get('user_agent', {}) or {}
+            task = {
+                'description': legacy_ua.get('objective', ''),
+                'slots': legacy_ua.get('slots', {})
+            }
+
         return cls(
             name=name,
             tools=tools,
+            task=task,
             user_agent=scenario_data.get('user_agent', {}),
             tool_agent=scenario_data.get('tool_agent', {}),
             behavior_types=behavior_types_index

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple
+from copy import deepcopy
 import json
 import logging
 from core import Message, MessageRole, ConversationContext
@@ -212,6 +213,15 @@ class ConversationRunner:
         
     def build_user_context(self, turn_number: int) -> ConversationContext:
         ua = self._enrich_behaviors(self.scenario.user_agent, self.scenario.behavior_types)
+        if self.scenario.task:
+            ua = dict(ua)
+            ua['task'] = deepcopy(self.scenario.task)
+            task_slots = ua['task'].get('slots', {})
+            if 'slots' not in ua and task_slots:
+                ua['slots'] = deepcopy(task_slots)
+            task_desc = ua['task'].get('description')
+            if 'objective' not in ua and task_desc:
+                ua['objective'] = task_desc
         return ConversationContext(
             messages=self.user_history,
             agent_config=ua,

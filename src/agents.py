@@ -89,10 +89,11 @@ class UserAgent(BaseAgent):
     def build_prompt(self, context: ConversationContext) -> List[Dict[str, str]]:
         messages = []
         ua = context.agent_config or {}
-        objective = ua.get('objective', '')
+        task = ua.get('task', {}) if isinstance(ua.get('task'), dict) else {}
+        objective = ua.get('objective') or task.get('description', '')
         initial_message = ua.get('initial_message', '')
-        persona = ua.get('persona', '')
-        slots = ua.get('slots', {})
+        persona = ua.get('persona', '') or ua.get('user_persona', '')
+        slots = ua.get('slots') or task.get('slots', {}) or {}
         injected_behaviors = ua.get('injected_behaviors', [])
         
         # Enrich behaviors for prompt clarity

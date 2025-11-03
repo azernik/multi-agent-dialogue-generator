@@ -665,6 +665,7 @@ def write_single_conversation_file(
         'meta': meta,
         'config': {
             'scenario_name': scenario.name,
+            'task': scenario.task,
             'user_agent_config': scenario.user_agent,
             'tool_agent_config': scenario.tool_agent
         },
