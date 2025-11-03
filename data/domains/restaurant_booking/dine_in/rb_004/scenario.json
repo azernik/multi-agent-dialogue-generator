@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "domain": "restaurant_booking",
+    "use_case": "dine_in",
+    "scenario_id": "rb_004"
+  },
+  "limits": {
+    "max_turns": 20
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "task": {
+    "description": "Find and book a restaurant that matches the defined slot values.",
+    "slots": {
+      "date": "Friday evening",
+      "time_window": ">=19:00",
+      "party_size": 2,
+      "location": "Half Moon Bay",
+      "cuisine": "Nepalese"
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that there are no Nepalese restaurants available in Half Moon Bay and suggest reasonable alternatives (nearby cuisines, different locations, or different dates)."
+  },
+  "user_agent": {
+    "initial_message": "Hi, I'm hoping to book a Nepalese restaurant in Half Moon Bay this Friday evening for two people around 7pm.",
+    "user_persona": "A man who is interested in trying authentic Nepalese cuisine with his wife.",
+    "injected_behaviors": [
+      {
+        "id": "UB1",
+        "type_id": "user.impossible_request",
+        "instructions": "Politely insist on Nepalese cuisine even after the assistant suggests alternatives. Only relent once it's absolutely clear nothing is available."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "id": "TB1",
+        "type_id": "tool.no_results",
+        "instructions": "For any restaurant search queries matching cuisine='Nepalese' and location='Half Moon Bay', return an empty restaurant list."
+      }
+    ]
+  },
+  "eval": {
+    "success_criteria": [
+      "System clearly communicates that no Nepalese restaurants are available in Half Moon Bay",
+      "System offers reasonable alternatives (different cuisine or nearby locations)",
+      "System avoids fabricating reservations or confirming nonexistent options"
+    ]
+  }
+}
