@@ -1,0 +1,189 @@
+{
+  "id": "toolset.banking.v1",
+  "tools": {
+    "list_customer_accounts": {
+      "description": "Return the customer's bank accounts (deposits, credit cards, loans) with masked identifiers and basic balances.",
+      "parameters": {},
+      "returns": {
+        "type": "array",
+        "description": "Accounts available to the signed-in customer",
+        "items": {
+          "type": "object",
+          "properties": {
+            "account_id": { "type": "string", "description": "Internal account identifier" },
+            "account_type": { "type": "string", "description": "checking, savings, credit_card, loan" },
+            "nickname": { "type": "string", "description": "Customer-facing nickname" },
+            "masked_number": { "type": "string", "description": "Masked account / card number" },
+            "current_balance": { "type": "number", "description": "Current balance (negative for credit owed)" },
+            "available_balance": { "type": "number", "description": "Available balance for spending" },
+            "currency": { "type": "string", "description": "Currency code (e.g., USD)" }
+          },
+          "required": ["account_id", "account_type", "nickname", "masked_number", "current_balance", "currency"]
+        }
+      }
+    },
+    "get_account_balance": {
+      "description": "Fetch current and available balances for a specific account.",
+      "parameters": {
+        "account_id": { "type": "string", "description": "Account identifier returned by list_customer_accounts", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "account_id": { "type": "string" },
+          "current_balance": { "type": "number" },
+          "available_balance": { "type": "number" },
+          "currency": { "type": "string" },
+          "last_updated": { "type": "string", "description": "ISO timestamp" }
+        },
+        "required": ["account_id", "current_balance", "currency"]
+      }
+    },
+    "list_recent_transactions": {
+      "description": "Retrieve recent transactions for an account, optionally filtered by date or keyword.",
+      "parameters": {
+        "account_id": { "type": "string", "description": "Account identifier", "required": true },
+        "start_date": { "type": "string", "description": "ISO date to start search (inclusive)", "required": false },
+        "end_date": { "type": "string", "description": "ISO date to end search (inclusive)", "required": false },
+        "merchant_query": { "type": "string", "description": "Keyword to match merchant name", "required": false },
+        "limit": { "type": "integer", "description": "Maximum number of transactions", "required": false }
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "transaction_id": { "type": "string" },
+            "posted_date": { "type": "string", "description": "Date transaction posted" },
+            "amount": { "type": "number", "description": "Positive for credits, negative for debits" },
+            "currency": { "type": "string" },
+            "description": { "type": "string", "description": "Merchant or memo" },
+            "status": { "type": "string", "description": "pending, posted, disputed" }
+          },
+          "required": ["transaction_id", "posted_date", "amount", "currency", "description"]
+        }
+      }
+    },
+    "fetch_payees": {
+      "description": "Return the customer's saved bill payees (personal or business).",
+      "parameters": {},
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "payee_id": { "type": "string" },
+            "name": { "type": "string" },
+            "type": { "type": "string", "description": "personal or business" },
+            "delivery_method": { "type": "string", "description": "electronic or check" },
+            "processing_time_days": { "type": "integer", "description": "Estimated days to deliver" }
+          },
+          "required": ["payee_id", "name", "type", "delivery_method"]
+        }
+      }
+    },
+    "transfer_between_accounts": {
+      "description": "Transfer funds between the customer's own accounts (immediate or future-dated).",
+      "parameters": {
+        "from_account_id": { "type": "string", "required": true },
+        "to_account_id": { "type": "string", "required": true },
+        "amount": { "type": "number", "description": "Amount in account currency", "required": true },
+        "transfer_date": { "type": "string", "description": "ISO date for transfer (defaults to today)", "required": false },
+        "memo": { "type": "string", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "confirmation_id": { "type": "string" },
+          "scheduled_for": { "type": "string", "description": "ISO datetime when transfer will occur" }
+        },
+        "required": ["success"]
+      }
+    },
+    "schedule_bill_payment": {
+      "description": "Schedule a payment to an external bill payee.",
+      "parameters": {
+        "payee_id": { "type": "string", "required": true },
+        "from_account_id": { "type": "string", "required": true },
+        "amount": { "type": "number", "required": true },
+        "deliver_by": { "type": "string", "description": "Requested delivery date (ISO)", "required": true },
+        "memo": { "type": "string", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "payment_id": { "type": "string" },
+          "estimated_debit_date": { "type": "string" }
+        },
+        "required": ["success"]
+      }
+    },
+    "cancel_scheduled_payment": {
+      "description": "Cancel a future-dated transfer or bill payment.",
+      "parameters": {
+        "payment_id": { "type": "string", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string", "description": "Additional info if cancellation failed" }
+        },
+        "required": ["success"]
+      }
+    },
+    "submit_dispute": {
+      "description": "Open a dispute for a specific transaction.",
+      "parameters": {
+        "account_id": { "type": "string", "required": true },
+        "transaction_id": { "type": "string", "required": true },
+        "reason": { "type": "string", "description": "Customer-facing reason", "required": true },
+        "notes": { "type": "string", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "case_id": { "type": "string" },
+          "next_steps": { "type": "string", "description": "Instructions for customer" }
+        },
+        "required": ["success"]
+      }
+    },
+    "check_dispute_status": {
+      "description": "Check the status of a previously submitted dispute.",
+      "parameters": {
+        "case_id": { "type": "string", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "case_id": { "type": "string" },
+          "status": { "type": "string", "description": "open, resolved, needs_info" },
+          "updated_at": { "type": "string" },
+          "resolution": { "type": "string", "description": "Resolution details if closed" }
+        }
+      }
+    },
+    "report_card_issue": {
+      "description": "Report a card as lost, stolen, or damaged and block it immediately.",
+      "parameters": {
+        "card_id": { "type": "string", "required": true },
+        "issue_type": { "type": "string", "description": "lost, stolen, damaged", "required": true },
+        "notes": { "type": "string", "required": false },
+        "request_replacement": { "type": "boolean", "description": "Whether to ship a new card", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "replacement_card_id": { "type": "string" },
+          "estimated_arrival": { "type": "string" }
+        },
+        "required": ["success"]
+      }
+    }
+  }
+}
