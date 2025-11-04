@@ -17,18 +17,26 @@ class ConversationResult:
     termination_reason: str
     turn_traces: List[Dict[str, Any]] = None
 
+DEFAULT_SYSTEM_GREETING = "Hi there! How can I help you today?"
+
+
 class ConversationRunner:
     def __init__(self, 
                  scenario: ExampleScenario,
                  system_agent: SystemAgent,
                  user_agent: UserAgent, 
                  tool_agent: ToolAgent,
-                 max_turns: int = 20):
+                 max_turns: int = 20,
+                 persona: Optional[Dict[str, Any]] = None,
+                 task_override: Optional[Dict[str, Any]] = None,
+                 system_greeting: Optional[str] = DEFAULT_SYSTEM_GREETING):
         self.scenario = scenario
         self.system_agent = system_agent
         self.user_agent = user_agent
         self.tool_agent = tool_agent
         self.max_turns = max_turns
+        self.persona = persona
+        self.task_context = task_override or scenario.task
         self.logger = logging.getLogger(__name__)
         
         # Three separate conversation histories
@@ -37,10 +45,19 @@ class ConversationRunner:
         self.tool_history: List[Message] = []
         # Aggregated per-system-turn traces for training/export
         self.turn_traces: List[Dict[str, Any]] = []
-        
+
         self.logger.info(f"ConversationRunner initialized with max_turns={max_turns}")
         self.logger.info(f"Scenario: {scenario.name}")
         self.logger.info(f"Available tools: {list(scenario.tools.keys())}")
+
+        if system_greeting:
+            greeting_msg = Message(
+                MessageRole.ASSISTANT,
+                system_greeting,
+                metadata={"turn_id": 0, "system_greeting": True}
+            )
+            self.system_history.append(greeting_msg)
+            self.user_history.append(greeting_msg)
         
     def run_conversation(self) -> ConversationResult:
         had_tool_calls = False
@@ -57,7 +74,12 @@ class ConversationRunner:
                     system_transcript=self.system_history.copy(),
                     user_transcript=self.user_history.copy(),
                     tool_transcript=self.tool_history.copy(),
-                    metadata={"total_turns": turn + 1, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
+                    metadata={
+                        "total_turns": turn + 1,
+                        "scenario": self.scenario.name,
+                        "had_tool_calls": had_tool_calls,
+                        "persona_id": self.persona.get('id') if self.persona else None
+                    },
                     success=success,
                     termination_reason=termination_reason,
                     turn_traces=self.turn_traces.copy()
@@ -75,7 +97,12 @@ class ConversationRunner:
                     system_transcript=self.system_history.copy(),
                     user_transcript=self.user_history.copy(),
                     tool_transcript=self.tool_history.copy(),
-                    metadata={"total_turns": turn + 1, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
+                    metadata={
+                        "total_turns": turn + 1,
+                        "scenario": self.scenario.name,
+                        "had_tool_calls": had_tool_calls,
+                        "persona_id": self.persona.get('id') if self.persona else None
+                    },
                     success=success,
                     termination_reason=termination_reason,
                     turn_traces=self.turn_traces.copy()
@@ -85,7 +112,12 @@ class ConversationRunner:
             system_transcript=self.system_history.copy(),
             user_transcript=self.user_history.copy(),
             tool_transcript=self.tool_history.copy(),
-            metadata={"total_turns": self.max_turns, "scenario": self.scenario.name, "had_tool_calls": had_tool_calls},
+            metadata={
+                "total_turns": self.max_turns,
+                "scenario": self.scenario.name,
+                "had_tool_calls": had_tool_calls,
+                "persona_id": self.persona.get('id') if self.persona else None
+            },
             success=False,
             termination_reason="max_turns_reached",
             turn_traces=self.turn_traces.copy()
@@ -213,15 +245,17 @@ class ConversationRunner:
         
     def build_user_context(self, turn_number: int) -> ConversationContext:
         ua = self._enrich_behaviors(self.scenario.user_agent, self.scenario.behavior_types)
-        if self.scenario.task:
-            ua = dict(ua)
-            ua['task'] = deepcopy(self.scenario.task)
-            task_slots = ua['task'].get('slots', {})
-            if 'slots' not in ua and task_slots:
-                ua['slots'] = deepcopy(task_slots)
-            task_desc = ua['task'].get('description')
-            if 'objective' not in ua and task_desc:
-                ua['objective'] = task_desc
+        ua = dict(ua)
+        if self.task_context:
+            ua['task'] = deepcopy(self.task_context)
+            task_slots = self.task_context.get('slots', {})
+            if task_slots:
+                ua.setdefault('slots', deepcopy(task_slots))
+            task_desc = self.task_context.get('description')
+            if task_desc:
+                ua.setdefault('objective', task_desc)
+        if self.persona:
+            ua['persona'] = deepcopy(self.persona)
         return ConversationContext(
             messages=self.user_history,
             agent_config=ua,

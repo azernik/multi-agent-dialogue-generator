@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import logging
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Dict, List, Optional, Any
@@ -12,6 +13,67 @@ from core import LLMClient
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario, load_system_prompts
 from runner import ConversationRunner, ConversationResult
+
+_PERSONA_CATALOG_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def _load_persona_from_catalog(catalog_path: Path, persona_id: str) -> Dict[str, Any]:
+    catalog_key = str(catalog_path.resolve())
+    catalog_data = _PERSONA_CATALOG_CACHE.get(catalog_key)
+    if catalog_data is None:
+        if not catalog_path.exists():
+            raise FileNotFoundError(f"Persona catalog not found: {catalog_path}")
+        catalog_data = json.loads(catalog_path.read_text())
+        _PERSONA_CATALOG_CACHE[catalog_key] = catalog_data
+    personas = catalog_data.get('personas') or []
+    for persona in personas:
+        if persona.get('id') == persona_id:
+            return persona
+    raise ValueError(f"Persona id '{persona_id}' not found in catalog {catalog_path}")
+
+
+def _merge_task_slots(base_task: Dict[str, Any], slot_overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    task_copy = deepcopy(base_task) if base_task else {}
+    if slot_overrides:
+        existing_slots = deepcopy(task_copy.get('slots', {})) if task_copy.get('slots') else {}
+        existing_slots.update(slot_overrides)
+        task_copy['slots'] = existing_slots
+    return task_copy
+
+
+def _prepare_persona_context(
+    scenario: ExampleScenario,
+    persona_arg: Optional[str],
+) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any], Optional[str]]:
+    task_override = deepcopy(scenario.task) if scenario.task else {}
+    persona_context: Optional[Dict[str, Any]] = None
+    persona_id: Optional[str] = None
+
+    if scenario.persona_catalog and scenario.persona_entries:
+        persona_id = persona_arg or next((entry.get('id') for entry in scenario.persona_entries if entry.get('id')), None)
+        if not persona_id:
+            raise ValueError("Persona entries configured but no valid id provided")
+        matching_entry = next((entry for entry in scenario.persona_entries if entry.get('id') == persona_id), None)
+        if matching_entry is None:
+            raise ValueError(f"Persona id '{persona_id}' not listed in scenario personas")
+
+        catalog_path = Path(scenario.persona_catalog)
+        if not catalog_path.is_absolute():
+            repo_root = Path(__file__).resolve().parent.parent
+            catalog_path = (repo_root / catalog_path).resolve()
+
+        base_persona = _load_persona_from_catalog(catalog_path, persona_id)
+        persona_context = dict(base_persona)
+        persona_context['id'] = persona_id
+
+        slot_overrides = matching_entry.get('slot_overrides') if isinstance(matching_entry, dict) else None
+        task_override = _merge_task_slots(task_override, slot_overrides)
+        if slot_overrides:
+            persona_context['slot_overrides'] = slot_overrides
+    elif persona_arg:
+        raise ValueError("Persona id provided but scenario has no personas configured")
+
+    return persona_context, task_override, persona_id
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
@@ -29,6 +91,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--debug-transcripts', action='store_true', help='Write system.md/user.md/tool.md and agent_flow.log')
     parser.add_argument('--export-steps-jsonl', action='store_true', help='Write turns.jsonl (one JSONL record per system turn)')
     parser.add_argument('--outputs-root', help='Root directory for outputs (default: env MADG_OUTPUT_ROOT or data/outputs)')
+    parser.add_argument('--persona-id', help='Persona ID to use when scenario defines personas')
     return parser.parse_args()
 
 def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
@@ -73,13 +136,30 @@ def _scenario_key(example_dir: Path) -> str:
     # fallback: join remaining parts with dots
     return '.'.join([example_dir.parent.name, example_dir.name])
 
-def setup_logging(example_path: str, outputs_root: Path, verbose: bool = False) -> Tuple[str, str, str, Path, str]:
+def _sanitize_persona_id(persona_id: Optional[str]) -> Optional[str]:
+    if not persona_id:
+        return None
+    slug = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '-' for ch in persona_id)
+    slug = slug.strip('-_')
+    return slug or None
+
+
+def setup_logging(
+    example_path: str,
+    outputs_root: Path,
+    verbose: bool = False,
+    persona_id: Optional[str] = None,
+) -> Tuple[str, str, str, Path, str]:
     """Set up logging and return output paths.
     Returns: output_file, log_file, agent_flow_file, run_dir, run_id
     """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     example_dir = Path(example_path)
-    run_id = f"simulate_{timestamp}"
+    persona_slug = _sanitize_persona_id(persona_id)
+    if persona_slug:
+        run_id = f"simulate_{persona_slug}_{timestamp}"
+    else:
+        run_id = f"simulate_{timestamp}"
 
     # Compute centralized outputs path mirroring scenario hierarchy
     scenario_key = _scenario_key(example_dir)
@@ -616,7 +696,9 @@ def write_single_conversation_file(
     prompt_version: str,
     custom_prompt_paths: Optional[Dict[str, Optional[str]]] = None,
     seed: Optional[int] = None,
-    toolset_id: Optional[str] = None
+    toolset_id: Optional[str] = None,
+    task_context: Optional[Dict[str, Any]] = None,
+    persona: Optional[Dict[str, Any]] = None
 ) -> str:
     """Write a single-file JSON conversation artifact optimized for SFT.
 
@@ -665,7 +747,7 @@ def write_single_conversation_file(
         'meta': meta,
         'config': {
             'scenario_name': scenario.name,
-            'task': scenario.task,
+            'task': task_context or scenario.task,
             'user_agent_config': scenario.user_agent,
             'tool_agent_config': scenario.tool_agent
         },
@@ -682,6 +764,9 @@ def write_single_conversation_file(
         }
     }
 
+    if persona:
+        conversation_obj['config']['persona'] = persona
+
     conversation_file = output_dir / 'conversation.json'
     with open(conversation_file, 'w') as f:
         json.dump(conversation_obj, f, indent=2)
@@ -696,18 +781,30 @@ def main():
         # Parse arguments
         args = parse_arguments()
         
-        # Resolve outputs root and set up logging/paths
+        # Resolve outputs root
         outputs_root = _resolve_outputs_root(args.example_path, args.outputs_root)
-        output_file, log_file, agent_flow_file, run_dir, run_id = setup_logging(args.example_path, outputs_root, args.verbose)
-        logger = logging.getLogger(__name__)
-        
-        logger.info(f"Starting simulation with model: {args.model}")
 
         # Load scenario and prompts
         scenario, system_prompts = load_scenario_and_prompts(args.example_path, args)
-        
+
+        persona_context, task_override, persona_id = _prepare_persona_context(
+            scenario,
+            args.persona_id,
+        )
+
+        # Set up logging/paths (persona-aware)
+        output_file, log_file, agent_flow_file, run_dir, run_id = setup_logging(
+            args.example_path,
+            outputs_root,
+            args.verbose,
+            persona_id=persona_id,
+        )
+        logger = logging.getLogger(__name__)
+        logger.info(f"Starting simulation with model: {args.model}")
         logger.info(f"Loaded scenario: {scenario.name}")
-        
+        if persona_id:
+            logger.info(f"Using persona: {persona_id}")
+
         # Initialize LLM client
         api_key = args.api_key or os.getenv('OPENAI_API_KEY')
         if not api_key:
@@ -723,17 +820,36 @@ def main():
             with open(agent_flow_file, 'w') as flow_logger:
                 system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
                 logger.info("Created all three agents")
-                runner = ConversationRunner(scenario, system_agent, user_agent, tool_agent, args.max_turns)
+                runner = ConversationRunner(
+                    scenario,
+                    system_agent,
+                    user_agent,
+                    tool_agent,
+                    args.max_turns,
+                    persona=persona_context,
+                    task_override=task_override,
+                )
                 logger.info("Starting conversation simulation")
                 result = runner.run_conversation()
         else:
             system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, None)
             logger.info("Created all three agents")
-            runner = ConversationRunner(scenario, system_agent, user_agent, tool_agent, args.max_turns)
+            runner = ConversationRunner(
+                scenario,
+                system_agent,
+                user_agent,
+                tool_agent,
+                args.max_turns,
+                persona=persona_context,
+                task_override=task_override,
+            )
             logger.info("Starting conversation simulation")
             result = runner.run_conversation()
-        
+
         logger.info(f"Conversation completed. Success: {result.success}, Reason: {result.termination_reason}")
+
+        if persona_id is not None:
+            result.metadata.setdefault('persona_id', persona_id)
         
         # Write single-file conversation artifact (conversation.json)
         run_dir = Path(output_file).parent
@@ -753,7 +869,9 @@ def main():
             prompt_version=args.prompt_version,
             custom_prompt_paths=custom_prompt_paths,
             seed=None,
-            toolset_id=None
+            toolset_id=None,
+            task_context=task_override,
+            persona=persona_context
         )
         logger.info(f"Conversation file saved to: {conversation_file}")
 
@@ -799,6 +917,7 @@ def main():
                 "success": result.success,
                 "termination_reason": result.termination_reason,
                 "had_tool_calls": result.metadata.get('had_tool_calls', False),
+                "persona_id": persona_context.get('id') if persona_context else None,
                 "paths": {
                     "output": str(Path(output_file)),
                     "log": str(Path(log_file)),

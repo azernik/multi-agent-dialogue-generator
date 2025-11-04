@@ -78,11 +78,6 @@ class UserAgent(BaseAgent):
         self.user_context = user_context
 
     def generate_response(self, context: ConversationContext) -> str:
-        # On the first turn (no messages), return the initial message directly
-        if not context.messages and context.agent_config and context.agent_config.get('initial_message'):
-            initial_message = context.agent_config['initial_message']
-            self._log_agent_flow([], initial_message, 'USER')
-            return initial_message
         # Otherwise, generate response normally
         return super().generate_response(context)
 
@@ -91,8 +86,8 @@ class UserAgent(BaseAgent):
         ua = context.agent_config or {}
         task = ua.get('task', {}) if isinstance(ua.get('task'), dict) else {}
         objective = ua.get('objective') or task.get('description', '')
-        initial_message = ua.get('initial_message', '')
-        persona = ua.get('persona', '') or ua.get('user_persona', '')
+        persona_note = ua.get('user_persona', '')
+        persona_details = ua.get('persona') if isinstance(ua.get('persona'), dict) else None
         slots = ua.get('slots') or task.get('slots', {}) or {}
         injected_behaviors = ua.get('injected_behaviors', [])
         
@@ -119,8 +114,30 @@ class UserAgent(BaseAgent):
         parts = [self.system_prompt]
         if objective:
             parts.append(f"\n\nObjective: {objective}")
-        if persona:
-            parts.append(f"\nPersona: {persona}")
+        if persona_note:
+            parts.append(f"\nPersona: {persona_note}")
+        if persona_details:
+            persona_lines: List[str] = []
+            if persona_details.get('name'):
+                persona_lines.append(f"Name: {persona_details['name']}")
+            if persona_details.get('age'):
+                persona_lines.append(f"Age: {persona_details['age']}")
+            if persona_details.get('hometown'):
+                persona_lines.append(f"Location: {persona_details['hometown']}")
+            if persona_details.get('occupation'):
+                persona_lines.append(f"Occupation: {persona_details['occupation']}")
+            if persona_details.get('bio'):
+                persona_lines.append(f"Bio: {persona_details['bio']}")
+            samples = persona_details.get('sample_messages') or []
+            if samples:
+                sample_block = "\n".join(f"- {msg}" for msg in samples)
+                persona_lines.append(f"Sample messages:\n{sample_block}")
+            if persona_details.get('email'):
+                persona_lines.append(f"Email: {persona_details['email']}")
+            if persona_details.get('phone'):
+                persona_lines.append(f"Phone: {persona_details['phone']}")
+            if persona_lines:
+                parts.append("\nPersona Profile:\n" + "\n".join(persona_lines))
         if slots:
             parts.append(f"\nTarget slots: {json.dumps(slots)}")
         if behaviors_summary:

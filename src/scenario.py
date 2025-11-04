@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 import json
 import os
 from pathlib import Path
@@ -12,6 +12,8 @@ class ExampleScenario:
     user_agent: Dict[str, Any] = field(default_factory=dict)  # User agent config
     tool_agent: Dict[str, Any] = field(default_factory=dict)  # Tool agent config
     behavior_types: Dict[str, Any] = field(default_factory=dict)  # Global behavior type index
+    persona_catalog: Optional[str] = None
+    persona_entries: List[Dict[str, Any]] = field(default_factory=list)
     
     @classmethod
     def load(cls, example_path: str) -> 'ExampleScenario':
@@ -63,13 +65,19 @@ class ExampleScenario:
                 'slots': legacy_ua.get('slots', {})
             }
 
+        personas_cfg = scenario_data.get('personas') or {}
+        persona_catalog = personas_cfg.get('catalog')
+        persona_entries = personas_cfg.get('entries', []) if isinstance(personas_cfg, dict) else []
+
         return cls(
             name=name,
             tools=tools,
             task=task,
             user_agent=scenario_data.get('user_agent', {}),
             tool_agent=scenario_data.get('tool_agent', {}),
-            behavior_types=behavior_types_index
+            behavior_types=behavior_types_index,
+            persona_catalog=persona_catalog,
+            persona_entries=persona_entries
         )
 
 def _resolve_behavior_catalog_path(example_dir: Path) -> Path | None:
