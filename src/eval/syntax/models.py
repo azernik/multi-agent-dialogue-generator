@@ -165,7 +165,7 @@ class ConversationEvalResult:
             }
             step_entries = []
             for step in turn.step_results:
-                entry: Dict[str, Any] = {"micro_step_index": step.micro_step_index}
+                entry: Dict[str, Any] = {"index": step.micro_step_index}
                 if step.structure_errors:
                     entry["structure_errors"] = step.structure_errors
                 if step.tool_errors:

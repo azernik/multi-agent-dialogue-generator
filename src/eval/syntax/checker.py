@@ -107,7 +107,7 @@ def _load_turns_from_data(data: dict) -> List[ConversationTurn]:
             micro_index = step.get("step_index")
             if micro_index is None:
                 micro_index = idx + 1
-            micro_index = int(micro_index) - 1
+            micro_index = int(micro_index)  # Keep 1-indexed as in conversation.json
             step_inputs.append(
                 StepInput(
                     turn_id=turn_id,
