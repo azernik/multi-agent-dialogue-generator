@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from .models import SuccessContext, TranscriptTurn, TranscriptToolEvent
+from .models import SuccessContext, ToolCallEvidence, TranscriptTurn
 
 
 def load_success_context(conversation_path: Path) -> SuccessContext:
@@ -33,7 +33,7 @@ def load_success_context(conversation_path: Path) -> SuccessContext:
     for turn_id, assistant_entry in sorted(assistant_steps.items(), key=lambda kv: kv[0]):
         steps = assistant_entry.get("steps") or []
         say_text = ""
-        tools: List[TranscriptToolEvent] = []
+        tools: List[ToolCallEvidence] = []
         for step in steps:
             action_structured = step.get("action_structured") or {}
             action_type = action_structured.get("type")
@@ -44,7 +44,7 @@ def load_success_context(conversation_path: Path) -> SuccessContext:
                 args = action_structured.get("args") or {}
                 observation = step.get("observation") or {}
                 result = observation.get("parsed", observation.get("raw"))
-                tools.append(TranscriptToolEvent(name=name, args=args, result=result))
+                tools.append(ToolCallEvidence(name=name, args=args, result=result))
         user_text = user_text_by_turn.get(turn_id, "")
         turns.append(
             TranscriptTurn(

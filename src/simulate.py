@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Tuple, Dict, List, Optional, Any
 from dotenv import load_dotenv
 
-from core import LLMClient
+from core import LLMClient, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario, load_system_prompts
 from runner import ConversationRunner, ConversationResult
@@ -282,6 +282,50 @@ def create_agents(scenario: ExampleScenario,
     except Exception as e:
         print(f"Error creating agents: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def attach_prompt_recorders(
+    system_agent: SystemAgent,
+    user_agent: UserAgent,
+    tool_agent: ToolAgent,
+    prompt_captures: Dict[str, Dict[str, Any]],
+) -> None:
+    """Attach prompt recorder callbacks to each agent to capture prompts."""
+
+    def make_recorder(key: str):
+        def recorder(agent_name: str, messages: List[Dict[str, Any]], context: ConversationContext):
+            if prompt_captures.get(key) is not None:
+                return
+            prompt_captures[key] = {
+                "agent": agent_name,
+                "turn_number": context.turn_number,
+                "messages": messages,
+            }
+
+        return recorder
+
+    system_agent.prompt_recorder = make_recorder("system_agent")
+    user_agent.prompt_recorder = make_recorder("user_agent")
+    tool_agent.prompt_recorder = make_recorder("tool_agent")
+
+
+def write_agent_prompts(
+    prompt_captures: Dict[str, Optional[Dict[str, Any]]],
+    output_dir: Path,
+) -> None:
+    """Persist captured prompts for all agents to agent_prompts.json."""
+    serialized = {
+        agent_key: {
+            "agent": entry.get("agent"),
+            "turn_number": entry.get("turn_number"),
+            "messages": entry.get("messages"),
+        }
+        for agent_key, entry in prompt_captures.items()
+        if entry is not None
+    }
+    output_path = output_dir / "agent_prompts.json"
+    with output_path.open("w") as f:
+        json.dump(serialized, f, indent=2)
 
 def format_output(result: ConversationResult, verbose: bool = False) -> Dict:
     """Format conversation result for output"""
@@ -815,11 +859,17 @@ def main():
         llm_client = LLMClient(model=args.model, api_key=api_key)
         logger.info(f"Initialized LLM client with model: {args.model}")
         
+        prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
+            "system_agent": None,
+            "user_agent": None,
+            "tool_agent": None,
+        }
+
         # Create agents; only open flow logger in debug mode
         if args.debug_transcripts:
             with open(agent_flow_file, 'w') as flow_logger:
                 system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
-                logger.info("Created all three agents")
+                attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
                 runner = ConversationRunner(
                     scenario,
                     system_agent,
@@ -829,11 +879,10 @@ def main():
                     persona=persona_context,
                     task_override=task_override,
                 )
-                logger.info("Starting conversation simulation")
                 result = runner.run_conversation()
         else:
             system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, None)
-            logger.info("Created all three agents")
+            attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
             runner = ConversationRunner(
                 scenario,
                 system_agent,
@@ -843,10 +892,9 @@ def main():
                 persona=persona_context,
                 task_override=task_override,
             )
-            logger.info("Starting conversation simulation")
             result = runner.run_conversation()
 
-        logger.info(f"Conversation completed. Success: {result.success}, Reason: {result.termination_reason}")
+        logger.info(f"Conversation completed")
 
         if persona_id is not None:
             result.metadata.setdefault('persona_id', persona_id)
@@ -875,18 +923,11 @@ def main():
         )
         logger.info(f"Conversation file saved to: {conversation_file}")
 
-        # Always write system.md and conversation.log
-        system_md_path = write_system_markdown_transcript(result, run_dir)
-        conv_log_path = write_conversation_log(result, run_dir)
-        logger.info(f"System transcript saved to: {system_md_path}")
-        logger.info(f"Conversation log saved to: {conv_log_path}")
+        write_agent_prompts(prompt_captures, run_dir)
 
         # Write markdown transcripts only in debug mode
         if args.debug_transcripts:
-            markdown_files = write_markdown_transcripts(result, output_file)
-            logger.info(f"Markdown transcripts saved:")
-            for transcript_type, file_path in markdown_files.items():
-                logger.info(f"  {transcript_type}: {file_path}")
+            write_markdown_transcripts(result, output_file)
 
         # Optional: per-turn JSONL export
         if args.export_steps_jsonl:
@@ -909,7 +950,6 @@ def main():
         
         # Append to global manifest
         try:
-            scenario_rel = _relative_scenario_path(Path(args.example_path))
             scenario_key = _scenario_key(Path(args.example_path))
             manifest_line = {
                 "scenario_key": scenario_key,

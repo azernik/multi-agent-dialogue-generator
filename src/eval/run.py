@@ -7,6 +7,7 @@ from typing import Iterable, Iterator, List, Optional
 
 from eval.syntax import evaluate_conversation, load_conversation_artifact
 from eval.success import evaluate_success
+from eval.faithfulness import evaluate_faithfulness
 
 
 def _iter_conversation_files(targets: Iterable[str], recursive: bool) -> Iterator[Path]:
@@ -57,9 +58,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="OpenAI API key for success judge (default: use OPENAI_API_KEY env variable).",
     )
     parser.add_argument(
+        "--faithfulness-model",
+        default=None,
+        help="OpenAI model to use for faithfulness judge (default: reuse --model).",
+    )
+    parser.add_argument(
+        "--faithfulness-api-key",
+        dest="faithfulness_api_key",
+        help="API key for faithfulness judge (default: reuse success API key).",
+    )
+    parser.add_argument(
         "--syntax-only",
         action="store_true",
         help="Skip the LLM success judge and run syntax checks only.",
+    )
+    parser.add_argument(
+        "--skip-faithfulness",
+        action="store_true",
+        help="Skip faithfulness evaluation (default is to run it unless --syntax-only).",
     )
     args = parser.parse_args(argv)
 
@@ -89,11 +105,26 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "error": str(exc),
                 }
 
+        faithfulness_payload = None
+        if not args.syntax_only and not args.skip_faithfulness:
+            faithfulness_model = args.faithfulness_model or args.model
+            faithfulness_key = args.faithfulness_api_key or args.api_key
+            try:
+                faithfulness_report = evaluate_faithfulness(
+                    conversation_path,
+                    model=faithfulness_model,
+                    api_key=faithfulness_key,
+                )
+                faithfulness_payload = faithfulness_report.to_dict()
+            except Exception as exc:  # pragma: no cover
+                faithfulness_payload = {"error": str(exc)}
+
         output = {
             "conversation_id": syntax_result.conversation_id,
             "source_path": str(conversation_path),
             "syntax": syntax_result.to_dict(),
             "success": success_payload,
+            "faithfulness": faithfulness_payload,
         }
 
         if args.jsonl:

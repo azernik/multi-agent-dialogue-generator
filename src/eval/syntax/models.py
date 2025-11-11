@@ -139,7 +139,7 @@ class ConversationEvalResult:
             "conversation_id": self.conversation_id,
             "source_path": str(self.source_path) if self.source_path else None,
             "total_turns": self.total_turns,
-            "turns": self._serialize_error_turns(),
+            "error_turns": self._serialize_error_turns(),
             "summary": {
                 "structure": {
                     "valid": self.structure_summary.valid,

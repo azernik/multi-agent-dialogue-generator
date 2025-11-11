@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import Dict, Any, List
 import json
 from core import ConversationContext, Message, MessageRole, LLMClient
@@ -7,9 +8,23 @@ class BaseAgent(ABC):
     def __init__(self, system_prompt: str, llm_client: LLMClient):
         self.system_prompt = system_prompt
         self.llm_client = llm_client
+        self.prompt_recorder = None
     
     def generate_response(self, context: ConversationContext) -> str:
         messages = self.build_prompt(context)
+        if self.prompt_recorder:
+            try:
+                self.prompt_recorder(
+                    self.__class__.__name__,
+                    deepcopy(messages),
+                    context
+                )
+            except Exception:
+                # Recorder issues should not break simulation; log if available.
+                if hasattr(self, 'flow_logger') and self.flow_logger:
+                    self.flow_logger.write(
+                        f"[WARN] Failed to record prompts for {self.__class__.__name__}\n"
+                    )
         self._log_agent_flow(messages)
         response = self.llm_client.chat_completion(messages)
         self._log_agent_flow(messages, response)
@@ -110,34 +125,66 @@ class UserAgent(BaseAgent):
             return result
         
         behaviors_summary = summarize_behaviors(injected_behaviors)
-        
-        parts = [self.system_prompt]
+
+        # Substitute writing style and sample messages in the system prompt template
+        system_prompt_text = self.system_prompt
+        if persona_details:
+            writing_style = persona_details.get('writing_style', '')
+            samples = persona_details.get('sample_messages') or []
+            sample_messages_list = '\n'.join(f"- {msg}" for msg in samples)
+
+            system_prompt_text = system_prompt_text.replace('{writing_style}', writing_style)
+            system_prompt_text = system_prompt_text.replace('{sample_messages_list}', sample_messages_list)
+
+        parts = [system_prompt_text]
         if objective:
             parts.append(f"\n\nObjective: {objective}")
         if persona_note:
             parts.append(f"\nPersona: {persona_note}")
         if persona_details:
             persona_lines: List[str] = []
-            if persona_details.get('name'):
-                persona_lines.append(f"Name: {persona_details['name']}")
-            if persona_details.get('age'):
-                persona_lines.append(f"Age: {persona_details['age']}")
-            if persona_details.get('hometown'):
-                persona_lines.append(f"Location: {persona_details['hometown']}")
-            if persona_details.get('occupation'):
-                persona_lines.append(f"Occupation: {persona_details['occupation']}")
-            if persona_details.get('bio'):
-                persona_lines.append(f"Bio: {persona_details['bio']}")
-            samples = persona_details.get('sample_messages') or []
-            if samples:
-                sample_block = "\n".join(f"- {msg}" for msg in samples)
-                persona_lines.append(f"Sample messages:\n{sample_block}")
-            if persona_details.get('email'):
-                persona_lines.append(f"Email: {persona_details['email']}")
-            if persona_details.get('phone'):
-                persona_lines.append(f"Phone: {persona_details['phone']}")
+            name = persona_details.get("name")
+            age = persona_details.get("age")
+            occupation = persona_details.get("occupation")
+            hometown = persona_details.get("hometown")
+
+            opener_chunks: List[str] = []
+            if name:
+                opener_chunks.append(name)
+            descriptors: List[str] = []
+            if isinstance(age, (int, str)) and f"{age}".strip():
+                descriptors.append(f"{age}-year-old")
+            if occupation:
+                descriptors.append(occupation)
+            if hometown:
+                descriptors.append(f"from {hometown}")
+
+            if opener_chunks or descriptors:
+                opener = "You are"
+                if opener_chunks:
+                    opener += f" {opener_chunks[0]}"
+                if descriptors:
+                    opener += ", " + " ".join(descriptors)
+                opener += "."
+                persona_lines.append(opener)
+
+            bio = persona_details.get('bio')
+            if bio:
+                persona_lines.append("People describe you like this:")
+                persona_lines.append(bio)
+
+            email = persona_details.get('email')
+            phone = persona_details.get('phone')
+            if email or phone:
+                persona_lines.append("You share contact details freely when it's helpful:")
+                if email:
+                    persona_lines.append(f"- Email: {email}")
+                if phone:
+                    persona_lines.append(f"- Phone: {phone}")
+
             if persona_lines:
-                parts.append("\nPersona Profile:\n" + "\n".join(persona_lines))
+                parts.append("\nPersona Context:\n" + "\n".join(persona_lines))
+
         if slots:
             parts.append(f"\nTarget slots: {json.dumps(slots)}")
         if behaviors_summary:
@@ -145,9 +192,9 @@ class UserAgent(BaseAgent):
         
         system_content = ''.join(parts)
         messages.append({"role": "system", "content": system_content})
-        
+
         # Add conversation history with periodic system prompt reinforcement
-        reinforcement_interval = 8  # Reinforce every 8 messages
+        reinforcement_interval = 2  # Reinforce every 2 messages
         for i, msg in enumerate(context.messages):
             # Add periodic system prompt reinforcement
             if i > 0 and i % reinforcement_interval == 0:

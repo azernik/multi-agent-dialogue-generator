@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class TranscriptToolEvent:
+class ToolCallEvidence:
     name: str
     args: Dict[str, Any]
     result: Any
@@ -16,7 +16,7 @@ class TranscriptTurn:
     turn_id: int
     user: str
     assistant: str
-    tools: List[TranscriptToolEvent] = field(default_factory=list)
+    tools: List[ToolCallEvidence] = field(default_factory=list)
 
 
 @dataclass

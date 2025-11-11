@@ -46,9 +46,7 @@ class ConversationRunner:
         # Aggregated per-system-turn traces for training/export
         self.turn_traces: List[Dict[str, Any]] = []
 
-        self.logger.info(f"ConversationRunner initialized with max_turns={max_turns}")
-        self.logger.info(f"Scenario: {scenario.name}")
-        self.logger.info(f"Available tools: {list(scenario.tools.keys())}")
+        self.logger.info(f"ConversationRunner initialized (max_turns={max_turns}, available tools={list(scenario.tools.keys())})")
 
         if system_greeting:
             greeting_msg = Message(
@@ -61,7 +59,6 @@ class ConversationRunner:
         
     def run_conversation(self) -> ConversationResult:
         had_tool_calls = False
-        self.logger.info("Starting conversation loop")
         
         for turn in range(self.max_turns):
             self.logger.info(f"=== TURN {turn + 1} ===")
@@ -85,7 +82,6 @@ class ConversationRunner:
                     turn_traces=self.turn_traces.copy()
                 )
             
-            self.logger.info("Processing system turn")
             system_message, had_tool_call = self.process_system_turn(turn)
             if had_tool_call:
                 had_tool_calls = True
