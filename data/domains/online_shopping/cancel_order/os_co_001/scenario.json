@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "domain": "online_shopping",
+    "use_case": "cancel_order",
+    "scenario_id": "os_co_001"
+  },
+  "limits": {
+    "max_turns": 20
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "task": {
+    "description": "Cancel the correct order discovered via listing (do not assume user knows the order_id). Prefer full cancellation if eligible; otherwise cancel eligible items.",
+    "slots": {
+      "target_order_date": "2025-10-25",
+      "reason": "Ordered by mistake"
+    },
+    "success_criteria": {
+      "target_selector": { "placed_at_date": "2025-10-25" },
+      "action": "cancel_order",
+      "notes": "Success if the order placed on 2025-10-25 is canceled (full or partial if only some items are eligible)."
+    }
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "orders": [
+          {
+            "order_id": "ODR-104582",
+            "placed_at": "2025-10-25T14:12:00Z",
+            "status": "processing",
+            "total": 119.98,
+            "currency": "USD",
+            "email_masked": "a***@example.com",
+            "last4": "4242",
+            "items": [
+              { "item_id": "SKU-556", "name": "Bluetooth Headphones", "qty": 1, "unit_price": 89.99, "currency": "USD", "status": "pending", "cancelable": true, "returnable": true },
+              { "item_id": "SKU-777", "name": "Wireless Mouse", "qty": 1, "unit_price": 29.99, "currency": "USD", "status": "pending", "cancelable": true, "returnable": true }
+            ],
+            "shipments": []
+          },
+          {
+            "order_id": "ODR-104499",
+            "placed_at": "2025-10-27T09:41:00Z",
+            "status": "delivered",
+            "total": 42.50,
+            "currency": "USD",
+            "email_masked": "a***@example.com",
+            "last4": "4242",
+            "items": [
+              { "item_id": "SKU-333", "name": "USB-C Cable 2m", "qty": 1, "unit_price": 12.50, "currency": "USD", "status": "delivered", "cancelable": false, "returnable": true },
+              { "item_id": "SKU-221", "name": "Notebook A5", "qty": 1, "unit_price": 30.00, "currency": "USD", "status": "delivered", "cancelable": false, "returnable": true }
+            ],
+            "shipments": [
+              { "shipment_id": "SHP-8999", "carrier": "USPS", "tracking_number": "9400...1234", "status": "delivered", "eta": "2025-10-29", "items": [ { "item_id": "SKU-333", "qty": 1 }, { "item_id": "SKU-221", "qty": 1 } ] }
+            ]
+          }
+        ]
+      },
+      "rules": []
+    }
+  },
+  "personas": {
+    "catalog": "data/personas/catalog.json",
+    "entries": [
+      { "id": "persona_005" }
+    ]
+  }
+}
+

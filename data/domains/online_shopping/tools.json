@@ -1,0 +1,853 @@
+{
+  "id": "toolset.online_shopping.v1",
+  "tools": {
+    "find_orders": {
+      "description": "Locate orders by order_id or by identity (email/zip/last4). Use when the user doesn't know the exact order id.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Exact order identifier", "required": false },
+        "email": { "type": "string", "description": "Customer email address", "required": false },
+        "zip_code": { "type": "string", "description": "Shipping ZIP or postal code", "required": false },
+        "last4": { "type": "string", "description": "Last 4 digits of payment method", "required": false }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching order summaries",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order_id": { "type": "string", "description": "Unique order identifier" },
+            "placed_at": { "type": "string", "description": "Order placement timestamp (ISO8601)" },
+            "status": { "type": "string", "description": "Overall order status (e.g., processing, shipped, delivered)" },
+            "total": { "type": "number", "description": "Order total amount" },
+            "currency": { "type": "string", "description": "Currency code, e.g., USD" },
+            "email_masked": { "type": "string", "description": "Masked email for display" },
+            "last4": { "type": "string", "description": "Masked last 4 of payment method" }
+          },
+          "required": ["order_id", "status"]
+        }
+      }
+    },
+    "get_order_details": {
+      "description": "Get full, current snapshot for an order including items, shipments, payment, and policy.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "status": { "type": "string", "description": "Overall order status" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "name": { "type": "string" },
+                "qty": { "type": "integer" },
+                "unit_price": { "type": "number" },
+                "currency": { "type": "string" },
+                "status": { "type": "string", "description": "Item status (e.g., pending, shipped, delivered)" },
+                "cancelable": { "type": "boolean" },
+                "returnable": { "type": "boolean" }
+              },
+              "required": ["item_id", "name", "qty"]
+            }
+          },
+          "shipments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shipment_id": { "type": "string" },
+                "carrier": { "type": "string" },
+                "tracking_number": { "type": "string" },
+                "status": { "type": "string" },
+                "eta": { "type": "string", "description": "Estimated delivery date/time" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "item_id": { "type": "string" },
+                      "qty": { "type": "integer" }
+                    },
+                    "required": ["item_id", "qty"]
+                  }
+                }
+              },
+              "required": ["shipment_id", "status"]
+            }
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "method_masked": { "type": "string" },
+              "captured": { "type": "number" },
+              "refundable": { "type": "number" },
+              "currency": { "type": "string" }
+            }
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "cancel_window": { "type": "string", "description": "Human-readable cancel window" },
+              "return_window": { "type": "string", "description": "Human-readable return window" },
+              "restocking_fees": { "type": "boolean" },
+              "methods_supported": {
+                "type": "array",
+                "description": "Supported return methods",
+                "items": { "type": "string", "description": "e.g., dropoff, pickup" }
+              }
+            }
+          },
+          "cancelable_any": { "type": "boolean" },
+          "returnable_any": { "type": "boolean" }
+        },
+        "required": ["order_id", "status"]
+      }
+    },
+    "get_cancellation_options": {
+      "description": "Compute which parts of the order can be canceled right now and why.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true },
+        "item_ids": {
+          "type": "array",
+          "description": "Optional subset of items to evaluate",
+          "required": false,
+          "items": { "type": "string" }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "eligible_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "qty_max_cancelable": { "type": "integer" }
+              },
+              "required": ["item_id", "qty_max_cancelable"]
+            }
+          },
+          "ineligible_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "reason": { "type": "string" }
+              },
+              "required": ["item_id", "reason"]
+            }
+          },
+          "can_cancel_entire_order": { "type": "boolean" },
+          "notes": { "type": "string" }
+        },
+        "required": ["eligible_items", "ineligible_items", "can_cancel_entire_order"]
+      }
+    },
+    "get_refund_estimate": {
+      "description": "Provide a pre-confirmation refund estimate for cancelations or returns.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true },
+        "items": {
+          "type": "array",
+          "description": "Optional target items for partial cancellation/return",
+          "required": false,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item_id": { "type": "string" },
+              "qty": { "type": "integer" }
+            },
+            "required": ["item_id", "qty"]
+          }
+        },
+        "reason": { "type": "string", "description": "Reason for cancellation/return", "required": false },
+        "return_method": { "type": "string", "description": "For returns only: dropoff or pickup", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "currency": { "type": "string" },
+          "subtotal": { "type": "number" },
+          "taxes": { "type": "number" },
+          "fees": { "type": "number", "description": "Any fees or deductions applied" },
+          "refund_total": { "type": "number" },
+          "method": { "type": "string", "description": "Refund method, e.g., original, store_credit" },
+          "timeline_estimate": { "type": "string", "description": "Expected time to receive refund" }
+        },
+        "required": ["currency", "refund_total"]
+      }
+    },
+    "cancel_order": {
+      "description": "Execute cancellation (full or partial) for an order.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true },
+        "items": {
+          "type": "array",
+          "description": "Omit for full order cancellation; include for partial",
+          "required": false,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item_id": { "type": "string" },
+              "qty": { "type": "integer" }
+            },
+            "required": ["item_id", "qty"]
+          }
+        },
+        "reason": { "type": "string", "description": "Reason for cancellation", "required": false },
+        "confirm_partial": { "type": "boolean", "description": "Proceed even if some items are not eligible", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "cancellation_code": { "type": "string", "description": "Confirmation code if successful" },
+          "canceled_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "qty": { "type": "integer" }
+              },
+              "required": ["item_id", "qty"]
+            }
+          },
+          "refund": {
+            "type": "object",
+            "properties": {
+              "currency": { "type": "string" },
+              "amount": { "type": "number" },
+              "method": { "type": "string" },
+              "timeline_estimate": { "type": "string" }
+            }
+          },
+          "message": { "type": "string", "description": "Error or partial completion message" }
+        },
+        "required": ["success"]
+      }
+    },
+    "get_order_status": {
+      "description": "Lightweight overall order status check, including item/shipment summaries.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "status": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "status": { "type": "string" }
+              },
+              "required": ["item_id", "status"]
+            }
+          },
+          "shipments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shipment_id": { "type": "string" },
+                "status": { "type": "string" }
+              },
+              "required": ["shipment_id", "status"]
+            }
+          }
+        },
+        "required": ["order_id", "status"]
+      }
+    },
+    "get_return_options": {
+      "description": "Compute return eligibility, methods, deadlines, and fees.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true },
+        "item_ids": {
+          "type": "array",
+          "description": "Optional subset of items to evaluate",
+          "required": false,
+          "items": { "type": "string" }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "eligible_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "qty_max_returnable": { "type": "integer" },
+                "reasons_allowed": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              },
+              "required": ["item_id", "qty_max_returnable"]
+            }
+          },
+          "ineligible_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": { "type": "string" },
+                "reason": { "type": "string" }
+              },
+              "required": ["item_id", "reason"]
+            }
+          },
+          "methods": {
+            "type": "object",
+            "properties": {
+              "dropoff": { "type": "boolean" },
+              "pickup": { "type": "boolean" }
+            }
+          },
+          "deadlines": {
+            "type": "object",
+            "properties": {
+              "return_by_date": { "type": "string" }
+            }
+          },
+          "fees": {
+            "type": "object",
+            "properties": {
+              "restocking": { "type": "boolean" },
+              "amount": { "type": "number" },
+              "currency": { "type": "string" }
+            }
+          }
+        },
+        "required": ["eligible_items", "ineligible_items", "methods"]
+      }
+    },
+    "create_return": {
+      "description": "Create a return (RMA) with label/QR or instructions, optionally with exchanges.",
+      "parameters": {
+        "order_id": { "type": "string", "description": "Unique order identifier", "required": true },
+        "items": {
+          "type": "array",
+          "description": "Items to return with reasons",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item_id": { "type": "string" },
+              "qty": { "type": "integer" },
+              "reason": { "type": "string" }
+            },
+            "required": ["item_id", "qty", "reason"]
+          }
+        },
+        "return_method": { "type": "string", "description": "dropoff or pickup", "required": true },
+        "dropoff_location_id": { "type": "string", "description": "If method is dropoff", "required": false },
+        "pickup_window": {
+          "type": "object",
+          "description": "If method is pickup",
+          "required": false,
+          "properties": {
+            "date": { "type": "string" },
+            "time_window": { "type": "string" }
+          }
+        },
+        "exchange": {
+          "type": "array",
+          "description": "Optional exchanges to create",
+          "required": false,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item_id": { "type": "string" },
+              "qty": { "type": "integer" },
+              "variant_id": { "type": "string" }
+            },
+            "required": ["item_id", "qty", "variant_id"]
+          }
+        },
+        "contact": {
+          "type": "object",
+          "description": "Contact info for the return",
+          "required": false,
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" }
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "rma_id": { "type": "string" },
+          "label_url": { "type": "string" },
+          "qr_code_token": { "type": "string" },
+          "instructions": { "type": "string" },
+          "pickup_confirmation": { "type": "string" },
+          "refund_estimate": {
+            "type": "object",
+            "properties": {
+              "currency": { "type": "string" },
+              "amount": { "type": "number" },
+              "method": { "type": "string" },
+              "timeline_estimate": { "type": "string" }
+            }
+          },
+          "message": { "type": "string" }
+        },
+        "required": ["success"]
+      }
+    },
+    "get_return_status": {
+      "description": "Get the status of an existing return (RMA).",
+      "parameters": {
+        "rma_id": { "type": "string", "description": "Return authorization identifier", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "rma_id": { "type": "string" },
+          "status": { "type": "string", "description": "created, in_transit, received, refunded, exception" },
+          "refund": {
+            "type": "object",
+            "properties": {
+              "amount": { "type": "number" },
+              "currency": { "type": "string" },
+              "method": { "type": "string" },
+              "issued_at": { "type": "string" }
+            }
+          },
+          "tracking": {
+            "type": "object",
+            "properties": {
+              "carrier": { "type": "string" },
+              "tracking_number": { "type": "string" },
+              "current_status": { "type": "string" }
+            }
+          }
+        },
+        "required": ["rma_id", "status"]
+      }
+    },
+    "get_dropoff_locations": {
+      "description": "Suggest nearby drop-off locations for returns.",
+      "parameters": {
+        "zip_code": { "type": "string", "description": "ZIP or postal code", "required": true },
+        "carrier": { "type": "string", "description": "Preferred carrier filter", "required": false }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of drop-off locations",
+        "items": {
+          "type": "object",
+          "properties": {
+            "location_id": { "type": "string" },
+            "name": { "type": "string" },
+            "address": { "type": "string" },
+            "hours": { "type": "string" },
+            "distance_km": { "type": "number" }
+          },
+          "required": ["location_id", "name", "address"]
+        }
+      }
+    },
+    "get_shipment_status": {
+      "description": "Get live status for a specific shipment. Provide either shipment_id or tracking_number.",
+      "parameters": {
+        "shipment_id": { "type": "string", "description": "Internal shipment identifier", "required": false },
+        "tracking_number": { "type": "string", "description": "Carrier tracking number", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "shipment_id": { "type": "string" },
+          "carrier": { "type": "string" },
+          "tracking_number": { "type": "string" },
+          "current_status": { "type": "string" },
+          "eta": { "type": "string" },
+          "last_update": { "type": "string" },
+          "last_event": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string" },
+              "location": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "get_tracking_events": {
+      "description": "Get full event history for a shipment.",
+      "parameters": {
+        "shipment_id": { "type": "string", "description": "Internal shipment identifier", "required": false },
+        "tracking_number": { "type": "string", "description": "Carrier tracking number", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": { "type": "string" },
+                "location": { "type": "string" },
+                "status": { "type": "string" },
+                "description": { "type": "string" }
+              },
+              "required": ["timestamp", "status"]
+            }
+          },
+          "delays": {
+            "type": "object",
+            "description": "Optional delay summary",
+            "properties": {
+              "type": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "required": ["events"]
+      }
+    },
+    "search_products": {
+      "description": "Keyword-based product search with optional filters.",
+      "parameters": {
+        "query": { "type": "string", "description": "Search keywords", "required": true },
+        "category": { "type": "string", "description": "Optional category filter", "required": false },
+        "price_range": {
+          "type": "object",
+          "description": "Optional price filter",
+          "required": false,
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching products",
+        "items": {
+          "type": "object",
+          "properties": {
+            "product_id": { "type": "string" },
+            "name": { "type": "string" },
+            "price": { "type": "number" },
+            "currency": { "type": "string" },
+            "availability_summary": { "type": "string" },
+            "rating": { "type": "number", "description": "Average rating 1-5" }
+          },
+          "required": ["product_id", "name", "price", "currency"]
+        }
+      }
+    },
+    "get_product_details": {
+      "description": "Get full details for a product, including variants and gift options.",
+      "parameters": {
+        "product_id": { "type": "string", "description": "Unique product identifier", "required": true }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant_id": { "type": "string" },
+                "attrs": { "type": "object", "description": "Variant attributes (e.g., size, color)" },
+                "price": { "type": "number" },
+                "in_stock": { "type": "boolean" }
+              },
+              "required": ["variant_id", "price", "in_stock"]
+            }
+          },
+          "gift_options": {
+            "type": "object",
+            "properties": {
+              "wrap_available": { "type": "boolean" },
+              "wrap_price": { "type": "number" },
+              "message_allowed": { "type": "boolean" },
+              "gift_receipt_available": { "type": "boolean" }
+            }
+          }
+        },
+        "required": ["product_id", "name", "price", "currency"]
+      }
+    },
+    "validate_address": {
+      "description": "Normalize and verify deliverability of a shipping address.",
+      "parameters": {
+        "address": {
+          "type": "object",
+          "description": "Address to validate",
+          "required": true,
+          "properties": {
+            "name": { "type": "string" },
+            "line1": { "type": "string" },
+            "line2": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country": { "type": "string" },
+            "phone": { "type": "string" }
+          },
+          "required": ["line1", "city", "state", "postal_code", "country"]
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "deliverable": { "type": "boolean" },
+          "normalized_address": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "line1": { "type": "string" },
+              "line2": { "type": "string" },
+              "city": { "type": "string" },
+              "state": { "type": "string" },
+              "postal_code": { "type": "string" },
+              "country": { "type": "string" },
+              "phone": { "type": "string" }
+            }
+          },
+          "suggestions": {
+            "type": "array",
+            "description": "Alternative deliverable addresses if applicable",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "line1": { "type": "string" },
+                "line2": { "type": "string" },
+                "city": { "type": "string" },
+                "state": { "type": "string" },
+                "postal_code": { "type": "string" },
+                "country": { "type": "string" },
+                "phone": { "type": "string" }
+              }
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["deliverable"]
+      }
+    },
+    "get_shipping_options": {
+      "description": "Get shipping methods, costs, and ETAs for items to a destination.",
+      "parameters": {
+        "destination_postal_code": { "type": "string", "description": "Destination postal code", "required": true },
+        "items": {
+          "type": "array",
+          "description": "Items to ship",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "variant_id": { "type": "string" },
+              "qty": { "type": "integer" }
+            },
+            "required": ["product_id", "qty"]
+          }
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of shipping options",
+        "items": {
+          "type": "object",
+          "properties": {
+            "shipping_option_id": { "type": "string" },
+            "carrier": { "type": "string" },
+            "service": { "type": "string", "description": "e.g., Ground, 2-Day, Overnight" },
+            "cost": { "type": "number" },
+            "currency": { "type": "string" },
+            "eta": { "type": "string" },
+            "delivery_window": { "type": "string" }
+          },
+          "required": ["shipping_option_id", "carrier", "service", "cost", "currency", "eta"]
+        }
+      }
+    },
+    "get_cost_estimate": {
+      "description": "Get a full quote including taxes, shipping, gift wrap, discounts, and total.",
+      "parameters": {
+        "items": {
+          "type": "array",
+          "description": "Items being purchased",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "variant_id": { "type": "string" },
+              "qty": { "type": "integer" }
+            },
+            "required": ["product_id", "qty"]
+          }
+        },
+        "destination_postal_code": { "type": "string", "description": "Shipping destination postal code", "required": true },
+        "shipping_option_id": { "type": "string", "description": "Chosen shipping option id", "required": false },
+        "gift": {
+          "type": "object",
+          "description": "Gift options to include in the estimate",
+          "required": false,
+          "properties": {
+            "wrap": { "type": "boolean" },
+            "message": { "type": "string" },
+            "sender_name": { "type": "string" },
+            "gift_receipt": { "type": "boolean" }
+          }
+        },
+        "promo_code": { "type": "string", "description": "Promo or discount code", "required": false }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "currency": { "type": "string" },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string", "description": "e.g., item, shipping, tax, fee, discount" },
+                "label": { "type": "string" },
+                "amount": { "type": "number" }
+              },
+              "required": ["type", "amount"]
+            }
+          },
+          "subtotal": { "type": "number" },
+          "shipping": { "type": "number" },
+          "taxes": { "type": "number" },
+          "fees": { "type": "number" },
+          "discount": { "type": "number" },
+          "total": { "type": "number" },
+          "est_delivery": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "window": { "type": "string" }
+            }
+          }
+        },
+        "required": ["currency", "total"]
+      }
+    },
+    "create_order": {
+      "description": "Place the order (gift or otherwise) and return confirmation details.",
+      "parameters": {
+        "items": {
+          "type": "array",
+          "description": "Items to purchase",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "variant_id": { "type": "string" },
+              "qty": { "type": "integer" }
+            },
+            "required": ["product_id", "qty"]
+          }
+        },
+        "recipient": {
+          "type": "object",
+          "description": "Recipient details for shipping",
+          "required": true,
+          "properties": {
+            "name": { "type": "string" },
+            "address": {
+              "type": "object",
+              "properties": {
+                "line1": { "type": "string" },
+                "line2": { "type": "string" },
+                "city": { "type": "string" },
+                "state": { "type": "string" },
+                "postal_code": { "type": "string" },
+                "country": { "type": "string" }
+              },
+              "required": ["line1", "city", "state", "postal_code", "country"]
+            }
+          },
+          "required": ["name", "address"]
+        },
+        "gift": {
+          "type": "object",
+          "description": "Gift options",
+          "required": false,
+          "properties": {
+            "wrap": { "type": "boolean" },
+            "message": { "type": "string" },
+            "sender_name": { "type": "string" },
+            "gift_receipt": { "type": "boolean" }
+          }
+        },
+        "shipping_option_id": { "type": "string", "description": "Selected shipping option", "required": true },
+        "payment": {
+          "type": "object",
+          "description": "Payment details",
+          "required": true,
+          "properties": {
+            "method_id": { "type": "string", "description": "Saved payment method identifier" },
+            "last4": { "type": "string", "description": "Masked last 4 (for display)" }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "description": "Buyer contact info for confirmation and updates",
+          "required": true,
+          "properties": {
+            "email": { "type": "string" },
+            "phone": { "type": "string" }
+          },
+          "required": ["email"]
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "order_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "eta": { "type": "string" },
+          "breakdown": {
+            "type": "object",
+            "properties": {
+              "currency": { "type": "string" },
+              "total": { "type": "number" }
+            }
+          },
+          "message": { "type": "string" }
+        },
+        "required": ["success"]
+      }
+    }
+  }
+}
+
