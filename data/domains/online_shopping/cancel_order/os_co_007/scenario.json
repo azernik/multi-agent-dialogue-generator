@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "domain": "online_shopping",
+    "use_case": "cancel_order",
+    "scenario_id": "os_co_007"
+  },
+  "limits": {
+    "max_turns": 20
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "task": {
+    "description": "Cancel an order that was placed, but the order has already shipped and cannot be canceled.",
+    "slots": {
+      "target_order_date": "2025-10-19",
+      "item_name": "Bluetooth Speaker",
+      "email": "jennifer.walsh@example.com",
+      "last4": "8392",
+      "reason": "Changed mind"
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain that the order cannot be canceled because it has already shipped. Suggest returning the item after delivery instead.",
+    "success_criteria": {
+      "target_selector": { "placed_at_date": "2025-10-19" },
+      "action": "explain_cannot_cancel",
+      "notes": "Success if the assistant explained that the order cannot be canceled because it has already shipped, and suggested returning it after delivery."
+    }
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "orders": [
+          {
+            "order_id": "ODR-115678",
+            "placed_at": "2025-10-19T10:00:00Z",
+            "status": "shipped",
+            "total": 69.99,
+            "currency": "USD",
+            "email_masked": "j***@example.com",
+            "last4": "8392",
+            "items": [
+              {
+                "item_id": "SKU-445",
+                "name": "Bluetooth Speaker - Portable",
+                "qty": 1,
+                "unit_price": 69.99,
+                "currency": "USD",
+                "status": "shipped",
+                "cancelable": false,
+                "returnable": true
+              }
+            ],
+            "shipments": [
+              {
+                "shipment_id": "SHP-9666",
+                "carrier": "UPS",
+                "tracking_number": "1Z999AA10111223344",
+                "status": "shipped",
+                "eta": "2025-10-23",
+                "items": [
+                  {
+                    "item_id": "SKU-445",
+                    "qty": 1
+                  }
+                ]
+              }
+            ],
+            "payment": {
+              "method_masked": "****8392",
+              "captured": 69.99,
+              "refundable": 0,
+              "currency": "USD"
+            },
+            "policy": {
+              "cancel_window": "Before shipment",
+              "return_window": "30 days from delivery",
+              "restocking_fees": false,
+              "methods_supported": []
+            },
+            "cancelable_any": false,
+            "returnable_any": true
+          }
+        ]
+      },
+      "rules": []
+    }
+  },
+  "personas": {
+    "catalog": "data/personas/catalog.json",
+    "entries": [
+      {
+        "id": "persona_046"
+      }
+    ]
+  }
+}
+

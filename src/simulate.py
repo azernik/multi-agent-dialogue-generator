@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 import logging
 from copy import deepcopy
@@ -79,7 +80,7 @@ def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
     parser.add_argument('example_path', help='Path to scenario directory (e.g., data/domains/restaurant_booking/dine_in/rb_001)')
-    parser.add_argument('--model', default='gpt-4o-mini', help='LLM model to use')
+    parser.add_argument('--model', default='gpt-5-mini', help='LLM model to use')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
@@ -722,6 +723,59 @@ def write_conversation_log(result: ConversationResult, output_dir: Path) -> str:
             f.write(f"{prefix}: {msg.content}\n\n")
     return str(log_path)
 
+def _copy_to_valid_outputs(
+    output_dir: Path,
+    scenario_path: Path,
+    persona_id: Optional[str],
+    repo_root: Path
+) -> Optional[Path]:
+    """Copy successful simulation to valid_outputs directory. Returns destination path."""
+    # Determine valid_outputs root
+    valid_outputs_root = repo_root / "data" / "valid_outputs"
+    
+    # Extract domain/use_case/scenario_id from scenario_path
+    parts = scenario_path.resolve().parts
+    try:
+        domains_idx = parts.index("domains")
+        if domains_idx + 3 <= len(parts):
+            domain = parts[domains_idx + 1]
+            use_case = parts[domains_idx + 2]
+            scenario_id = parts[domains_idx + 3]
+        else:
+            # Fallback: use scenario name
+            domain = "unknown"
+            use_case = "unknown"
+            scenario_id = scenario_path.name
+    except ValueError:
+        # Fallback if "domains" not in path
+        domain = "unknown"
+        use_case = "unknown"
+        scenario_id = scenario_path.name
+    
+    # Create destination structure: valid_outputs/<domain>/<use_case>/<scenario_id>__<persona>__<timestamp>/
+    persona_str = persona_id or "default"
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    dest_dir = valid_outputs_root / domain / use_case / f"{scenario_id}__{persona_str}__{timestamp}"
+    
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Copy key files
+    files_to_copy = ["conversation.json", "eval.json"]
+    copied_files = []
+    
+    for filename in files_to_copy:
+        src_file = output_dir / filename
+        if src_file.exists():
+            dest_file = dest_dir / filename
+            shutil.copy2(src_file, dest_file)
+            copied_files.append(filename)
+    
+    if copied_files:
+        print(f"Copied to valid_outputs: {dest_dir.relative_to(valid_outputs_root)}", file=sys.stderr)
+        return dest_dir
+    return None
+
+
 def _infer_domain_id(example_path: str) -> Optional[str]:
     """Infer domain id from an example path like data/scenarios/<domain>/..."""
     try:
@@ -1061,6 +1115,19 @@ def main():
                                 print(f"\nSUCCESS: false", file=sys.stderr)
                         else:
                             print(f"\nSUCCESS: {overall_success}", file=sys.stderr)
+                            
+                            # If eval succeeded, automatically copy to valid_outputs
+                            if overall_success is True:
+                                try:
+                                    _copy_to_valid_outputs(
+                                        output_dir=run_dir,
+                                        scenario_path=Path(args.example_path),
+                                        persona_id=persona_id,
+                                        repo_root=repo_root
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Failed to copy to valid_outputs: {e}")
+                                    print(f"Warning: Failed to copy to valid_outputs: {e}", file=sys.stderr)
                         
                         print(f"Eval results saved to: {eval_output_file.relative_to(repo_root)}", file=sys.stderr)
                         # Also write to log file

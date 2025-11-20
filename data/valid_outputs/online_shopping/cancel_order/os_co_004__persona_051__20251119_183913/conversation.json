@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "conversation_id": "os_co_004",
+    "domain_id": null,
+    "toolset_id": null,
+    "model": "gpt-4o-mini",
+    "prompt_versions": {
+      "system_agent": "v1",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "os_co_004",
+    "task": {
+      "description": "Cancel an order that was placed. The order is about to ship soon (near shipping deadline).",
+      "slots": {
+        "target_order_date": "2025-10-23",
+        "item_name": "Gaming Mouse",
+        "email": "emily.novak@example.com",
+        "last4": "3847",
+        "reason": "Changed mind"
+      },
+      "success_criteria": {
+        "target_selector": {
+          "placed_at_date": "2025-10-23"
+        },
+        "action": "cancel_order",
+        "notes": "Success if the assistant canceled the order placed on 2025-10-23 before it ships."
+      }
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "orders": [
+            {
+              "order_id": "ODR-112345",
+              "placed_at": "2025-10-23T08:15:00Z",
+              "status": "processing",
+              "total": 59.99,
+              "currency": "USD",
+              "email_masked": "e***@example.com",
+              "last4": "3847",
+              "items": [
+                {
+                  "item_id": "SKU-667",
+                  "name": "Gaming Mouse - RGB",
+                  "qty": 1,
+                  "unit_price": 59.99,
+                  "currency": "USD",
+                  "status": "pending",
+                  "cancelable": true,
+                  "returnable": true
+                }
+              ],
+              "shipments": [],
+              "payment": {
+                "method_masked": "****3847",
+                "captured": 59.99,
+                "refundable": 59.99,
+                "currency": "USD"
+              },
+              "policy": {
+                "cancel_window": "Before shipment",
+                "return_window": "30 days from delivery",
+                "restocking_fees": false,
+                "methods_supported": []
+              },
+              "cancelable_any": true,
+              "returnable_any": true
+            }
+          ]
+        },
+        "rules": []
+      }
+    },
+    "persona": {
+      "id": "persona_051",
+      "name": "Dr. Emily Novak",
+      "age": 37,
+      "hometown": "Bloomington, IN",
+      "occupation": "Linguistics professor",
+      "bio": "Emily Novak teaches linguistics at Indiana University, specializing in syntax and English grammar. She researches how speakers use language in different contexts, publishes in academic journals, and presents at conferences. She also runs the university's writing center and trains tutors in grammatical analysis.",
+      "use_cases": [],
+      "sample_messages": [
+        "Prepping syntax lecture for tuesday - can you find good examples of relative clause ambiguity?",
+        "Conference paper deadline friday. Proofreading the final draft tonight, need fresh eyes tomorrow morning?",
+        "Writing center training session next week - order snacks for 15 tutors, 2-hour session"
+      ],
+      "email": "emily.novak@example.com",
+      "phone": "(812) 555-3847"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "I want to cancel an order I placed."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nTo assist with the cancellation, I need to verify the order details. The user hasn't provided the order ID or any other identifying information. I'll prompt them for that information.\n</think>\n<plan>\n1. Ask the user for their order ID or other identifying details (like email, zip code, or last 4 digits of the payment method) to locate the order.\n</plan>\n<action type=\"say\">Could you please provide your order ID, email, zip code, or the last 4 digits of the payment method so I can help locate your order for cancellation?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Could you please provide your order ID, email, zip code, or the last 4 digits of the payment method so I can help locate your order for cancellation?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "My email is emily.novak@example.com."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has provided their email address to locate their order. I'll proceed to search for orders associated with that email.\n</think>\n<plan>\n1. Use the provided email to find relevant orders associated with the user.\n</plan>\n<action type=\"tool\" name=\"find_orders\">\n    { \"email\": \"emily.novak@example.com\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_orders",
+            "args": {
+              "email": "emily.novak@example.com"
+            },
+            "raw": "find_orders({\"email\":\"emily.novak@example.com\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"order_id\": \"ODR-112345\",\n    \"placed_at\": \"2025-10-23T08:15:00Z\",\n    \"status\": \"processing\",\n    \"total\": 59.99,\n    \"currency\": \"USD\",\n    \"email_masked\": \"e***@example.com\",\n    \"last4\": \"3847\"\n  }\n]",
+            "parsed": [
+              {
+                "order_id": "ODR-112345",
+                "placed_at": "2025-10-23T08:15:00Z",
+                "status": "processing",
+                "total": 59.99,
+                "currency": "USD",
+                "email_masked": "e***@example.com",
+                "last4": "3847"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI found an order associated with the user's email. The order ID is \"ODR-112345\" and its status is \"processing.\" Now, I'll inform the user about this order and ask if they want to proceed with the cancellation.\n</think>\n<plan>\n1. Inform the user of the found order details (ID, status, total).\n2. Ask the user if they want to proceed with the cancellation for this order.\n</plan>\n<action type=\"say\">I found your order (ID: ODR-112345) placed on October 23, 2025. The status is currently \"processing,\" and the total amount is $59.99. Would you like to proceed with the cancellation of this order?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I found your order (ID: ODR-112345) placed on October 23, 2025. The status is currently \"processing,\" and the total amount is $59.99. Would you like to proceed with the cancellation of this order?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "Yes, I want to cancel the order."
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has confirmed that they want to cancel the order. I will proceed to check which parts of the order can be canceled right now.\n</think>\n<plan>\n1. Use the order ID \"ODR-112345\" to check the cancellation options for the order.\n</plan>\n<action type=\"tool\" name=\"get_cancellation_options\">\n    { \"order_id\": \"ODR-112345\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_cancellation_options",
+            "args": {
+              "order_id": "ODR-112345"
+            },
+            "raw": "get_cancellation_options({\"order_id\":\"ODR-112345\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"eligible_items\": [\n    {\n      \"item_id\": \"SKU-667\",\n      \"qty_max_cancelable\": 1\n    }\n  ],\n  \"ineligible_items\": [],\n  \"can_cancel_entire_order\": true,\n  \"notes\": \"Order can be canceled as it is still processing and has not been shipped yet.\"\n}",
+            "parsed": {
+              "eligible_items": [
+                {
+                  "item_id": "SKU-667",
+                  "qty_max_cancelable": 1
+                }
+              ],
+              "ineligible_items": [],
+              "can_cancel_entire_order": true,
+              "notes": "Order can be canceled as it is still processing and has not been shipped yet."
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nThe order can be fully canceled since it is still in processing. There are eligible items that can be canceled. I will proceed to cancel the entire order and confirm the cancellation with the user.\n</think>\n<plan>\n1. Execute the cancellation for the entire order.\n2. Confirm the cancellation and provide any relevant information to the user.\n</plan>\n<action type=\"tool\" name=\"cancel_order\">\n    { \"order_id\": \"ODR-112345\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "cancel_order",
+            "args": {
+              "order_id": "ODR-112345"
+            },
+            "raw": "cancel_order({\"order_id\":\"ODR-112345\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"cancellation_code\": \"CNL-987654\",\n  \"canceled_items\": [\n    {\n      \"item_id\": \"SKU-667\",\n      \"qty\": 1\n    }\n  ],\n  \"refund\": {\n    \"currency\": \"USD\",\n    \"amount\": 59.99,\n    \"method\": \"original\",\n    \"timeline_estimate\": \"3-5 business days\"\n  },\n  \"message\": \"Your order has been successfully canceled.\"\n}",
+            "parsed": {
+              "success": true,
+              "cancellation_code": "CNL-987654",
+              "canceled_items": [
+                {
+                  "item_id": "SKU-667",
+                  "qty": 1
+                }
+              ],
+              "refund": {
+                "currency": "USD",
+                "amount": 59.99,
+                "method": "original",
+                "timeline_estimate": "3-5 business days"
+              },
+              "message": "Your order has been successfully canceled."
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nThe cancellation of the order was successful. The user is eligible for a refund of the total amount, and the estimated time to receive the refund is 3-5 business days. I will now communicate this information to the user.\n</think>\n<plan>\n1. Inform the user of the successful cancellation and provide details about the cancellation code and refund.\n</plan>\n<action type=\"say\">Your order has been successfully canceled. Your cancellation code is CNL-987654. You will receive a refund of $59.99 to the original payment method, which should take 3-5 business days to process. If you have any further questions, feel free to ask!</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your order has been successfully canceled. Your cancellation code is CNL-987654. You will receive a refund of $59.99 to the original payment method, which should take 3-5 business days to process. If you have any further questions, feel free to ask!"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

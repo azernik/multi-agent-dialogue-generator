@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from copy import deepcopy
 import json
 import logging
+import sys
 from core import Message, MessageRole, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario
@@ -57,6 +58,30 @@ class ConversationRunner:
             self.system_history.append(greeting_msg)
             self.user_history.append(greeting_msg)
         
+    def _format_turn_summary(self, turn_id: int, user_text: str, system_steps: List[Dict[str, Any]]) -> str:
+        """Format a one-line summary of a turn for progress logging."""
+        # Truncate user text to fit on one line
+        user_preview = user_text[:50].replace('\n', ' ').strip()
+        if len(user_text) > 50:
+            user_preview += "..."
+        
+        # Summarize system actions
+        action_summary = []
+        for step in system_steps:
+            action = step.get('action_structured', {})
+            action_type = action.get('type', 'unknown')
+            if action_type == 'tool_call':
+                tool_name = action.get('name', 'tool')
+                action_summary.append(f"tool:{tool_name}")
+            elif action_type == 'say':
+                say_text = action.get('text', '')[:30].replace('\n', ' ').strip()
+                if len(action.get('text', '')) > 30:
+                    say_text += "..."
+                action_summary.append(f"say:{say_text}")
+        
+        actions_str = " → ".join(action_summary) if action_summary else "no actions"
+        return f"  Turn {turn_id}: user: \"{user_preview}\" | assistant: {actions_str}"
+    
     def run_conversation(self) -> ConversationResult:
         had_tool_calls = False
         
@@ -84,6 +109,16 @@ class ConversationRunner:
             system_message, had_tool_call = self.process_system_turn(turn)
             if had_tool_call:
                 had_tool_calls = True
+            
+            # Log turn summary (one line per turn)
+            turn_id = turn + 1
+            user_text = user_message.content
+            # Get steps from the last turn trace
+            last_trace = self.turn_traces[-1] if self.turn_traces else {}
+            system_steps = last_trace.get('assistant', {}).get('steps', [])
+            turn_summary = self._format_turn_summary(turn_id, user_text, system_steps)
+            print(turn_summary, file=sys.stderr)
+            
             termination_result = self.check_termination(system_message, turn)
             if termination_result:
                 termination_reason, success = termination_result

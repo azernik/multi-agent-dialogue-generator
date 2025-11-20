@@ -209,13 +209,17 @@ def run_scenario(
             if output_dir and output_dir.exists():
                 eval_success = check_eval_success(output_dir)
                 
-                # Copy to valid_outputs if eval succeeded and flag is set
-                if copy_valid and eval_success is True and valid_outputs_root:
-                    copied_to_valid = copy_to_valid_outputs(
-                        output_dir, scenario_path, persona_id, valid_outputs_root
-                    )
-                    if copied_to_valid:
-                        print(f"  ✓ Copied to valid_outputs: {copied_to_valid.relative_to(valid_outputs_root)}", file=sys.stderr)
+                # Note: Copying to valid_outputs is now handled automatically by simulate.py
+                # when --run-eval succeeds. We just track whether it happened.
+                if copy_valid and eval_success is True:
+                    # Check if simulate.py already copied (it prints a message)
+                    if "Copied to valid_outputs" in result.stderr:
+                        copied_to_valid = True
+                        # Extract and show the copy message from simulate.py's output
+                        for line in result.stderr.split('\n'):
+                            if "Copied to valid_outputs:" in line:
+                                print(f"  {line.strip()}", file=sys.stderr)
+                                break
         else:
             success = False
         
@@ -225,7 +229,7 @@ def run_scenario(
             "status": "completed",
             "success": success,
             "eval_success": eval_success,
-            "copied_to_valid": str(copied_to_valid) if copied_to_valid else None,
+            "copied_to_valid": bool(copied_to_valid) if copied_to_valid is not None else None,
             "returncode": result.returncode,
             "stdout": result.stdout[-500:] if result.stdout else "",  # Last 500 chars
             "stderr": result.stderr[-500:] if result.stderr else ""
