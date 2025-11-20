@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "domain": "online_shopping",
+    "use_case": "return_order",
+    "scenario_id": "os_ro_010"
+  },
+  "limits": {
+    "max_turns": 20
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "task": {
+    "description": "Return an order that was delivered, but the item is marked as non-returnable (final sale).",
+    "slots": {
+      "target_order_date": "2025-10-17",
+      "item_name": "Custom Engraved Item",
+      "email": "jamie.sullivan@pnwclimateaction.org",
+      "last4": "7421",
+      "zip_code": "97201"
+    },
+    "success_criteria": {
+      "target_selector": { "placed_at_date": "2025-10-17" },
+      "action": "explain_non_returnable",
+      "notes": "Success if the assistant explained that the item cannot be returned because it's marked as final sale/non-returnable."
+    }
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "orders": [
+          {
+            "order_id": "ODR-102567",
+            "placed_at": "2025-10-17T16:00:00Z",
+            "status": "delivered",
+            "total": 45.99,
+            "currency": "USD",
+            "email_masked": "j***@pnwclimateaction.org",
+            "last4": "7421",
+            "items": [
+              {
+                "item_id": "SKU-556",
+                "name": "Custom Engraved Water Bottle - Final Sale",
+                "qty": 1,
+                "unit_price": 45.99,
+                "currency": "USD",
+                "status": "delivered",
+                "cancelable": false,
+                "returnable": false
+              }
+            ],
+            "shipments": [
+              {
+                "shipment_id": "SHP-8654",
+                "carrier": "USPS",
+                "tracking_number": "94001118992222334455",
+                "status": "delivered",
+                "eta": "2025-10-21",
+                "items": [
+                  {
+                    "item_id": "SKU-556",
+                    "qty": 1
+                  }
+                ]
+              }
+            ],
+            "payment": {
+              "method_masked": "****7421",
+              "captured": 45.99,
+              "refundable": 0,
+              "currency": "USD"
+            },
+            "policy": {
+              "cancel_window": "Before shipment",
+              "return_window": "30 days from delivery",
+              "restocking_fees": false,
+              "methods_supported": ["dropoff", "pickup"]
+            },
+            "cancelable_any": false,
+            "returnable_any": false
+          }
+        ],
+        "dropoff_locations": []
+      },
+      "rules": []
+    }
+  },
+  "personas": {
+    "catalog": "data/personas/catalog.json",
+    "entries": [
+      {
+        "id": "persona_022"
+      }
+    ]
+  }
+}
+

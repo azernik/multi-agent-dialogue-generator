@@ -186,19 +186,26 @@ class UserAgent(BaseAgent):
                 parts.append("\nPersona Context:\n" + "\n".join(persona_lines))
 
         if slots:
-            parts.append(f"\nTarget slots: {json.dumps(slots)}")
+            parts.append(f"\nInformation you have available (provide naturally when asked, give the minimum required): {json.dumps(slots)}")
         if behaviors_summary:
             parts.append(f"\nInjected behaviors: {json.dumps(behaviors_summary, ensure_ascii=False)}")
         
         system_content = ''.join(parts)
         messages.append({"role": "system", "content": system_content})
 
-        # Add conversation history with periodic system prompt reinforcement
+        # Add conversation history with periodic system prompt reinforcement and role boundary reminders
         reinforcement_interval = 2  # Reinforce every 2 messages
         for i, msg in enumerate(context.messages):
             # Add periodic system prompt reinforcement
             if i > 0 and i % reinforcement_interval == 0:
                 messages.append({"role": "system", "content": system_content})
+            
+            # Add role boundary reminder before assistant messages to prevent role confusion
+            if msg.role == MessageRole.ASSISTANT:
+                messages.append({
+                    "role": "system", 
+                    "content": "CRITICAL REMINDER: The message below is from the ASSISTANT (the chatbot helping you), NOT from you. You are the USER. Do NOT ask questions like the assistant does. Do NOT offer to help. You respond to the assistant's questions, you don't ask them."
+                })
             
             # Add the actual message
             messages.append({
@@ -238,6 +245,18 @@ class ToolAgent(BaseAgent):
         behaviors_summary = summarize_behaviors(injected_behaviors)
         if behaviors_summary:
             system_content += f"\n\nInjected behaviors: {json.dumps(behaviors_summary, ensure_ascii=False)}"
+        
+        # Include scenario context (task slots + seed data) if present
+        scenario_context = context.agent_config.get('scenario_context')
+        if scenario_context:
+            context_parts = []
+            if scenario_context.get('task_slots'):
+                context_parts.append(f"Task context (user's known information): {json.dumps(scenario_context['task_slots'], indent=2)}")
+            if scenario_context.get('seed_data'):
+                context_parts.append(f"Available data in this scenario: {json.dumps(scenario_context['seed_data'], indent=2)}")
+            if context_parts:
+                system_content += f"\n\nScenario Context:\n" + "\n".join(context_parts)
+                system_content += "\n\nIMPORTANT: When generating tool responses, use the scenario context to ensure your responses align with the user's known information and the available data. For example, if the user is looking for an order from a specific date, return orders that match that date from the seed data."
         
         messages.append({"role": "system", "content": system_content})
         self._add_conversation_history(messages, context)

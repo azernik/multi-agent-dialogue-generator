@@ -46,7 +46,7 @@ class ConversationRunner:
         # Aggregated per-system-turn traces for training/export
         self.turn_traces: List[Dict[str, Any]] = []
 
-        self.logger.info(f"ConversationRunner initialized (max_turns={max_turns}, available tools={list(scenario.tools.keys())})")
+        # Logging disabled for cleaner output - only agent responses are logged
 
         if system_greeting:
             greeting_msg = Message(
@@ -61,12 +61,11 @@ class ConversationRunner:
         had_tool_calls = False
         
         for turn in range(self.max_turns):
-            self.logger.info(f"=== TURN {turn + 1} ===")
             user_message = self.process_user_turn(turn)
             termination_result = self.check_termination(user_message, turn)
             if termination_result:
                 termination_reason, success = termination_result
-                self.logger.info(f"Conversation terminated after user message. Reason: {termination_reason}, Success: {success}")
+                # Termination logged silently - check result for details
                 return ConversationResult(
                     system_transcript=self.system_history.copy(),
                     user_transcript=self.user_history.copy(),
@@ -88,7 +87,7 @@ class ConversationRunner:
             termination_result = self.check_termination(system_message, turn)
             if termination_result:
                 termination_reason, success = termination_result
-                self.logger.info(f"Conversation terminated after system message. Reason: {termination_reason}, Success: {success}")
+                # Termination logged silently - check result for details
                 return ConversationResult(
                     system_transcript=self.system_history.copy(),
                     user_transcript=self.user_history.copy(),
@@ -270,7 +269,20 @@ class ConversationRunner:
         current_tool_call = Message(MessageRole.USER, tool_call_only)
         tool_context_messages = self.tool_history + [current_tool_call]
         ta_cfg = self._enrich_behaviors({"injected_behaviors": self.scenario.tool_agent.get('injected_behaviors', [])}, self.scenario.behavior_types)
-        agent_config = {"tools": self.scenario.tools, "tool_agent": ta_cfg}
+        
+        # Include scenario context: task slots and tool_agent seed data (if present)
+        scenario_context = {}
+        if self.task_context and self.task_context.get('slots'):
+            scenario_context['task_slots'] = self.task_context['slots']
+        tool_agent_context = self.scenario.tool_agent.get('context', {})
+        if tool_agent_context.get('seed'):
+            scenario_context['seed_data'] = tool_agent_context['seed']
+        
+        agent_config = {
+            "tools": self.scenario.tools,
+            "tool_agent": ta_cfg,
+            "scenario_context": scenario_context if scenario_context else None
+        }
         return ConversationContext(
             messages=tool_context_messages,
             agent_config=agent_config,
@@ -281,7 +293,20 @@ class ConversationRunner:
         current_tool_call = Message(MessageRole.USER, tool_call)
         tool_context_messages = self.tool_history + [current_tool_call]
         ta_cfg = self._enrich_behaviors({"injected_behaviors": self.scenario.tool_agent.get('injected_behaviors', [])}, self.scenario.behavior_types)
-        agent_config = {"tools": self.scenario.tools, "tool_agent": ta_cfg}
+        
+        # Include scenario context: task slots and tool_agent seed data (if present)
+        scenario_context = {}
+        if self.task_context and self.task_context.get('slots'):
+            scenario_context['task_slots'] = self.task_context['slots']
+        tool_agent_context = self.scenario.tool_agent.get('context', {})
+        if tool_agent_context.get('seed'):
+            scenario_context['seed_data'] = tool_agent_context['seed']
+        
+        agent_config = {
+            "tools": self.scenario.tools,
+            "tool_agent": ta_cfg,
+            "scenario_context": scenario_context if scenario_context else None
+        }
         return ConversationContext(
             messages=tool_context_messages,
             agent_config=agent_config,

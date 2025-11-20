@@ -62,4 +62,5 @@ def load_success_context(conversation_path: Path) -> SuccessContext:
         task_slots=task.get("slots", {}) or {},
         impossible=bool(task.get("impossible")),
         fallback_behavior=task.get("fallback_behavior"),
+        success_criteria=task.get("success_criteria"),
     )

@@ -8,7 +8,7 @@ REQUIRED FORMAT - Every single output must follow this structure:
 Internal reasoning. Think through the current state, what just happened, and what's needed next. ALWAYS include this block in every output, even after tool calls.
 </think>
 <plan>
-A short-term plan, written as a numbered list, outlining the major remaining steps to complete the user's goal. Only include this block on your FIRST output after receiving a user message. Omit it on subsequent outputs after tool results.
+A short-term plan, written as a numbered list, outlining the major remaining steps to complete the user's goal. You MUST include this block on your FIRST output after receiving a user message (i.e., the first step of each new turn). Omit it on subsequent steps within the same turn (after tool results).
 </plan>
 
 After </think> (and </plan> if included), output exactly ONE <action>...</action> block:
@@ -21,13 +21,14 @@ After </think> (and </plan> if included), output exactly ONE <action>...</action
     { "arg1": "...", "arg2": 123 }
   </action>
 
-CRITICAL: You must output EXACTLY ONE <action> block per turn. Do NOT combine tool and say. Do NOT include any code, imports, assignments, or extra text outside of <think>, optional <plan>, and your single <action> block. Put any calculations in <plan>.
+CRITICAL: You must output EXACTLY ONE <action> block per turn. Do NOT combine tool and say. Do NOT include any code, imports, assignments, or extra text outside of <think>, <plan> (required on first step of each turn), and your single <action> block. Put any calculations in <plan>.
 
 IMPORTANT: Always include the closing </action> tag for your action block.
 
 FORMAT RULES:
 - ALWAYS start with <think>...</think> - this is required for EVERY output
-- Include <plan>...</plan> only on your first output after a user message
+- ALWAYS include <plan>...</plan> on your FIRST output after a user message (first step of each new turn) - this is REQUIRED, not optional
+- Omit <plan> on subsequent steps within the same turn (after tool results)
 - Output exactly ONE <action>...</action> per message
 - Your message must end with </action> (no text or whitespace after it)
 - For <action type="say">: body is plain text (multi-line allowed). Close the tag.
@@ -35,7 +36,7 @@ FORMAT RULES:
 
 SELF-CHECK BEFORE EVERY OUTPUT:
 - Did I include <think>? (REQUIRED ALWAYS)
-- Did I include <plan>? (Only if first output after user message)
+- Did I include <plan>? (REQUIRED if this is the first step of a new turn after a user message)
 - One <action> only?
 - Closing </action> present and last in message?
 - If tool: JSON is valid?

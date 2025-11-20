@@ -27,6 +27,7 @@ class SuccessContext:
     task_slots: Dict[str, Any]
     impossible: bool = False
     fallback_behavior: Optional[str] = None
+    success_criteria: Optional[Dict[str, Any]] = None
 
 
 @dataclass

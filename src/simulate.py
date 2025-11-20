@@ -92,6 +92,10 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--export-steps-jsonl', action='store_true', help='Write turns.jsonl (one JSONL record per system turn)')
     parser.add_argument('--outputs-root', help='Root directory for outputs (default: env MADG_OUTPUT_ROOT or data/outputs)')
     parser.add_argument('--persona-id', help='Persona ID to use when scenario defines personas')
+    parser.add_argument('--run-eval', action='store_true', help='Automatically run evaluation after conversation completes')
+    parser.add_argument('--eval-model', default='gpt-4.1-mini', help='Model to use for evaluation (default: gpt-4.1-mini)')
+    parser.add_argument('--skip-faithfulness', action='store_true', help='Skip faithfulness evaluation when running --run-eval')
+    parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
     return parser.parse_args()
 
 def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
@@ -844,11 +848,8 @@ def main():
             persona_id=persona_id,
         )
         logger = logging.getLogger(__name__)
-        logger.info(f"Starting simulation with model: {args.model}")
-        logger.info(f"Loaded scenario: {scenario.name}")
-        if persona_id:
-            logger.info(f"Using persona: {persona_id}")
-
+        # Reduced verbosity - initialization messages only logged to file, not console
+        
         # Initialize LLM client
         api_key = args.api_key or os.getenv('OPENAI_API_KEY')
         if not api_key:
@@ -857,7 +858,6 @@ def main():
             sys.exit(1)
             
         llm_client = LLMClient(model=args.model, api_key=api_key)
-        logger.info(f"Initialized LLM client with model: {args.model}")
         
         prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
             "system_agent": None,
@@ -894,7 +894,7 @@ def main():
             )
             result = runner.run_conversation()
 
-        logger.info(f"Conversation completed")
+        # Conversation completion logged to file only
 
         if persona_id is not None:
             result.metadata.setdefault('persona_id', persona_id)
@@ -921,7 +921,7 @@ def main():
             task_context=task_override,
             persona=persona_context
         )
-        logger.info(f"Conversation file saved to: {conversation_file}")
+        # File save logged to file only
 
         write_agent_prompts(prompt_captures, run_dir)
 
@@ -946,7 +946,7 @@ def main():
                         'tool_results': t.get('tool_results', [])
                     }
                     jf.write(json.dumps(rec) + '\n')
-            logger.info(f"Per-turn JSONL saved to: {turns_path}")
+            # JSONL save logged to file only
         
         # Append to global manifest
         try:
@@ -969,9 +969,130 @@ def main():
             manifest_path.parent.mkdir(parents=True, exist_ok=True)
             with open(manifest_path, 'a') as mf:
                 mf.write(json.dumps(manifest_line) + "\n")
-            logger.info(f"Manifest updated: {manifest_path}")
+            # Manifest update logged to file only
         except Exception as _e:
             logger.warning(f"Could not update manifest: {_e}")
+
+        # Print final outputs: conversation.json path and eval command
+        repo_root = Path(__file__).resolve().parent.parent
+        conversation_path = Path(conversation_file)
+        relative_path = conversation_path.relative_to(repo_root)
+        
+        print(f"\nConversation file: {relative_path}", file=sys.stderr)
+        print(f"Eval command: PYTHONPATH=src python -m eval.run {relative_path}", file=sys.stderr)
+
+        # Run evaluation if requested
+        if args.run_eval:
+            try:
+                import subprocess
+                import sys as sys_module
+                
+                eval_args = [
+                    str(conversation_path),
+                    "--model", args.eval_model,
+                ]
+                if args.skip_faithfulness:
+                    eval_args.append("--skip-faithfulness")
+                if args.skip_role_confusion:
+                    eval_args.append("--skip-role-confusion")
+                
+                # Run eval and capture output
+                eval_result = subprocess.run(
+                    [sys_module.executable, "-m", "eval.run"] + eval_args,
+                    cwd=str(repo_root),
+                    env={**os.environ, "PYTHONPATH": str(repo_root / "src")},
+                    capture_output=True,
+                    text=True,
+                )
+                
+                # Parse eval output
+                if eval_result.returncode == 0 and eval_result.stdout:
+                    try:
+                        eval_output = json.loads(eval_result.stdout)
+                        # Write eval results to file
+                        eval_output_file = run_dir / "eval.json"
+                        with open(eval_output_file, 'w') as f:
+                            json.dump(eval_output, f, indent=2, ensure_ascii=False)
+                        
+                        # Print SUCCESS summary
+                        overall_success = eval_output.get("SUCCESS", None)
+                        if overall_success is False:
+                            # Find which part failed
+                            failed_part = None
+                            failed_data = None
+                            
+                            # Check syntax
+                            syntax = eval_output.get("syntax", {})
+                            if syntax:
+                                summary = syntax.get("summary", {})
+                                if not (summary.get("structure", {}).get("valid", True) and 
+                                        summary.get("tool", {}).get("valid", True)):
+                                    failed_part = "syntax"
+                                    failed_data = syntax
+                            
+                            # Check success
+                            if not failed_part:
+                                success = eval_output.get("success", {})
+                                if success and "error" not in success:
+                                    if not success.get("success", True):
+                                        failed_part = "success"
+                                        failed_data = success
+                            
+                            # Check faithfulness
+                            if not failed_part:
+                                faithfulness = eval_output.get("faithfulness", {})
+                                if faithfulness and "error" not in faithfulness:
+                                    if not faithfulness.get("summary", {}).get("valid", True):
+                                        failed_part = "faithfulness"
+                                        failed_data = faithfulness
+                            
+                            # Check role confusion
+                            if not failed_part:
+                                role_confusion = eval_output.get("role_confusion", {})
+                                if role_confusion and "error" not in role_confusion:
+                                    if role_confusion.get("has_confusion", False):
+                                        failed_part = "role_confusion"
+                                        failed_data = role_confusion
+                            
+                            if failed_part and failed_data:
+                                print(f"\nSUCCESS: false (failed: {failed_part})", file=sys.stderr)
+                                print(f"Failed {failed_part}: {json.dumps(failed_data, indent=2, ensure_ascii=False)}", file=sys.stderr)
+                            else:
+                                print(f"\nSUCCESS: false", file=sys.stderr)
+                        else:
+                            print(f"\nSUCCESS: {overall_success}", file=sys.stderr)
+                        
+                        print(f"Eval results saved to: {eval_output_file.relative_to(repo_root)}", file=sys.stderr)
+                        # Also write to log file
+                        with open(log_file, 'a') as log_f:
+                            log_f.write("\n\n=== EVALUATION OUTPUT ===\n")
+                            json.dump(eval_output, log_f, indent=2, ensure_ascii=False)
+                            log_f.write("\n")
+                    except json.JSONDecodeError:
+                        # If not JSON, write raw output
+                        eval_output_file = run_dir / "eval.txt"
+                        with open(eval_output_file, 'w') as f:
+                            f.write(eval_result.stdout)
+                        if eval_result.stderr:
+                            f.write("\n\nSTDERR:\n" + eval_result.stderr)
+                        print(f"\nEval output saved to: {eval_output_file.relative_to(repo_root)}", file=sys.stderr)
+                        # Also write to log file
+                        with open(log_file, 'a') as log_f:
+                            log_f.write("\n\n=== EVALUATION OUTPUT ===\n")
+                            log_f.write(eval_result.stdout)
+                            if eval_result.stderr:
+                                log_f.write("\n\nSTDERR:\n" + eval_result.stderr)
+                            log_f.write("\n")
+                else:
+                    logger.warning(f"Eval failed: {eval_result.stderr}")
+                    # Also write failure to log file
+                    with open(log_file, 'a') as log_f:
+                        log_f.write("\n\n=== EVALUATION FAILED ===\n")
+                        if eval_result.stderr:
+                            log_f.write(eval_result.stderr)
+                        log_f.write("\n")
+            except Exception as e:
+                logger.warning(f"Could not run evaluation: {e}")
 
         # Exit with appropriate code
         sys.exit(0 if result.success else 1)

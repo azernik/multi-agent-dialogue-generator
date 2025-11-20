@@ -1,0 +1,108 @@
+{
+  "metadata": {
+    "domain": "online_shopping",
+    "use_case": "return_order",
+    "scenario_id": "os_ro_005"
+  },
+  "limits": {
+    "max_turns": 20
+  },
+  "domain_ref": {
+    "toolset_path": "../../tools.json"
+  },
+  "task": {
+    "description": "Return an order that was delivered. The return window is expiring soon (near deadline).",
+    "slots": {
+      "target_order_date": "2025-09-25",
+      "item_name": "Winter Jacket",
+      "email": "chris.bakker@rockytrailguides.com",
+      "last4": "8934",
+      "zip_code": "80202"
+    },
+    "success_criteria": {
+      "target_selector": { "placed_at_date": "2025-09-25" },
+      "action": "create_return",
+      "notes": "Success if the assistant created a return (RMA) for the order placed on 2025-09-25, noting the deadline is approaching."
+    }
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "orders": [
+          {
+            "order_id": "ODR-101234",
+            "placed_at": "2025-09-25T10:30:00Z",
+            "status": "delivered",
+            "total": 129.99,
+            "currency": "USD",
+            "email_masked": "c***@rockytrailguides.com",
+            "last4": "8934",
+            "items": [
+              {
+                "item_id": "SKU-556",
+                "name": "Winter Jacket - Insulated",
+                "qty": 1,
+                "unit_price": 129.99,
+                "currency": "USD",
+                "status": "delivered",
+                "cancelable": false,
+                "returnable": true
+              }
+            ],
+            "shipments": [
+              {
+                "shipment_id": "SHP-8211",
+                "carrier": "FedEx",
+                "tracking_number": "9876543210789",
+                "status": "delivered",
+                "eta": "2025-09-29",
+                "items": [
+                  {
+                    "item_id": "SKU-556",
+                    "qty": 1
+                  }
+                ]
+              }
+            ],
+            "payment": {
+              "method_masked": "****8934",
+              "captured": 129.99,
+              "refundable": 129.99,
+              "currency": "USD"
+            },
+            "policy": {
+              "cancel_window": "Before shipment",
+              "return_window": "30 days from delivery",
+              "restocking_fees": false,
+              "methods_supported": ["dropoff", "pickup"]
+            },
+            "cancelable_any": false,
+            "returnable_any": true
+          }
+        ],
+        "dropoff_locations": [
+          {
+            "location_id": "LOC-001",
+            "name": "UPS Store - Downtown Denver",
+            "address": "123 16th St, Denver, CO 80202",
+            "hours": "Mon-Fri 8am-6pm, Sat 9am-3pm",
+            "distance_km": 1.8
+          }
+        ]
+      },
+      "rules": []
+    }
+  },
+  "personas": {
+    "catalog": "data/personas/catalog.json",
+    "entries": [
+      {
+        "id": "persona_023"
+      }
+    ]
+  }
+}
+
