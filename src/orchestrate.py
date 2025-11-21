@@ -3,32 +3,48 @@
 Orchestrator script to run multiple scenarios in a use case or domain directory.
 
 Usage:
+    # Run scenarios by ID
+    python src/orchestrate.py ca_oe_005__persona_001 ca_rm_002__persona_002 --run-eval
+    
+    # Run all scenarios in a use case directory
     python src/orchestrate.py data/domains/online_shopping/return_order
+    
+    # Run all scenarios in a domain (recursive by default)
+    python src/orchestrate.py data/domains/online_shopping
+    
+    # Run all scenarios across all domains
+    python src/orchestrate.py data/domains
+    
+    # Run specific use case within a domain
     python src/orchestrate.py data/domains/online_shopping --use-case return_order
-    python src/orchestrate.py data/domains/online_shopping/return_order/os_ro_001  # single scenario
+    
+    # Run single scenario file
+    python src/orchestrate.py data/domains/online_shopping/return_order/os_ro_001.json
 """
 
 import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
+from scenario import resolve_scenario_target, resolve_scenario_pattern
 
-def find_scenario_directories(target_path: Path, use_case: Optional[str] = None) -> List[Path]:
-    """Find all scenario directories containing scenario.json files."""
+
+def find_scenario_files(target_path: Path, use_case: Optional[str] = None) -> List[Path]:
+    """Find all scenario JSON files."""
     scenarios = []
     
     if not target_path.exists():
         raise FileNotFoundError(f"Path not found: {target_path}")
     
-    # If it's a single scenario directory (has scenario.json)
-    if target_path.is_dir() and (target_path / "scenario.json").exists():
+    # If it's a single scenario file
+    if target_path.is_file() and target_path.suffix == '.json':
         return [target_path]
     
     # If use_case is specified, look in that subdirectory
@@ -38,41 +54,44 @@ def find_scenario_directories(target_path: Path, use_case: Optional[str] = None)
             raise FileNotFoundError(f"Use case directory not found: {use_case_path}")
         target_path = use_case_path
     
-    # Find all subdirectories containing scenario.json
-    for item in target_path.iterdir():
-        if item.is_dir():
-            scenario_file = item / "scenario.json"
-            if scenario_file.exists():
-                scenarios.append(item)
+    # Always recursively search all subdirectories
+    for json_file in target_path.rglob('*.json'):
+        # Skip tools.json and other non-scenario files
+        if json_file.name != 'tools.json' and json_file.name != 'catalog.json':
+            scenarios.append(json_file)
     
     if not scenarios:
-        raise ValueError(f"No scenario directories found in {target_path}")
+        raise ValueError(f"No scenario files found in {target_path}")
     
     return sorted(scenarios)
 
 
-def load_scenario_personas(scenario_path: Path) -> List[Optional[str]]:
-    """Load persona IDs from scenario.json. Returns list of persona IDs or [None] if none specified."""
-    scenario_file = scenario_path / "scenario.json"
+def load_scenario_personas(scenario_file: Path) -> List[Optional[str]]:
+    """Load persona ID from scenario JSON file. Returns list with single persona ID or [None] if none specified."""
     with open(scenario_file, 'r') as f:
         data = json.load(f)
     
-    personas = data.get("personas", {})
-    entries = personas.get("entries", [])
+    # Try new format first
+    persona_id = data.get("persona")
     
-    if not entries:
-        return [None]  # No personas specified, will use default
+    if not persona_id:
+        # Fallback: try old format
+        personas = data.get("personas", {})
+        if isinstance(personas, dict):
+            entries = personas.get("entries", [])
+            if entries:
+                entry = entries[0]
+                if isinstance(entry, dict):
+                    persona_id = entry.get("id")
+                elif isinstance(entry, str):
+                    persona_id = entry
     
-    persona_ids = []
-    for entry in entries:
-        if isinstance(entry, dict):
-            persona_id = entry.get("id")
-            if persona_id:
-                persona_ids.append(persona_id)
-        elif isinstance(entry, str):
-            persona_ids.append(entry)
+    if not persona_id:
+        # Fallback: try to extract persona from filename
+        from scenario import extract_persona_from_filename
+        persona_id = extract_persona_from_filename(scenario_file.name)
     
-    return persona_ids if persona_ids else [None]
+    return [persona_id] if persona_id else [None]
 
 
 def extract_output_directory(stderr: str) -> Optional[Path]:
@@ -100,73 +119,27 @@ def check_eval_success(output_dir: Path) -> Optional[bool]:
         return None
 
 
-def copy_to_valid_outputs(
-    output_dir: Path,
-    scenario_path: Path,
-    persona_id: Optional[str],
-    valid_outputs_root: Path
-) -> Optional[Path]:
-    """Copy successful simulation to valid_outputs directory. Returns destination path."""
-    # Extract domain/use_case/scenario_id from scenario_path
-    parts = scenario_path.resolve().parts
-    try:
-        domains_idx = parts.index("domains")
-        if domains_idx + 3 <= len(parts):
-            domain = parts[domains_idx + 1]
-            use_case = parts[domains_idx + 2]
-            scenario_id = parts[domains_idx + 3]
-        else:
-            # Fallback: use scenario name
-            domain = "unknown"
-            use_case = "unknown"
-            scenario_id = scenario_path.name
-    except ValueError:
-        # Fallback if "domains" not in path
-        domain = "unknown"
-        use_case = "unknown"
-        scenario_id = scenario_path.name
-    
-    # Create destination structure: valid_outputs/<domain>/<use_case>/<scenario_id>__<persona>__<timestamp>/
-    persona_str = persona_id or "default"
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    dest_dir = valid_outputs_root / domain / use_case / f"{scenario_id}__{persona_str}__{timestamp}"
-    
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Copy key files
-    files_to_copy = ["conversation.json", "eval.json"]
-    copied_files = []
-    
-    for filename in files_to_copy:
-        src_file = output_dir / filename
-        if src_file.exists():
-            dest_file = dest_dir / filename
-            shutil.copy2(src_file, dest_file)
-            copied_files.append(filename)
-    
-    if copied_files:
-        return dest_dir
-    return None
-
-
 def run_scenario(
-    scenario_path: Path,
+    scenario_file: Path,
     persona_id: Optional[str],
     base_args: List[str],
-    dry_run: bool = False,
-    copy_valid: bool = False,
-    valid_outputs_root: Optional[Path] = None
+    dry_run: bool = False
 ) -> Dict[str, Any]:
     """Run a single scenario and return result summary."""
-    scenario_name = scenario_path.name
+    from scenario import extract_scenario_id_from_filename, extract_persona_from_filename
+    
+    scenario_id = extract_scenario_id_from_filename(scenario_file.name)
+    # Use persona from filename if not explicitly provided
+    if not persona_id:
+        persona_id = extract_persona_from_filename(scenario_file.name)
     persona_str = persona_id or "default"
     
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Running scenario: {scenario_name} (persona: {persona_str})", file=sys.stderr)
+    print(f"\n{'[DRY RUN] ' if dry_run else ''}Running scenario: {scenario_id} (persona: {persona_str})", file=sys.stderr)
     
     cmd = [
         sys.executable,
         str(Path(__file__).parent / "simulate.py"),
-        str(scenario_path),
+        str(scenario_file),
     ] + base_args
     
     if persona_id:
@@ -175,75 +148,107 @@ def run_scenario(
     if dry_run:
         print(f"  Command: {' '.join(cmd)}", file=sys.stderr)
         return {
-            "scenario": scenario_name,
+            "scenario": scenario_id,
             "persona": persona_id,
             "status": "dry_run",
             "success": None
         }
     
     try:
-        result = subprocess.run(
+        # Use Popen to forward output in real-time while also capturing for parsing
+        process = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=600  # 10 minute timeout per scenario
+            bufsize=1  # Line buffered
         )
         
-        # Try to extract success status from stderr (where simulate.py prints it)
+        # Collect stderr lines for parsing while forwarding to terminal
+        stderr_lines = []
+        stdout_lines = []
+        
+        # Read stderr and stdout line by line, forwarding to terminal
+        def read_output(pipe, lines_list, is_stderr):
+            for line in iter(pipe.readline, ''):
+                if line:
+                    lines_list.append(line)
+                    # Forward to terminal
+                    print(line.rstrip(), file=sys.stderr if is_stderr else sys.stdout, flush=True)
+            pipe.close()
+        
+        stderr_thread = threading.Thread(target=read_output, args=(process.stderr, stderr_lines, True))
+        stdout_thread = threading.Thread(target=read_output, args=(process.stdout, stdout_lines, False))
+        
+        stderr_thread.start()
+        stdout_thread.start()
+        
+        # Wait for process to complete with timeout
+        timeout_occurred = threading.Event()
+        
+        def timeout_handler():
+            timeout_occurred.set()
+            process.kill()
+        
+        timeout_timer = threading.Timer(600, timeout_handler)  # 10 minute timeout
+        timeout_timer.start()
+        
+        returncode = process.wait()
+        timeout_timer.cancel()
+        
+        # Wait for threads to finish reading (they'll exit when pipes close)
+        stderr_thread.join(timeout=5)
+        stdout_thread.join(timeout=5)
+        
+        if timeout_occurred.is_set():
+            return {
+                "scenario": scenario_id,
+                "persona": persona_id,
+                "status": "timeout",
+                "success": False
+            }
+        
+        stderr_text = ''.join(stderr_lines)
+        stdout_text = ''.join(stdout_lines)
+        
+        # Parse results from stderr
         success = None
         eval_success = None
-        copied_to_valid = None
+        output_dir = None
         
-        if result.returncode == 0:
+        if returncode == 0:
             # Check for [DONE_SUCCESS] or [DONE_FAILURE] in output
-            if "[DONE_SUCCESS]" in result.stderr or "[DONE_SUCCESS]" in result.stdout:
+            if "[DONE_SUCCESS]" in stderr_text or "[DONE_SUCCESS]" in stdout_text:
                 success = True
-            elif "[DONE_FAILURE]" in result.stderr or "[DONE_FAILURE]" in result.stdout:
+            elif "[DONE_FAILURE]" in stderr_text or "[DONE_FAILURE]" in stdout_text:
                 success = False
             else:
                 # Check return code - 0 typically means success
                 success = True
             
-            # Extract output directory and check eval if --run-eval was used
-            output_dir = extract_output_directory(result.stderr)
+            # Extract output directory from stderr
+            output_dir = extract_output_directory(stderr_text)
             if output_dir and output_dir.exists():
                 eval_success = check_eval_success(output_dir)
-                
-                # Note: Copying to valid_outputs is now handled automatically by simulate.py
-                # when --run-eval succeeds. We just track whether it happened.
-                if copy_valid and eval_success is True:
-                    # Check if simulate.py already copied (it prints a message)
-                    if "Copied to valid_outputs" in result.stderr:
-                        copied_to_valid = True
-                        # Extract and show the copy message from simulate.py's output
-                        for line in result.stderr.split('\n'):
-                            if "Copied to valid_outputs:" in line:
-                                print(f"  {line.strip()}", file=sys.stderr)
-                                break
         else:
             success = False
         
         return {
-            "scenario": scenario_name,
+            "scenario": scenario_id,
             "persona": persona_id,
             "status": "completed",
             "success": success,
             "eval_success": eval_success,
-            "copied_to_valid": bool(copied_to_valid) if copied_to_valid is not None else None,
-            "returncode": result.returncode,
-            "stdout": result.stdout[-500:] if result.stdout else "",  # Last 500 chars
-            "stderr": result.stderr[-500:] if result.stderr else ""
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "scenario": scenario_name,
-            "persona": persona_id,
-            "status": "timeout",
-            "success": False
+            "returncode": returncode
         }
     except Exception as e:
+        if 'process' in locals():
+            try:
+                process.kill()
+            except:
+                pass
         return {
-            "scenario": scenario_name,
+            "scenario": scenario_id,
             "persona": persona_id,
             "status": "error",
             "success": False,
@@ -257,25 +262,35 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Run scenarios by ID
+  python src/orchestrate.py ca_oe_005__persona_001 ca_rm_002__persona_002 --run-eval
+  
   # Run all scenarios in a use case
   python src/orchestrate.py data/domains/online_shopping/return_order
   
-  # Run all scenarios in a domain (all use cases)
+  # Run scenarios by ID
+  python src/orchestrate.py ca_oe_005__persona_001 ca_rm_002__persona_002 --run-eval
+  
+  # Run all scenarios in a domain (recursive by default)
   python src/orchestrate.py data/domains/online_shopping
+  
+  # Run all scenarios across all domains
+  python src/orchestrate.py data/domains --run-eval
   
   # Run specific use case within a domain
   python src/orchestrate.py data/domains/online_shopping --use-case return_order
   
-  # Run single scenario
-  python src/orchestrate.py data/domains/online_shopping/return_order/os_ro_001
+  # Run single scenario file
+  python src/orchestrate.py data/domains/online_shopping/return_order/os_ro_001.json
   
   # Dry run to see what would be executed
   python src/orchestrate.py data/domains/online_shopping/return_order --dry-run
         """
     )
     parser.add_argument(
-        "target_path",
-        help="Path to scenario directory, use case directory, or domain directory"
+        "targets",
+        nargs='*',
+        help="Scenario IDs (e.g., ca_oe_005__persona_001) or directory paths. If not provided, uses target_path from --use-case or current directory."
     )
     parser.add_argument(
         "--use-case",
@@ -287,8 +302,8 @@ Examples:
     )
     parser.add_argument(
         "--model",
-        default="gpt-4o-mini",
-        help="LLM model to use (default: gpt-4o-mini)"
+        default="gpt-5.1",
+        help="LLM model to use (default: gpt-5.1)"
     )
     parser.add_argument(
         "--max-turns",
@@ -303,8 +318,8 @@ Examples:
     )
     parser.add_argument(
         "--eval-model",
-        default="gpt-4.1-mini",
-        help="Model for evaluation (default: gpt-4.1-mini)"
+        default="gpt-5.1",
+        help="Model for evaluation (default: gpt-5.1)"
     )
     parser.add_argument(
         "--skip-faithfulness",
@@ -332,78 +347,90 @@ Examples:
         help="Number of scenarios to run in parallel (default: 1, sequential)"
     )
     parser.add_argument(
-        "--copy-valid",
+        "--verbose", "-v",
         action="store_true",
-        help="Copy successful simulations (SUCCESS=true in eval) to valid_outputs directory"
-    )
-    parser.add_argument(
-        "--valid-outputs-dir",
-        help="Directory for valid outputs (default: data/valid_outputs)"
+        help="Verbose console output (passes through to simulate.py)"
     )
     
-    args = parser.parse_args()
+    # Parse known args (orchestrate-specific) and pass through remaining args to simulate.py
+    args, simulate_args = parser.parse_known_args()
     
-    target_path = Path(args.target_path).resolve()
-    
-    # Find all scenario directories
+    # Resolve scenarios based on targets or directory mode
     try:
-        scenarios = find_scenario_directories(target_path, args.use_case)
+        scenarios = []
+        
+        if args.targets:
+            # ID, path, or pattern mode: resolve each target
+            for target in args.targets:
+                if '/' in target or target.endswith('.json'):
+                    # Treat as path
+                    target_path = Path(target).resolve()
+                    if target_path.is_file() and target_path.suffix == '.json':
+                        # Single scenario file
+                        scenarios.append(target_path)
+                    else:
+                        # Directory path - find scenarios recursively
+                        scenarios.extend(find_scenario_files(target_path, args.use_case))
+                elif '*' in target:
+                    # Treat as glob pattern
+                    scenarios.extend(resolve_scenario_pattern(target))
+                else:
+                    # Treat as scenario ID - use shared utility
+                    scenarios.append(resolve_scenario_target(target))
+        else:
+            # Directory mode: require at least one target (backward compatibility)
+            parser.error("Must provide at least one target (scenario ID or directory path)")
+        
+        # Validate we found scenarios
+        if not scenarios:
+            raise ValueError("No scenarios found")
     except (FileNotFoundError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     
     print(f"Found {len(scenarios)} scenario(s) to run", file=sys.stderr)
     
-    # Determine valid_outputs root
-    if args.copy_valid:
-        if args.valid_outputs_dir:
-            valid_outputs_root = Path(args.valid_outputs_dir).resolve()
-        else:
-            repo_root = Path(__file__).resolve().parent.parent
-            valid_outputs_root = repo_root / "data" / "valid_outputs"
-        
-        if not args.run_eval:
-            print("Warning: --copy-valid requires --run-eval to check eval results", file=sys.stderr)
-            args.copy_valid = False
-            valid_outputs_root = None
-    else:
-        valid_outputs_root = None
+    # Build base arguments for simulate.py from orchestrate args
+    base_args = []
     
-    # Build base arguments for simulate.py
-    base_args = [
-        "--model", args.model,
-        "--max-turns", str(args.max_turns),
-    ]
-    
+    # Add orchestrate-specific args that map to simulate.py args
+    if args.model:
+        base_args.extend(["--model", args.model])
+    if args.max_turns:
+        base_args.extend(["--max-turns", str(args.max_turns)])
     if args.run_eval:
         base_args.append("--run-eval")
-        base_args.extend(["--eval-model", args.eval_model])
+        if args.eval_model:
+            base_args.extend(["--eval-model", args.eval_model])
         if args.skip_faithfulness:
             base_args.append("--skip-faithfulness")
         if args.skip_role_confusion:
             base_args.append("--skip-role-confusion")
+    if args.verbose:
+        base_args.append("--verbose")
+    
+    # Add any remaining passthrough args
+    base_args.extend(simulate_args)
     
     # Collect results
     results = []
     start_time = datetime.now()
     
     # Run each scenario
-    for scenario_path in scenarios:
-        # If persona_id override is specified, use it; otherwise load from scenario
+    for scenario_file in scenarios:
+        # If persona_id override is specified, use it; otherwise extract from filename or load from scenario
         if args.persona_id:
             persona_ids = [args.persona_id]
         else:
-            persona_ids = load_scenario_personas(scenario_path)
+            persona_ids = load_scenario_personas(scenario_file)
         
-        # Run for each persona
+        # Run for each persona (usually just one, since persona is in filename)
         for persona_id in persona_ids:
             result = run_scenario(
-                scenario_path, 
+                scenario_file, 
                 persona_id, 
                 base_args, 
-                args.dry_run,
-                copy_valid=args.copy_valid,
-                valid_outputs_root=valid_outputs_root
+                args.dry_run
             )
             results.append(result)
             
@@ -422,7 +449,6 @@ Examples:
     failed = sum(1 for r in results if r.get("success") is False)
     errors = sum(1 for r in results if r["status"] in ["error", "timeout"])
     eval_successful = sum(1 for r in results if r.get("eval_success") is True)
-    copied_to_valid = sum(1 for r in results if r.get("copied_to_valid") is not None)
     
     # Print summary
     print(f"\n{'='*60}", file=sys.stderr)
@@ -434,8 +460,6 @@ Examples:
     print(f"  Errors/Timeouts: {errors}", file=sys.stderr)
     if args.run_eval:
         print(f"  Eval SUCCESS=true: {eval_successful}", file=sys.stderr)
-    if args.copy_valid:
-        print(f"  Copied to valid_outputs: {copied_to_valid}", file=sys.stderr)
     if not args.dry_run:
         print(f"  Duration: {duration:.1f}s ({duration/60:.1f} minutes)", file=sys.stderr)
     print(f"{'='*60}\n", file=sys.stderr)
@@ -451,8 +475,6 @@ Examples:
         "failed": failed,
         "errors": errors,
         "eval_successful": eval_successful if args.run_eval else None,
-        "copied_to_valid": copied_to_valid if args.copy_valid else None,
-        "valid_outputs_root": str(valid_outputs_root) if args.copy_valid else None,
         "duration_seconds": duration if not args.dry_run else None,
         "results": results
     }

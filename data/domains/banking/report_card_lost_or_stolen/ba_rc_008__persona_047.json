@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_008"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "lost"
+      },
+      "preferences": {
+        "request_replacement": true
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Rewards Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the lost card via report_card_issue for the Rewards Card credit card account (after the first list_customer_accounts call times out and the assistant retries successfully), requests a replacement."
+    },
+    "objective": "Report a lost credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.timeout",
+        "instructions": "The first list_customer_accounts call experiences a transient timeout. Subsequent retry should succeed."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Rewards Card",
+            "masked_number": "****2222",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "checking",
+            "nickname": "Everyday Checking",
+            "masked_number": "****3333",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_047"
+}
+

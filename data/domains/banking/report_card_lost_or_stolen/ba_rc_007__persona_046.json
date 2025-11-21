@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_007"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "damaged"
+      },
+      "preferences": {
+        "request_replacement": true
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Business Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the damaged card via report_card_issue for the Business Card credit card account (after the user reveals card details gradually over multiple turns - first mentioning a problem, then specifying it's damaged, then identifying which card), requests a replacement."
+    },
+    "objective": "Report a damaged credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.gradual_information",
+        "instructions": "Don't provide all information at once. First mention you're having trouble with your card. When asked what's wrong, reveal it's damaged. When asked which card, reveal it's the Business Card. When asked about replacement, confirm you want a new one."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Business Card",
+            "masked_number": "****9999",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "credit_card",
+            "nickname": "Personal Card",
+            "masked_number": "****0000",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-003",
+            "account_type": "checking",
+            "nickname": "Main Checking",
+            "masked_number": "****1111",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_046"
+}
+

@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_005"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "stolen"
+      },
+      "preferences": {
+        "request_replacement": true
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Rewards Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the stolen card via report_card_issue for the Rewards Card credit card account (after the user provides vague descriptions like 'my main card' and the assistant clarifies via list_customer_accounts), requests a replacement."
+    },
+    "objective": "Report a stolen credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.gradual_information",
+        "instructions": "Initially describe the card vaguely as 'my main card' or 'the one I use most'. Only provide the specific nickname 'Rewards Card' when the assistant lists the available cards and asks which one."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Rewards Card",
+            "masked_number": "****4444",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "credit_card",
+            "nickname": "Travel Card",
+            "masked_number": "****5555",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-003",
+            "account_type": "checking",
+            "nickname": "Everyday Checking",
+            "masked_number": "****6666",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_044"
+}
+

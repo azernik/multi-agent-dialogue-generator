@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "recurring_one_on_one",
+    "scenario_id": "ca_ro_004"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "other_attendee_email": "tom.kowalski@madison.gov",
+        "frequency": "monthly",
+        "duration_minutes": 60
+      },
+      "preferences": {
+        "preferred_day": "Monday",
+        "time_of_day": "morning"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "other_attendee_email": "tom.kowalski@madison.gov",
+        "frequency": "monthly"
+      },
+      "action": "create_recurring_meeting",
+      "notes": "Success if the assistant creates a monthly recurring one-on-one meeting series with Tom via create_recurring_meeting with 60-minute duration."
+    },
+    "objective": "Set up a monthly one-on-one meeting with Tom"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "instructions": "The user wants to set up a monthly check-in with Tom. They prefer Monday mornings."
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "available_slots": [
+          {
+            "start": "2025-11-10T09:00:00Z",
+            "end": "2025-11-10T10:00:00Z",
+            "all_available": true
+          }
+        ]
+      }
+    },
+    "injected_behaviors": [
+      {
+        "instructions": "When find_available_recurring_slots is called, return an HTTP 503 service unavailable error on the first attempt. On retry, succeed normally."
+      }
+    ]
+  },
+  "persona": "persona_006"
+}
+

@@ -6,9 +6,30 @@ REQUIRED FORMAT - Every single output must follow this structure:
 
 <think>
 Internal reasoning. Think through the current state, what just happened, and what's needed next. ALWAYS include this block in every output, even after tool calls.
+
+CRITICAL: This block must NEVER be empty. Always write at least 2-3 sentences explaining:
+- What information you currently have
+- What the user just said or what tool result you just received
+- What you're deciding to do next and why
+- Any important considerations or constraints
+
+Examples of good reasoning:
+- "The user wants to book a restaurant for Friday evening. I need to search for restaurants matching their cuisine preference, then check availability for their party size."
+- "The search returned 3 restaurants. I should present these options to the user, highlighting key differences like price range and ratings to help them choose."
+- "The tool call failed because the restaurant_id was invalid. I need to ask the user to clarify which restaurant they meant, or search again with different criteria."
 </think>
 <plan>
 A short-term plan, written as a numbered list, outlining the major remaining steps to complete the user's goal. You MUST include this block on your FIRST output after receiving a user message (i.e., the first step of each new turn). Omit it on subsequent steps within the same turn (after tool results).
+
+CRITICAL: ALWAYS include at least one item in the plan, even if the task is practically complete. If the task is finished, include an item like "1. Notify the user that the task is complete" or "1. Confirm completion with the user". Never omit the plan block entirely.
+
+IMPORTANT: You MUST include <plan> even when you are about to call a tool immediately. The plan describes what you will do, including tool calls. For example, if you're about to call find_meeting, your plan might be:
+1. Search for the meeting using find_meeting tool
+2. Review the results and identify the correct meeting
+3. Update the meeting using update_meeting tool
+4. Confirm the changes to the user
+
+Do NOT skip the plan just because you're calling a tool - the plan is required BEFORE the tool call.
 </plan>
 
 After </think> (and </plan> if included), output exactly ONE <action>...</action> block:
@@ -26,8 +47,9 @@ CRITICAL: You must output EXACTLY ONE <action> block per turn. Do NOT combine to
 IMPORTANT: Always include the closing </action> tag for your action block.
 
 FORMAT RULES:
-- ALWAYS start with <think>...</think> - this is required for EVERY output
-- ALWAYS include <plan>...</plan> on your FIRST output after a user message (first step of each new turn) - this is REQUIRED, not optional
+- ALWAYS start with <think>...</think> - this is required for EVERY output and MUST contain actual reasoning text (never empty)
+- ALWAYS include <plan>...</plan> on your FIRST output after a user message (first step of each new turn) - this is REQUIRED, not optional. The plan must contain at least one item, even if it's just "1. Notify the user that the task is complete"
+- CRITICAL: Include <plan> even when you're about to call a tool immediately - the plan describes your intended actions including tool calls
 - Omit <plan> on subsequent steps within the same turn (after tool results)
 - Output exactly ONE <action>...</action> per message
 - Your message must end with </action> (no text or whitespace after it)
@@ -35,11 +57,13 @@ FORMAT RULES:
 - For <action type="tool" ...>: body must be valid JSON (double-quoted keys/strings). Close the tag.
 
 SELF-CHECK BEFORE EVERY OUTPUT:
-- Did I include <think>? (REQUIRED ALWAYS)
-- Did I include <plan>? (REQUIRED if this is the first step of a new turn after a user message)
+- Did I include <think> with actual content (NOT empty)? (REQUIRED ALWAYS - must contain at least 2-3 sentences of reasoning)
+- Did I include <plan> with at least one item? (REQUIRED if this is the first step of a new turn after a user message - even if task is complete or I'm about to call a tool, include "1. Notify user task is complete" or describe the tool calls I'll make)
 - One <action> only?
 - Closing </action> present and last in message?
 - If tool: JSON is valid?
+
+IMPORTANT: If your <think> block is empty or contains only whitespace, you MUST add reasoning before sending your response. Empty reasoning blocks are not acceptable.
 
 ---
 
@@ -49,7 +73,7 @@ STRICT RULES:
 - You must output exactly ONE <action> per turn: either type="say" OR type="tool", never both.
 - The <think> and <plan> sections are invisible to the user. Write them only for internal use.
 - If you cannot proceed without more information, use <action type="say">...</action> to ask the user for clarification.
-- If a tool call fails (e.g., invalid inputs, no results, or error), reflect on what went wrong in <think> and revise your <plan> accordingly.
+- If a tool call fails (e.g., invalid inputs, no results, or error), reflect on what went wrong in <think> (with detailed reasoning, never empty) and revise your <plan> accordingly.
 - Never guess tool arguments. If you're missing required inputs, use say() to ask the user.
 
 - If the user gives contradictory or confusing input, use say() to clarify instead of making assumptions.

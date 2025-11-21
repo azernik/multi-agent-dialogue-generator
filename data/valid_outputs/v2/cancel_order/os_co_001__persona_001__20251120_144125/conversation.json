@@ -1,0 +1,287 @@
+{
+  "meta": {
+    "conversation_id": "online_shopping.os_co_001",
+    "domain_id": "online_shopping",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "os_co_001",
+    "task": {
+      "slots": {
+        "target_order_date": "2025-10-28",
+        "item_name": "Coffee Maker",
+        "email": "elena.harding@nt.gov.au",
+        "last4": "2147",
+        "reason": "Changed mind"
+      },
+      "success_criteria": {
+        "target_selector": {
+          "placed_at": "2025-10-28"
+        },
+        "action": "cancel_order",
+        "notes": "Success if the assistant canceled the order placed on 2025-10-28."
+      },
+      "objective": "Cancel an order that was placed."
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "instructions": "The user knows the approximate order date and item name, but doesn't know the exact order_id."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "orders": [
+            {
+              "order_id": "ODR-120123",
+              "placed_at": "2025-10-28T11:15:00Z",
+              "status": "processing",
+              "total": 89.99,
+              "currency": "USD",
+              "email_masked": "e***@nt.gov.au",
+              "last4": "2147",
+              "items": [
+                {
+                  "item_id": "SKU-445",
+                  "name": "Coffee Maker - Drip Style",
+                  "qty": 1,
+                  "unit_price": 89.99,
+                  "currency": "USD",
+                  "status": "pending",
+                  "cancelable": true,
+                  "returnable": true
+                }
+              ],
+              "shipments": [],
+              "payment": {
+                "method_masked": "****2147",
+                "captured": 89.99,
+                "refundable": 89.99,
+                "currency": "USD"
+              },
+              "policy": {
+                "cancel_window": "Before shipment",
+                "return_window": "30 days from delivery",
+                "restocking_fees": false,
+                "methods_supported": []
+              },
+              "cancelable_any": true,
+              "returnable_any": true
+            }
+          ]
+        },
+        "rules": []
+      }
+    },
+    "persona": {
+      "id": "persona_001",
+      "name": "Elena Harding",
+      "age": 48,
+      "hometown": "Darwin, Northern Territory",
+      "occupation": "Community relations officer",
+      "bio": "Elena Harding coordinates community outreach for the Northern Territory government, helping residents navigate services and making sure local voices reach national decision makers. She keeps a disciplined calendar, attends neighborhood events most evenings, and prides herself on giving people clear next steps.",
+      "use_cases": [
+        "restaurant_booking.dine_in_dinner",
+        "calendar.schedule_cross_functional_team_meeting",
+        "calendar.reschedule_meeting"
+      ],
+      "writing_style": "Australian casual, some lowercase starts, fragments okay, action-oriented",
+      "sample_messages": [
+        "need a table downtown thursday around 7 for me + two visiting reps",
+        "Second option works, go with that one",
+        "meeting room booking for next week sorted?"
+      ],
+      "email": "elena.harding@nt.gov.au",
+      "phone": "+61-8-5550-2147"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "hey, need to cancel an order i made for a coffee maker a little while back."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Ask for information to locate the user\u2019s order (order id or identity details).\n2. Look up the order using the appropriate tool.\n3. Check what parts of the order are cancelable and, if needed, confirm what exactly the user wants to cancel.\n4. Execute the cancellation and share confirmation and refund info with the user.\n</plan>\n<action type=\"say\">\nI can help with that. I first need to find the order in the system.\n\nDo you have your order ID handy?  \n- If yes: please paste the order ID.  \n- If not: please share the email used for the order and the shipping ZIP code (and, if you\u2019re comfortable, the last 4 digits of the payment method).  \n\nAlso, was the coffee maker the only item in that order, or were there multiple items you might want to keep?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. I first need to find the order in the system.\n\nDo you have your order ID handy?  \n- If yes: please paste the order ID.  \n- If not: please share the email used for the order and the shipping ZIP code (and, if you\u2019re comfortable, the last 4 digits of the payment method).  \n\nAlso, was the coffee maker the only item in that order, or were there multiple items you might want to keep?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "don\u2019t have the order id handy, sorry.\n\nemail was elena.harding@nt.gov.au, postcode 0800. last 4 on the card should be 2147.\n\npretty sure it was just the coffee maker in that order."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Review the list of orders associated with the provided identity details.\n2. Confirm which order is the coffee maker and check its current status.\n3. Determine what cancellation options are available for that order.\n4. Ask the user to confirm they want to cancel that specific order, then proceed with cancellation and share confirmation.\n</plan>\n<action type=\"tool\" name=\"find_orders\">\n  { \"email\": \"elena.harding@nt.gov.au\", \"zip_code\": \"0800\", \"last4\": \"2147\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_orders",
+            "args": {
+              "email": "elena.harding@nt.gov.au",
+              "zip_code": "0800",
+              "last4": "2147"
+            },
+            "raw": "find_orders({\"email\":\"elena.harding@nt.gov.au\",\"zip_code\":\"0800\",\"last4\":\"2147\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"order_id\": \"ODR-120123\",\n    \"placed_at\": \"2025-10-28T11:15:00Z\",\n    \"status\": \"processing\",\n    \"total\": 89.99,\n    \"currency\": \"USD\",\n    \"email_masked\": \"e***@nt.gov.au\",\n    \"last4\": \"2147\"\n  }\n]",
+            "parsed": [
+              {
+                "order_id": "ODR-120123",
+                "placed_at": "2025-10-28T11:15:00Z",
+                "status": "processing",
+                "total": 89.99,
+                "currency": "USD",
+                "email_masked": "e***@nt.gov.au",
+                "last4": "2147"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Pull full details for order ODR-120123 to confirm it\u2019s the coffee maker and see its cancelability.\n2. If cancelable, get cancellation options and confirm with the user that they want to cancel the whole order.\n3. Execute the cancellation and share confirmation and refund info.\n</plan>\n<action type=\"tool\" name=\"get_order_details\">\n  { \"order_id\": \"ODR-120123\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_order_details",
+            "args": {
+              "order_id": "ODR-120123"
+            },
+            "raw": "get_order_details({\"order_id\":\"ODR-120123\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"order_id\": \"ODR-120123\",\n  \"status\": \"processing\",\n  \"items\": [\n    {\n      \"item_id\": \"SKU-445\",\n      \"name\": \"Coffee Maker - Drip Style\",\n      \"qty\": 1,\n      \"unit_price\": 89.99,\n      \"currency\": \"USD\",\n      \"status\": \"pending\",\n      \"cancelable\": true,\n      \"returnable\": true\n    }\n  ],\n  \"shipments\": [],\n  \"payment\": {\n    \"method_masked\": \"****2147\",\n    \"captured\": 89.99,\n    \"refundable\": 89.99,\n    \"currency\": \"USD\"\n  },\n  \"policy\": {\n    \"cancel_window\": \"Before shipment\",\n    \"return_window\": \"30 days from delivery\",\n    \"restocking_fees\": false,\n    \"methods_supported\": []\n  },\n  \"cancelable_any\": true,\n  \"returnable_any\": true\n}",
+            "parsed": {
+              "order_id": "ODR-120123",
+              "status": "processing",
+              "items": [
+                {
+                  "item_id": "SKU-445",
+                  "name": "Coffee Maker - Drip Style",
+                  "qty": 1,
+                  "unit_price": 89.99,
+                  "currency": "USD",
+                  "status": "pending",
+                  "cancelable": true,
+                  "returnable": true
+                }
+              ],
+              "shipments": [],
+              "payment": {
+                "method_masked": "****2147",
+                "captured": 89.99,
+                "refundable": 89.99,
+                "currency": "USD"
+              },
+              "policy": {
+                "cancel_window": "Before shipment",
+                "return_window": "30 days from delivery",
+                "restocking_fees": false,
+                "methods_supported": []
+              },
+              "cancelable_any": true,
+              "returnable_any": true
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nI have the order details and see a single cancelable coffee maker item in processing status. Next I should confirm the user wants to cancel this entire order before actually cancelling it. I don\u2019t yet know their reason, which can help with the cancellation record but isn\u2019t strictly required.\n</think>\n<plan>\n1. Confirm with the user that order ODR-120123 (Coffee Maker - Drip Style) is the one to cancel and whether to cancel the whole order.\n2. Ask for (optional) cancellation reason to include.\n3. Once confirmed, run the cancellation and then report the result and refund details.\n</plan>\n<action type=\"say\">\nI found one matching order:\n\n- Order ID: ODR-120123\n- Item: Coffee Maker - Drip Style (1 unit)\n- Status: Processing (not shipped yet, so it\u2019s fully cancelable)\n- Amount: 89.99 USD charged to ****2147\n\nTo proceed, can you confirm:\n1) Do you want to cancel this entire order (the coffee maker), yes?  \n2) Optional: what\u2019s the main reason for cancelling (e.g., ordered by mistake, found a better price, changed mind, other)?\n\nOnce you confirm, I\u2019ll cancel it and share the refund details.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I found one matching order:\n\n- Order ID: ODR-120123\n- Item: Coffee Maker - Drip Style (1 unit)\n- Status: Processing (not shipped yet, so it\u2019s fully cancelable)\n- Amount: 89.99 USD charged to ****2147\n\nTo proceed, can you confirm:\n1) Do you want to cancel this entire order (the coffee maker), yes?  \n2) Optional: what\u2019s the main reason for cancelling (e.g., ordered by mistake, found a better price, changed mind, other)?\n\nOnce you confirm, I\u2019ll cancel it and share the refund details."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "yeah cancel the whole thing.\n\nreason: changed my mind."
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser confirmed full cancellation and provided a reason. I should now execute a full order cancellation with that reason, then report success and refund details. Use cancel_order without items to cancel everything.\n</think>\n<plan>\n1. Submit a full cancellation request for order ODR-120123 with the provided reason.\n2. Review the cancellation result, including refund details.\n3. Confirm the cancellation and refund information back to the user.\n</plan>\n<action type=\"tool\" name=\"cancel_order\">\n  { \"order_id\": \"ODR-120123\", \"reason\": \"changed my mind\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "cancel_order",
+            "args": {
+              "order_id": "ODR-120123",
+              "reason": "changed my mind"
+            },
+            "raw": "cancel_order({\"order_id\":\"ODR-120123\",\"reason\":\"changed my mind\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"cancellation_code\": \"CXL-984217\",\n  \"canceled_items\": [\n    {\n      \"item_id\": \"SKU-445\",\n      \"qty\": 1\n    }\n  ],\n  \"refund\": {\n    \"currency\": \"USD\",\n    \"amount\": 89.99,\n    \"method\": \"original\",\n    \"timeline_estimate\": \"3\u20135 business days\"\n  },\n  \"message\": \"Your order ODR-120123 has been fully canceled. A refund of $89.99 USD will be issued to ****2147.\"\n}",
+            "parsed": {
+              "success": true,
+              "cancellation_code": "CXL-984217",
+              "canceled_items": [
+                {
+                  "item_id": "SKU-445",
+                  "qty": 1
+                }
+              ],
+              "refund": {
+                "currency": "USD",
+                "amount": 89.99,
+                "method": "original",
+                "timeline_estimate": "3\u20135 business days"
+              },
+              "message": "Your order ODR-120123 has been fully canceled. A refund of $89.99 USD will be issued to ****2147."
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nSummarize tool result to user clearly and briefly. Confirm cancellation code, refund amount, and timeline. Offer further help.\n</think>\n<plan>\n1. Present the cancellation confirmation and refund details clearly.\n2. Mention the timeline and where the refund is going.\n3. Ask if the user needs anything else.\n</plan>\n<action type=\"say\">\nAll set \u2014 your order has been fully canceled.\n\n- Order ID: ODR-120123  \n- Cancellation code: CXL-984217  \n- Item canceled: Coffee Maker - Drip Style (1 unit)  \n- Refund: $89.99 USD back to your original payment method (****2147)  \n- Expected refund timing: 3\u20135 business days, depending on your bank\n\nAnything else you\u2019d like to do with your orders today?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "All set \u2014 your order has been fully canceled.\n\n- Order ID: ODR-120123  \n- Cancellation code: CXL-984217  \n- Item canceled: Coffee Maker - Drip Style (1 unit)  \n- Refund: $89.99 USD back to your original payment method (****2147)  \n- Expected refund timing: 3\u20135 business days, depending on your bank\n\nAnything else you\u2019d like to do with your orders today?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

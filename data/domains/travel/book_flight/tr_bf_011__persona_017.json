@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "domain": "travel",
+    "use_case": "book_flight",
+    "scenario_id": "tr_bf_011"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "origin": "Anchorage",
+        "destination": "Denver",
+        "departure_date": "2025-08-15",
+        "num_passengers": 1
+      },
+      "preferences": {
+        "class_preference": "economy"
+      }
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that no flights are available for the next 7 days. Offer to search alternative dates beyond 7 days, check nearby airports, or suggest alternative transportation options if available.",
+    "success_criteria": {
+      "target_selector": {
+        "departure_date": "2025-08-15"
+      },
+      "action": "explain_no_flights",
+      "notes": "Success if the assistant clearly communicated that no flights are available for the next 7 days and offered alternatives"
+    },
+    "objective": "Book a flight from Anchorage to Denver."
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "instructions": "User is currently on vacation and needs to get home, but there are no flights available for the next 7 days. User is stressed and anxious about being stuck. They express urgency and concern about getting home. Makes comments like 'I really need to get back' and 'Are you sure there's nothing?'"
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "flights": []
+      }
+    },
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results",
+        "instructions": "search_flights should return an empty result set for the requested date and the next 7 days, indicating no flights available. If user asks to search further out, return flights starting from day 8."
+      }
+    ]
+  },
+  "persona": "persona_017"
+}

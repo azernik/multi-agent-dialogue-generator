@@ -58,7 +58,7 @@ def load_success_context(conversation_path: Path) -> SuccessContext:
     return SuccessContext(
         conversation_id=meta.get("conversation_id") or config.get("scenario_name") or "",
         turns=turns,
-        task_description=task.get("description", ""),
+        task_objective=task.get("objective", ""),
         task_slots=task.get("slots", {}) or {},
         impossible=bool(task.get("impossible")),
         fallback_behavior=task.get("fallback_behavior"),

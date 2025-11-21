@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "reschedule_meeting",
+    "scenario_id": "ca_rm_005"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "meeting_title": "Graduate Seminar",
+        "original_date": "2025-11-14",
+        "new_preferred_date": "2025-11-17"
+      },
+      "preferences": {}
+    },
+    "success_criteria": {
+      "target_selector": {
+        "meeting_title": "Graduate Seminar",
+        "original_date": "2025-11-14"
+      },
+      "action": "update_meeting",
+      "notes": "This is an impossible scenario. Success means the assistant clearly explains that all attendees are completely unavailable on 2025-11-17 and suggests reasonable alternatives (different dates or times) as specified in fallback_behavior. The assistant should NOT reschedule the meeting to a time with conflicts."
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that all attendees are completely unavailable on 2025-11-17 and suggest reasonable alternatives (different dates or times).",
+    "objective": "Reschedule the graduate seminar meeting"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "instructions": "The user wants to reschedule a graduate seminar but doesn't realize that all attendees are completely unavailable on the new date."
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "existing_meeting": {
+          "event_id": "EVT-014",
+          "title": "Graduate Seminar",
+          "start_time": "2025-11-14T10:00:00Z",
+          "end_time": "2025-11-14T11:30:00Z",
+          "attendees": ["david.kwan@brown.edu", "amara.okafor@brown.edu", "elizabeth.warren@brown.edu"],
+          "location": "Seminar Room"
+        },
+        "available_slots": [],
+        "conflicts": [
+          {
+            "event_id": "EVT-015",
+            "title": "Conference Presentation",
+            "start_time": "2025-11-17T09:00:00Z",
+            "end_time": "2025-11-17T12:00:00Z",
+            "attendees": ["david.kwan@brown.edu", "amara.okafor@brown.edu"]
+          },
+          {
+            "event_id": "EVT-016",
+            "title": "Department Meeting",
+            "start_time": "2025-11-17T13:00:00Z",
+            "end_time": "2025-11-17T15:00:00Z",
+            "attendees": ["elizabeth.warren@brown.edu"]
+          },
+          {
+            "event_id": "EVT-017",
+            "title": "Research Collaboration",
+            "start_time": "2025-11-17T15:00:00Z",
+            "end_time": "2025-11-17T17:00:00Z",
+            "attendees": ["david.kwan@brown.edu", "amara.okafor@brown.edu", "elizabeth.warren@brown.edu"]
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_007"
+}
+

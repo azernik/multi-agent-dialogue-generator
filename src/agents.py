@@ -43,9 +43,20 @@ class BaseAgent(ABC):
     
     def _add_conversation_history(self, messages: List[Dict[str, str]], context: ConversationContext):
         for msg in context.messages:
+            if msg.role == MessageRole.USER:
+                role = "user"
+                content = msg.content
+            elif msg.role == MessageRole.TOOL:
+                # Convert TOOL to assistant role but wrap content in <observation> tags
+                # so the model can distinguish tool outputs from regular assistant messages
+                role = "assistant"
+                content = f"<observation>\n{msg.content}\n</observation>"
+            else:
+                role = "assistant"
+                content = msg.content
             messages.append({
-                "role": "user" if msg.role == MessageRole.USER else "assistant",
-                "content": msg.content
+                "role": role,
+                "content": content
             })
     
     @abstractmethod
@@ -100,7 +111,7 @@ class UserAgent(BaseAgent):
         messages = []
         ua = context.agent_config or {}
         task = ua.get('task', {}) if isinstance(ua.get('task'), dict) else {}
-        objective = ua.get('objective') or task.get('description', '')
+        objective = ua.get('objective') or task.get('objective', '') or task.get('description', '')
         persona_note = ua.get('user_persona', '')
         persona_details = ua.get('persona') if isinstance(ua.get('persona'), dict) else None
         slots = ua.get('slots') or task.get('slots', {}) or {}
@@ -193,24 +204,28 @@ class UserAgent(BaseAgent):
         system_content = ''.join(parts)
         messages.append({"role": "system", "content": system_content})
 
-        # Add conversation history with periodic system prompt reinforcement and role boundary reminders
-        reinforcement_interval = 2  # Reinforce every 2 messages
-        for i, msg in enumerate(context.messages):
-            # Add periodic system prompt reinforcement
-            if i > 0 and i % reinforcement_interval == 0:
-                messages.append({"role": "system", "content": system_content})
-            
-            # Add role boundary reminder before assistant messages to prevent role confusion
+        # Add role boundary reminder before assistant messages to prevent role confusion
+        for i, msg in enumerate(context.messages):   
             if msg.role == MessageRole.ASSISTANT:
                 messages.append({
                     "role": "system", 
-                    "content": "CRITICAL REMINDER: The message below is from the ASSISTANT (the chatbot helping you), NOT from you. You are the USER. Do NOT ask questions like the assistant does. Do NOT offer to help. You respond to the assistant's questions, you don't ask them."
+                    "content": "REMINDER: You are the USER. The message below is from the ASSISTANT. Answer their questions—don't ask questions or offer help yourself."
                 })
             
             # Add the actual message
+            if msg.role == MessageRole.USER:
+                role = "user"
+                content = msg.content
+            elif msg.role == MessageRole.TOOL:
+                # Convert TOOL to assistant role but wrap content in <observation> tags
+                role = "assistant"
+                content = f"<observation>\n{msg.content}\n</observation>"
+            else:
+                role = "assistant"
+                content = msg.content
             messages.append({
-                "role": "user" if msg.role == MessageRole.USER else "assistant",
-                "content": msg.content
+                "role": role,
+                "content": content
             })
 
         return messages

@@ -1,0 +1,330 @@
+{
+  "meta": {
+    "conversation_id": "restaurant_booking.rb_002",
+    "domain_id": "restaurant_booking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "rb_002",
+    "task": {
+      "slots": {
+        "constraints": {
+          "date": "this Friday",
+          "time_window": ">=19:00",
+          "party_size": 4,
+          "location": "San Francisco"
+        },
+        "preferences": {
+          "cuisine": "Italian"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "cuisine": "Italian",
+          "location": "San Francisco"
+        },
+        "action": "make_reservation",
+        "notes": "Success if the assistant makes a reservation via make_reservation at one of the seeded Italian restaurants in San Francisco for 4 people on 'this Friday' at or after 19:00 local time, and the user accepts or confirms the booking."
+      },
+      "objective": "Find and book a restaurant."
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "restaurants": [
+            {
+              "restaurant_id": "RST-001",
+              "name": "Bella Vista",
+              "cuisine": "Italian",
+              "address": "123 Columbus Ave, San Francisco, CA 94133",
+              "rating": 4.5,
+              "price_range": "$$",
+              "hours": "Mon-Sun 17:00-22:00"
+            },
+            {
+              "restaurant_id": "RST-002",
+              "name": "Trattoria Milano",
+              "cuisine": "Italian",
+              "address": "456 Lombard St, San Francisco, CA 94133",
+              "rating": 4.2,
+              "price_range": "$$$",
+              "hours": "Mon-Sun 18:00-23:00"
+            },
+            {
+              "restaurant_id": "RST-003",
+              "name": "Little Italy Bistro",
+              "cuisine": "Italian",
+              "address": "789 Grant Ave, San Francisco, CA 94108",
+              "rating": 4.0,
+              "price_range": "$",
+              "hours": "Mon-Sun 17:30-21:30"
+            }
+          ]
+        }
+      },
+      "injected_behaviors": [
+        {
+          "type_id": "tool.no_results",
+          "instructions": "Return an empty result on the first search_restaurants call."
+        }
+      ]
+    },
+    "persona": {
+      "id": "persona_003",
+      "name": "Nikola Petrovic",
+      "age": 41,
+      "hometown": "Belgrade, Serbia",
+      "occupation": "Cultural heritage researcher",
+      "bio": "Nikola Petrovic documents historic churches and cultural landmarks, splitting time between archive work and photo expeditions. He plans travel carefully, coordinates with curators abroad, and loves sharing the stories behind architecture with friends back home.",
+      "use_cases": [
+        "travel.book_flight",
+        "travel.book_hotel",
+        "restaurant_booking.plan_special_occasion"
+      ],
+      "writing_style": "Thoughtful and polite, proper capitalization, complete sentences",
+      "sample_messages": [
+        "Do you know if the monastery in Ravenna allows interior photography?",
+        "The archive extended my access through the weekend - can we push my return flight to Monday?",
+        "That hotel location is perfect, right near the basilica"
+      ],
+      "email": "nikola.petrovic@bg.ac.rs",
+      "phone": "+381-11-555-3245"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "I\u2019d like help finding a dinner reservation for this Friday in San Francisco."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants dinner reservation Friday in SF, no cuisine, time, or party size yet. Need to clarify constraints before using tools. Then search restaurants, check availability, then book. Keep brief. </think>\n<plan>\n1. Clarify key preferences: exact date (this Friday\u2019s date), time window, party size, cuisine, neighborhood, price range.\n2. Use the restaurant search tool to find matching options in San Francisco.\n3. For the user\u2019s preferred option(s), check availability for the chosen time window and party size.\n4. If a suitable slot is found, collect name/phone and place the reservation.\n5. Confirm details and provide the confirmation code.\n</plan>\n<action type=\"say\">\nI can help with that. I just need a few details:\n\n1) To confirm, do you mean this coming Friday (in 3 days), and is the date [this Friday\u2019s calendar date] correct?\n2) What time window works for you for dinner (e.g., 6\u20138 pm, 7\u20139 pm)?\n3) How many people will be in your party?\n4) Any preferences for cuisine (e.g., Italian, Japanese, Californian) or neighborhood in San Francisco?\n5) Rough price range: $, $$, or $$$?\n\nOnce I have these, I\u2019ll look up options and check availability. </action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. I just need a few details:\n\n1) To confirm, do you mean this coming Friday (in 3 days), and is the date [this Friday\u2019s calendar date] correct?\n2) What time window works for you for dinner (e.g., 6\u20138 pm, 7\u20139 pm)?\n3) How many people will be in your party?\n4) Any preferences for cuisine (e.g., Italian, Japanese, Californian) or neighborhood in San Francisco?\n5) Rough price range: $, $$, or $$$?\n\nOnce I have these, I\u2019ll look up options and check availability."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Yes, this coming Friday is correct.  \n\nFor the details:  \n1) Anytime at or after 19:00 works.  \n2) We are 4 people.  \n3) Italian would be ideal.  \n4) No strong neighborhood preference.  \n5) Let\u2019s say $$ to low $$$ is fine."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nWe now have date relative (this Friday), time window (19:00+), party size 4, cuisine Italian, SF, price range mid to high. Need to search restaurants in SF with Italian; tool doesn\u2019t have price filter but returns price_range; we can filter ourselves after search. First use search_restaurants, then filter and present a few, then check availability for chosen; but user didn\u2019t ask to book yet, just help finding a reservation\u2014likely they\u2019ll want me to book once we find. For now, use tool. Need explicit date string; tool accepts \u201cthis Friday\u201d, so we\u2019ll use that later in check_availability. Now call search_restaurants with cuisine \u201cItalian\u201d, location \u201cSan Francisco\u201d. </think>\n<plan>\n1. Search for Italian restaurants in San Francisco using the tool.\n2. Filter results to those in the $$\u2013$$$ range and pick a few good options to present.\n3. Ask the user which restaurant(s) to check for a 19:00 or later slot for 4 people this Friday.\n4. For the chosen option, check availability and, if desired, proceed to booking.\n</plan>\n<action type=\"tool\" name=\"search_restaurants\">\n  { \"cuisine\": \"Italian\", \"location\": \"San Francisco\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "search_restaurants",
+            "args": {
+              "cuisine": "Italian",
+              "location": "San Francisco"
+            },
+            "raw": "search_restaurants({\"cuisine\":\"Italian\",\"location\":\"San Francisco\"})"
+          },
+          "observation": {
+            "raw": "[]",
+            "parsed": []
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nTool returned empty list for Italian in SF. Need to adjust strategy: broaden cuisine or location or ask user about flexibility. Must explain succinctly and ask how they\u2019d like to adjust (different cuisine vs search all cuisines, or nearby areas). </think>\n<plan>\n1. Explain that no Italian options came back from the search.\n2. Ask the user how they\u2019d like to adjust: broader cuisine, specific area, or any cuisine in SF.\n3. Once clarified, rerun a broader restaurant search and proceed toward availability and booking.\n</plan>\n<action type=\"say\">\nThe search I ran didn\u2019t return any Italian restaurants in San Francisco, which is unusual for that area. That likely means the current restaurant directory I can query is incomplete rather than that there are no options.\n\nHow would you like to adjust?\n\n- Are you open to any cuisine (or Italian plus similar options like Mediterranean) in San Francisco?\n- Or would you prefer that I look for Italian specifically in a nearby broader area (e.g., \u201cBay Area\u201d instead of just San Francisco)?\n- Everything else (Friday, 19:00 or later, 4 people, $$ to low $$$) still correct?\n\nOnce you tell me how flexible you are on cuisine/area, I\u2019ll run a broader search and move on to checking availability. </action>",
+          "action_structured": {
+            "type": "say",
+            "text": "The search I ran didn\u2019t return any Italian restaurants in San Francisco, which is unusual for that area. That likely means the current restaurant directory I can query is incomplete rather than that there are no options.\n\nHow would you like to adjust?\n\n- Are you open to any cuisine (or Italian plus similar options like Mediterranean) in San Francisco?\n- Or would you prefer that I look for Italian specifically in a nearby broader area (e.g., \u201cBay Area\u201d instead of just San Francisco)?\n- Everything else (Friday, 19:00 or later, 4 people, $$ to low $$$) still correct?\n\nOnce you tell me how flexible you are on cuisine/area, I\u2019ll run a broader search and move on to checking availability."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "Everything else is correct. Let\u2019s broaden cuisine to Italian plus similar Mediterranean options, and keep it in San Francisco proper."
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed to search again with broader cuisine; tool only has one cuisine string, but it\u2019s descriptive and not a filter, so I can just search SF generally and filter conceptually, or pass a broad string like \u201cItalian, Mediterranean\u201d. Better: search all in SF (no cuisine param) and then pick Italian/Mediterranean-like from results. Then present a few and ask which to check for 19:00+ Friday for 4 people. Use tool now. </think>\n<plan>\n1. Search for restaurants in San Francisco without restricting cuisine.\n2. From results, select Italian/Mediterranean-style options in the $$\u2013$$$ range and present top candidates.\n3. Ask the user which restaurant(s) to check for a 19:00 or later slot this Friday for 4 people.\n4. Once they choose, check availability and, if desired, proceed to booking.\n</plan>\n<action type=\"tool\" name=\"search_restaurants\">\n  { \"location\": \"San Francisco\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "search_restaurants",
+            "args": {
+              "location": "San Francisco"
+            },
+            "raw": "search_restaurants({\"location\":\"San Francisco\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"restaurant_id\": \"RST-001\",\n    \"name\": \"Bella Vista\",\n    \"cuisine\": \"Italian\",\n    \"address\": \"123 Columbus Ave, San Francisco, CA 94133\",\n    \"rating\": 4.5,\n    \"price_range\": \"$$\",\n    \"hours\": \"Mon-Sun 17:00-22:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-002\",\n    \"name\": \"Trattoria Milano\",\n    \"cuisine\": \"Italian\",\n    \"address\": \"456 Lombard St, San Francisco, CA 94133\",\n    \"rating\": 4.2,\n    \"price_range\": \"$$$\",\n    \"hours\": \"Mon-Sun 18:00-23:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-003\",\n    \"name\": \"Little Italy Bistro\",\n    \"cuisine\": \"Italian\",\n    \"address\": \"789 Grant Ave, San Francisco, CA 94108\",\n    \"rating\": 4.0,\n    \"price_range\": \"$\",\n    \"hours\": \"Mon-Sun 17:30-21:30\"\n  }\n]",
+            "parsed": [
+              {
+                "restaurant_id": "RST-001",
+                "name": "Bella Vista",
+                "cuisine": "Italian",
+                "address": "123 Columbus Ave, San Francisco, CA 94133",
+                "rating": 4.5,
+                "price_range": "$$",
+                "hours": "Mon-Sun 17:00-22:00"
+              },
+              {
+                "restaurant_id": "RST-002",
+                "name": "Trattoria Milano",
+                "cuisine": "Italian",
+                "address": "456 Lombard St, San Francisco, CA 94133",
+                "rating": 4.2,
+                "price_range": "$$$",
+                "hours": "Mon-Sun 18:00-23:00"
+              },
+              {
+                "restaurant_id": "RST-003",
+                "name": "Little Italy Bistro",
+                "cuisine": "Italian",
+                "address": "789 Grant Ave, San Francisco, CA 94108",
+                "rating": 4.0,
+                "price_range": "$",
+                "hours": "Mon-Sun 17:30-21:30"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have three Italian options in SF with details. User wants $$ to low $$$, 19:00+ Friday, party 4. RST-001 is $$, RST-002 is $$$, RST-003 is $ so less ideal. Next step is to present concise comparison and ask which to check, maybe suggest 1 and 2 as best fit. Then once they choose, I\u2019ll use check_availability for this Friday 19:00-21:00. </think>\n<plan>\n1. Summarize the three candidate restaurants with key details relevant to the user\u2019s preferences.\n2. Ask the user which restaurant(s) they\u2019d like me to check for availability this Friday at 19:00 or later for 4 people.\n3. After they choose, check availability for the selected option(s) and proceed toward booking if they wish.\n</plan>\n<action type=\"say\">\nI found a few good options in San Francisco that match your preferences:\n\n1) Bella Vista (RST-001) \u2013 Italian, $$  \n   \u2022 Address: 123 Columbus Ave, 94133  \n   \u2022 Rating: 4.5  \n   \u2022 Hours: 17:00\u201322:00  \n\n2) Trattoria Milano (RST-002) \u2013 Italian, $$$  \n   \u2022 Address: 456 Lombard St, 94133  \n   \u2022 Rating: 4.2  \n   \u2022 Hours: 18:00\u201323:00  \n\n3) Little Italy Bistro (RST-003) \u2013 Italian, $  \n   \u2022 Address: 789 Grant Ave, 94108  \n   \u2022 Rating: 4.0  \n   \u2022 Hours: 17:30\u201321:30  \n\nGiven your $$ to low $$$ preference, #1 and #2 are likely the best fits.\n\nWhich restaurant would you like me to check for a reservation this Friday at 19:00 or later for 4 people?  \n(You can pick one, or say \u201c1 and 2\u201d and I\u2019ll check both.) </action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I found a few good options in San Francisco that match your preferences:\n\n1) Bella Vista (RST-001) \u2013 Italian, $$  \n   \u2022 Address: 123 Columbus Ave, 94133  \n   \u2022 Rating: 4.5  \n   \u2022 Hours: 17:00\u201322:00  \n\n2) Trattoria Milano (RST-002) \u2013 Italian, $$$  \n   \u2022 Address: 456 Lombard St, 94133  \n   \u2022 Rating: 4.2  \n   \u2022 Hours: 18:00\u201323:00  \n\n3) Little Italy Bistro (RST-003) \u2013 Italian, $  \n   \u2022 Address: 789 Grant Ave, 94108  \n   \u2022 Rating: 4.0  \n   \u2022 Hours: 17:30\u201321:30  \n\nGiven your $$ to low $$$ preference, #1 and #2 are likely the best fits.\n\nWhich restaurant would you like me to check for a reservation this Friday at 19:00 or later for 4 people?  \n(You can pick one, or say \u201c1 and 2\u201d and I\u2019ll check both.)"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 4,
+      "role": "user",
+      "output_raw": "Let\u2019s try Bella Vista first, then Trattoria Milano if needed."
+    },
+    {
+      "turn_id": 4,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed to check availability for Bella Vista (RST-001) this Friday, 4 people, 19:00 or later. Use check_availability with time_window like 19:00-21:30. If no times, then check Trattoria Milano (RST-002). First, call tool for Bella Vista. </think>\n<plan>\n1. Check availability at Bella Vista (RST-001) for this Friday between 19:00\u201321:30 for 4 people.\n2. If Bella Vista has slots, present them and ask user to choose a time (and then collect name/phone to book).\n3. If Bella Vista has no slots, check Trattoria Milano (RST-002) with the same criteria and proceed similarly.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n  { \"restaurant_id\": \"RST-001\", \"date\": \"this Friday\", \"time_window\": \"19:00-21:30\", \"party_size\": 4 }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "this Friday",
+              "time_window": "19:00-21:30",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-001\",\"date\":\"this Friday\",\"time_window\":\"19:00-21:30\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-001\",\n  \"available_times\": [\n    \"19:15\",\n    \"19:45\",\n    \"20:00\",\n    \"20:30\",\n    \"21:00\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-001",
+              "available_times": [
+                "19:15",
+                "19:45",
+                "20:00",
+                "20:30",
+                "21:00"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nBella Vista has several available times between 19:15 and 21:00 for Friday for 4 people. Next I should ask which time they prefer and then collect name and phone so I can call make_reservation. Keep it concise and clear. </think>\n<plan>\n1. Show the available time options at Bella Vista and have the user pick one.\n2. Collect the reservation name and phone number.\n3. Place the reservation using the booking tool and then confirm details and the code.\n</plan>\n<action type=\"say\">\nBella Vista has availability this Friday for 4 people at:\n\n- 19:15  \n- 19:45  \n- 20:00  \n- 20:30  \n- 21:00  \n\n1) Which time would you like?  \n2) What name should I put on the reservation?  \n3) What phone number should I use? (Please include country code if not US-based.)\n\nOnce I have those, I\u2019ll book it for you. </action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Bella Vista has availability this Friday for 4 people at:\n\n- 19:15  \n- 19:45  \n- 20:00  \n- 20:30  \n- 21:00  \n\n1) Which time would you like?  \n2) What name should I put on the reservation?  \n3) What phone number should I use? (Please include country code if not US-based.)\n\nOnce I have those, I\u2019ll book it for you."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 5,
+      "role": "user",
+      "output_raw": "Let\u2019s do 20:00.  \n\nName: Nikola Petrovic  \nPhone: +381-11-555-3245"
+    },
+    {
+      "turn_id": 5,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser chose 20:00 at Bella Vista, with name and international phone. Need to call make_reservation for RST-001, this Friday, 20:00, party_size 4, with provided name/phone. Then will confirm result next message. </think>\n<plan>\n1. Submit a reservation request to Bella Vista for this Friday at 20:00 for 4 people using the provided contact details.\n2. Review the tool response and confirm success and the confirmation code (or discuss alternatives if it fails).\n</plan>\n<action type=\"tool\" name=\"make_reservation\">\n  {\n    \"restaurant_id\": \"RST-001\",\n    \"date\": \"this Friday\",\n    \"time\": \"20:00\",\n    \"party_size\": 4,\n    \"name\": \"Nikola Petrovic\",\n    \"phone\": \"+381-11-555-3245\"\n  }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "make_reservation",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "this Friday",
+              "time": "20:00",
+              "party_size": 4,
+              "name": "Nikola Petrovic",
+              "phone": "+381-11-555-3245"
+            },
+            "raw": "make_reservation({\"restaurant_id\":\"RST-001\",\"date\":\"this Friday\",\"time\":\"20:00\",\"party_size\":4,\"name\":\"Nikola Petrovic\",\"phone\":\"+381-11-555-3245\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"confirmation_code\": \"BV-1F5K8Z\"\n}",
+            "parsed": {
+              "success": true,
+              "confirmation_code": "BV-1F5K8Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nReservation succeeded with confirmation code. Now I should clearly summarize details and provide the code, maybe offer help if they need changes or cancellation. Keep it concise. </think>\n<plan>\n1. Confirm the reservation details and share the confirmation code.\n</plan>\n<action type=\"say\">\nYou\u2019re all set.\n\nReservation details:\n- Restaurant: Bella Vista (Italian, $$)\n- Date: this Friday\n- Time: 20:00\n- Party size: 4\n- Name: Nikola Petrovic\n- Phone: +381-11-555-3245\n- Confirmation code: BV-1F5K8Z\n\nIf you\u2019d like, I can also note a special request (birthday, dietary needs, etc.) or help later with checking or canceling this reservation. </action>",
+          "action_structured": {
+            "type": "say",
+            "text": "You\u2019re all set.\n\nReservation details:\n- Restaurant: Bella Vista (Italian, $$)\n- Date: this Friday\n- Time: 20:00\n- Party size: 4\n- Name: Nikola Petrovic\n- Phone: +381-11-555-3245\n- Confirmation code: BV-1F5K8Z\n\nIf you\u2019d like, I can also note a special request (birthday, dietary needs, etc.) or help later with checking or canceling this reservation."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 6,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

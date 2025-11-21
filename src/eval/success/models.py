@@ -23,7 +23,7 @@ class TranscriptTurn:
 class SuccessContext:
     conversation_id: str
     turns: List[TranscriptTurn]
-    task_description: str
+    task_objective: str
     task_slots: Dict[str, Any]
     impossible: bool = False
     fallback_behavior: Optional[str] = None

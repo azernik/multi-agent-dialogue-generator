@@ -24,7 +24,7 @@ from .models import (
 def load_conversation_artifact(
     conversation_json_path: Path,
     *,
-    scenario_dir: Optional[Path] = None,
+    scenario_file: Optional[Path] = None,
 ) -> ConversationArtifact:
     """Load a conversation.json artifact and accompanying tool schema."""
     path = Path(conversation_json_path)
@@ -41,7 +41,7 @@ def load_conversation_artifact(
     registry = _build_tool_registry(
         data,
         path,
-        scenario_dir=scenario_dir,
+        scenario_file=scenario_file,
     )
 
     return ConversationArtifact(
@@ -124,19 +124,21 @@ def _build_tool_registry(
     data: dict,
     conversation_path: Path,
     *,
-    scenario_dir: Optional[Path] = None,
+    scenario_file: Optional[Path] = None,
 ) -> ToolRegistry:
     """Construct tool registry from scenario metadata."""
-    if scenario_dir is None:
-        scenario_dir = _infer_scenario_dir(data, conversation_path)
-    if scenario_dir is None or not scenario_dir.exists():
+    if scenario_file is None:
+        scenario_file = _infer_scenario_file(data, conversation_path)
+    if scenario_file is None or not scenario_file.exists():
         return ToolRegistry()
-    scenario = ExampleScenario.load(str(scenario_dir))
+    scenario = ExampleScenario.load(str(scenario_file))
     return _registry_from_tools_dict(scenario.tools)
 
 
-def _infer_scenario_dir(data: dict, conversation_path: Path) -> Optional[Path]:
-    """Best-effort inference of the scenario directory based on metadata/path."""
+def _infer_scenario_file(data: dict, conversation_path: Path) -> Optional[Path]:
+    """Best-effort inference of the scenario file based on metadata/path."""
+    from scenario import extract_scenario_id_from_filename
+    
     repo_root = Path(__file__).resolve().parents[3]
 
     # Attempt inference from parent directory naming convention
@@ -145,17 +147,30 @@ def _infer_scenario_dir(data: dict, conversation_path: Path) -> Optional[Path]:
         prefix = parent_name.split("__", 1)[0]
         parts = prefix.split(".")
         if len(parts) >= 3:
-            candidate = repo_root / "data" / "domains" / parts[0] / parts[1] / parts[2]
-            if candidate.exists():
-                return candidate
+            domain, use_case, scenario_id = parts[0], parts[1], parts[2]
+            # Look for scenario file matching this scenario_id (with any persona)
+            use_case_dir = repo_root / "data" / "domains" / domain / use_case
+            if use_case_dir.exists():
+                # Find file starting with scenario_id
+                for candidate_file in use_case_dir.glob(f"{scenario_id}*.json"):
+                    if candidate_file.name != "tools.json":
+                        return candidate_file
 
     # Fallback: use config scenario name with domain metadata if present
     scenario_name = data.get("config", {}).get("scenario_name")
     domain_meta = data.get("meta", {}).get("domain_id")
     if scenario_name and domain_meta:
-        candidate = repo_root / "data" / "domains" / domain_meta / scenario_name
-        if candidate.exists():
-            return candidate
+        # Try to find scenario file in use_case directory
+        # scenario_name format: domain.use_case.scenario_id
+        scenario_parts = scenario_name.split(".")
+        if len(scenario_parts) >= 3:
+            domain, use_case, scenario_id = scenario_parts[0], scenario_parts[1], scenario_parts[2]
+            use_case_dir = repo_root / "data" / "domains" / domain / use_case
+            if use_case_dir.exists():
+                # Find file starting with scenario_id
+                for candidate_file in use_case_dir.glob(f"{scenario_id}*.json"):
+                    if candidate_file.name != "tools.json":
+                        return candidate_file
     return None
 
 

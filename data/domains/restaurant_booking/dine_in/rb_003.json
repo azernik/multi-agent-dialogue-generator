@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "domain": "restaurant_booking",
+    "use_case": "dine_in",
+    "scenario_id": "rb_003"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "date": "next Saturday",
+        "time_window": ">=19:30",
+        "party_size": 5,
+        "location": "Palo Alto"
+      },
+      "preferences": {
+        "cuisine": "Japanese"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "cuisine": "Japanese",
+        "location": "Palo Alto"
+      },
+      "action": "make_reservation",
+      "notes": "Success if the assistant makes a reservation via make_reservation at one of the seeded Japanese restaurants in Palo Alto for 5 people on next Saturday at or after 19:30 local time. Note that the user reveals details gradually, so the assistant must gather all required information."
+    },
+    "objective": "Find and book a restaurant."
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.gradual_information",
+        "instructions": "Don't mention the cuisine type, party size, or specific time in the first 3 turns. Reveal these details one at a time when asked. First mention just the date and location, then party size when asked again, then time preference, and finally cuisine preference."
+      },
+      {
+        "type_id": "user.comparison_seeking",
+        "instructions": "When presented with restaurant options, ask for more details about at least 2 of them individually. Ask about things like: parking availability, if they take reservations for large groups, ambiance, price range details, and popular dishes. Only make a choice after getting these details."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "restaurants": [
+          {
+            "restaurant_id": "RST-001",
+            "name": "Bella Vista Japanese",
+            "cuisine": "Japanese",
+            "address": "123 University Ave, Palo Alto, CA",
+            "rating": 4.5,
+            "price_range": "$$",
+            "hours": "Mon-Sun 17:00-22:00"
+          },
+          {
+            "restaurant_id": "RST-002",
+            "name": "Sakura Garden",
+            "cuisine": "Japanese",
+            "address": "456 California Ave, Palo Alto, CA",
+            "rating": 4.2,
+            "price_range": "$$$",
+            "hours": "Mon-Sun 18:00-23:00"
+          },
+          {
+            "restaurant_id": "RST-003",
+            "name": "Japanese Bistro",
+            "cuisine": "Japanese",
+            "address": "789 El Camino Real, Palo Alto, CA",
+            "rating": 4.0,
+            "price_range": "$",
+            "hours": "Mon-Sun 17:30-21:30"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_011"
+}

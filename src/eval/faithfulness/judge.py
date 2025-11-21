@@ -61,7 +61,7 @@ def evaluate_faithfulness(
     conversation_path: Path,
     *,
     tool_definitions: Optional[Dict[str, Any]] = None,
-    model: str = "gpt-4.1-mini",
+    model: str = "gpt-5.1",
     api_key: Optional[str] = None,
 ) -> FaithfulnessReport:
     evidence_list = load_faithfulness_evidence(conversation_path)

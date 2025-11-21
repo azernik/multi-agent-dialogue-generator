@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_001",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the checking account using get_account_balance (after identifying it via list_customer_accounts), and the user acknowledges or confirms the balance information."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "current_balance": 2847.5,
+              "available_balance": 2847.5,
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "savings",
+              "nickname": "Emergency Fund",
+              "masked_number": "****5678",
+              "current_balance": 12500.0,
+              "available_balance": 12500.0,
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_005",
+      "name": "Jordan Miles",
+      "age": 29,
+      "hometown": "Minneapolis, MN",
+      "occupation": "Elementary school teacher",
+      "bio": "Jordan Miles teaches fourth grade and loves turning lessons into games that keep students moving and laughing. Weekends are for brunch with friends, planning field trips, and catching up on travel deals during school breaks.",
+      "use_cases": [
+        "restaurant_booking.dine_in_brunch",
+        "calendar.schedule_outdoor_event",
+        "online_shopping.return_order",
+        "travel.check_flight_status"
+      ],
+      "writing_style": "Warm energy, mix of caps/lowercase, exclamation marks, casual",
+      "sample_messages": [
+        "weather looks good for saturday! let's lock in that zoo field trip",
+        "Does the park allow groups of 25 kids or do we need a permit?",
+        "perfect!! forwarding this to the other teachers now"
+      ],
+      "email": "jordan.miles@mpls.k12.mn.us",
+      "phone": "+1-612-555-0476"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "hey!! i wanna check the balance on my account, can you help with that?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants to check balance. Need to list accounts, then ask which one, then get balance. Use tools. Start plan, then call list_customer_accounts.<think>\nI know the user wants to check their account balance. I should first retrieve the list of their accounts, then have them choose which one if there are multiple, and then fetch the balance for that account. I\u2019ll start by calling the accounts tool and then come back with options for the user to pick from.\n</think>\n<plan>\n1. Retrieve the list of the user\u2019s accounts.\n2. Present the accounts and ask which one they want the balance for.\n3. Fetch and display the balance for the selected account.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Emergency Fund\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "savings",
+                "nickname": "Emergency Fund",
+                "masked_number": "****5678",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have two accounts from the tool. I should ask which one they want. Keep it concise, no plan now because last message was assistant. Then proceed after they choose. </think>\n<action type=\"say\">\nYou have these accounts:\n\n1) Everyday Checking (checking, ****1234)\n2) Emergency Fund (savings, ****5678)\n\nWhich account would you like to see the balance for? You can say \u201cchecking,\u201d \u201csavings,\u201d or give the number (1 or 2).</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "You have these accounts:\n\n1) Everyday Checking (checking, ****1234)\n2) Emergency Fund (savings, ****5678)\n\nWhich account would you like to see the balance for? You can say \u201cchecking,\u201d \u201csavings,\u201d or give the number (1 or 2)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "checking please!!"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser chose checking, which is ACC-001. Need plan then call get_account_balance. </think>\n<plan>\n1. Identify the checking account from the list.\n2. Retrieve its current and available balances.\n3. Present the balance details to the user.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 2847.5,\n  \"available_balance\": 2847.5,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:08Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 2847.5,
+              "available_balance": 2847.5,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:08Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have the balance tool result and just need to present it clearly and concisely. No new plan because previous message was assistant/tool. I\u2019ll show both current and available with currency and mention last updated briefly. </think>\n<action type=\"say\">\nHere\u2019s your Everyday Checking (****1234):\n\n- Current balance: $2,847.50 USD  \n- Available balance: $2,847.50 USD  \n- Last updated: 2025-11-21T14:32:08Z\n\nDo you want me to check the balance on your savings account too?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your Everyday Checking (****1234):\n\n- Current balance: $2,847.50 USD  \n- Available balance: $2,847.50 USD  \n- Last updated: 2025-11-21T14:32:08Z\n\nDo you want me to check the balance on your savings account too?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

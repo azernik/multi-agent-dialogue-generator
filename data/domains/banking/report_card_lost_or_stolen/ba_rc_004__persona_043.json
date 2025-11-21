@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_004"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "lost"
+      },
+      "preferences": {
+        "request_replacement": true
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Personal Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the lost card via report_card_issue for the Personal Card credit card account (after listing multiple credit cards via list_customer_accounts and the user clarifies which one they mean), requests a replacement."
+    },
+    "objective": "Report a lost credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.gradual_information",
+        "instructions": "Initially just say you lost your credit card without specifying which one. When the assistant lists multiple credit cards, clarify that you mean the 'Personal Card'."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Personal Card",
+            "masked_number": "****1111",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "credit_card",
+            "nickname": "Work Card",
+            "masked_number": "****2222",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-003",
+            "account_type": "checking",
+            "nickname": "Main Checking",
+            "masked_number": "****3333",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_043"
+}
+

@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "domain": "restaurant_booking",
+    "use_case": "dine_in",
+    "scenario_id": "rb_004"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "date": "Friday evening",
+        "time_window": ">=19:00",
+        "party_size": 2,
+        "location": "Darwin"
+      },
+      "preferences": {
+        "cuisine": "Nepalese"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "cuisine": "Nepalese",
+        "location": "Darwin"
+      },
+      "action": "make_reservation",
+      "notes": "This is an impossible scenario. Success means the assistant clearly explains no Nepalese restaurants are available in Darwin and suggests reasonable alternatives (nearby cuisines, different locations, or dates) as specified in fallback_behavior. The assistant should NOT make a reservation that violates the constraints."
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that there are no Nepalese restaurants available in Darwin and suggest reasonable alternatives (nearby cuisines, different locations, or different dates).",
+    "objective": "Find and book a restaurant that matches the defined slot values."
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results",
+        "instructions": "For any restaurant search queries matching cuisine='Nepalese' and location='Darwin', return an empty restaurant list."
+      }
+    ],
+    "context": {
+      "seed": {
+        "restaurants": []
+      }
+    }
+  },
+  "persona": "persona_001"
+}

@@ -45,8 +45,8 @@ def main(argv: List[str] | None = None) -> int:
         help="Path(s) to conversation.json files or directories containing them.",
     )
     parser.add_argument(
-        "--scenario-dir",
-        help="Optional explicit scenario directory (only valid when a single conversation is evaluated).",
+        "--scenario-file",
+        help="Optional explicit scenario file path (only valid when a single conversation is evaluated).",
     )
     parser.add_argument(
         "--recursive",
@@ -60,17 +60,17 @@ def main(argv: List[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    scenario_override = Path(args.scenario_dir) if args.scenario_dir else None
+    scenario_override = Path(args.scenario_file) if args.scenario_file else None
     conversation_paths = list(_iter_conversation_files(args.targets, args.recursive))
     if not conversation_paths:
         parser.error("No conversation.json files found in provided targets.")
     if scenario_override and len(conversation_paths) != 1:
-        parser.error("--scenario-dir can only be used with a single conversation file or directory.")
+        parser.error("--scenario-file can only be used with a single conversation file or directory.")
 
     for conversation_path in conversation_paths:
         artifact = load_conversation_artifact(
             conversation_path,
-            scenario_dir=scenario_override,
+            scenario_file=scenario_override,
         )
         result = evaluate_conversation(artifact)
         _print_result(result.to_dict(), as_jsonl=args.jsonl)

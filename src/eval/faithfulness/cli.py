@@ -13,8 +13,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("conversation", help="Path to conversation.json")
     parser.add_argument(
         "--model",
-        default="gpt-4.1-mini",
-        help="OpenAI model to use (default: gpt-4.1-mini)",
+        default="gpt-5.1",
+        help="OpenAI model to use (default: gpt-5.1)",
     )
     parser.add_argument(
         "--api-key",

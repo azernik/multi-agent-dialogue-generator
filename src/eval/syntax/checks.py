@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional
+import sys
 
 from .models import StepEvalResult, StepInput, ToolRegistry, TurnEvalResult
 from .parser import ParsedAction, parse_action_body_json, parse_action_blocks
@@ -33,6 +34,16 @@ def evaluate_turn_structure(
     for idx, step in enumerate(turn_steps):
         parsed = parse_action_blocks(step.content)
         structure_errors = _collect_structure_errors(parsed, is_first_step=(idx == 0))
+        # DEBUG: log details when we detect invalid block format to help diagnose parser issues.
+        if STRUCTURE_INVALID_BLOCK_FORMAT in structure_errors:
+            print(
+                f"[SYNTAX DEBUG] turn_id={step.turn_id} micro_step_index={step.micro_step_index} "
+                f"parse_errors={parsed.parse_errors} "
+                f"think={bool(parsed.think)} plan={bool(parsed.plan)} "
+                f"extra_action_blocks={parsed.extra_action_blocks} "
+                f"non_enclosed_segments={parsed.non_enclosed_segments}",
+                file=sys.stderr,
+            )
         tool_errors: List[str] = []
         if parsed.action_type == "tool":
             tool_errors = _collect_tool_errors(parsed, tool_registry)

@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "domain": "travel",
+    "use_case": "book_flight",
+    "scenario_id": "tr_bf_012"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "origin": "Washington DC",
+        "destination": "Chicago",
+        "departure_date": "2025-11-20",
+        "return_date": "2025-11-22",
+        "num_passengers": 1
+      },
+      "preferences": {
+        "class_preference": "economy"
+      }
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that no flights are available for tomorrow. Express empathy for the situation. Offer to search for flights the day after, check nearby airports, or suggest alternative transportation options. Be sensitive and understanding.",
+    "success_criteria": {
+      "target_selector": {
+        "departure_date": "2025-11-20"
+      },
+      "action": "explain_no_flights",
+      "notes": "Success if the assistant clearly communicated that no flights are available and offered alternatives"
+    },
+    "objective": "Book a flight from Washington DC to Chicago."
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "instructions": "User needs a flight the next day for a funeral but there are no flights available. User is emotional and stressed about needing to attend a funeral. They express urgency and may mention the funeral context. Makes comments like 'I really need to be there tomorrow' and 'This is really important.'"
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "flights": []
+      }
+    },
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results",
+        "instructions": "search_flights should return an empty result set for tomorrow's date, indicating no flights available. If user asks to search the day after, return available flights."
+      }
+    ]
+  },
+  "persona": "persona_013"
+}

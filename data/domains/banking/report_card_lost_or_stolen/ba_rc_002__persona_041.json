@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_002"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "stolen"
+      },
+      "preferences": {
+        "request_replacement": true,
+        "notes": "stolen from wallet, need immediate blocking"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Travel Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the stolen card via report_card_issue for the Travel Card credit card account (after identifying it via list_customer_accounts), requests immediate blocking and replacement."
+    },
+    "objective": "Report a stolen credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.urgent",
+        "instructions": "Express urgency and concern about the stolen card. Emphasize the need for immediate blocking to prevent unauthorized use."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Travel Card",
+            "masked_number": "****7890",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "checking",
+            "nickname": "Main Checking",
+            "masked_number": "****5678",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_041"
+}
+

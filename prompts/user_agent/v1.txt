@@ -58,11 +58,42 @@ You will receive persona details describing you, the human user (name, age, home
 
 CONVERSATION COMPLETION:
 
-When your objective is completely satisfied, include the tokens '[DONE_SUCCESS]' in your output, and the conversation will be terminated.
-When your objective cannot be completed or you want to abandon the task, include '[DONE_FAILURE]' in your output.
+CRITICAL - TASK COMPLETION DETECTION:
 
-When either of these strings appear in your output, the conversation will end.
+Only output '[DONE_SUCCESS]' when BOTH conditions are met:
+1. The assistant has explicitly confirmed that the action was COMPLETED (past tense or definitive present tense)
+2. You have received concrete evidence the task is done
 
+DO NOT terminate when the assistant:
+- Says they "will" or "can" do something (future tense promises)
+- Asks for confirmation before proceeding
+- Says "I'll take care of that" or "I'll handle that" or "I'll do that"
+- Describes what they're "about to" do or "going to" do
+- Says "Once I have X, I'll..." or "After you confirm Y, I'll..."
+- Provides a plan or list of steps they will take
+- Asks clarifying questions or requests additional information
+
+ONLY terminate when the assistant:
+- Uses past tense: "I've rescheduled...", "The meeting has been moved...", "Done!", "I've completed..."
+- Provides specific confirmation: "Your reservation is confirmed for...", "Order #12345 has been cancelled", "The meeting is now scheduled for..."
+- Shows you a concrete result: "Here's your confirmation number...", "The calendar shows...", "Your order status is now..."
+- Explicitly states completion: "The task is complete.", "All set!", "That's been taken care of."
+
+Examples of when NOT to terminate:
+- Assistant: "I'll reschedule that meeting for you." → Continue, they haven't done it yet
+- Assistant: "Once you confirm the date, I'll update it." → Continue, waiting for confirmation
+- Assistant: "I can help with that. Let me find the meeting first." → Continue, they're about to start
+
+Examples of when TO terminate:
+- Assistant: "I've rescheduled your Research Sync meeting from Nov 11 to Nov 12 at 2:00 PM. The calendar has been updated." → Terminate with [DONE_SUCCESS]
+- Assistant: "Your order has been cancelled. You'll receive a refund confirmation email shortly." → Terminate with [DONE_SUCCESS]
+- Assistant: "Done! Your reservation is confirmed for Friday at 7 PM." → Terminate with [DONE_SUCCESS]
+
+If the assistant is still asking questions, hasn't confirmed completion, or is using future tense about actions they will take, continue the conversation. Wait for definitive confirmation that the task is actually complete.
+
+- When your objective has been achieved and you have received confirmation from the assistant that the action was taken, include the tokens '[DONE_SUCCESS]' in your output, and the conversation will be terminated.
+- When your objective cannot be completed or you want to abandon the task, include '[DONE_FAILURE]' in your output.
+- When either of these strings appear in your output, the conversation will end.
 ---
 
 Details of your task, persona, and specific behavior settings will be provided below.

@@ -1,0 +1,223 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_rc_005",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_rc_005",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_card": "credit_card",
+          "issue_type": "stolen"
+        },
+        "preferences": {
+          "request_replacement": true
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "credit_card",
+          "nickname": "Rewards Card"
+        },
+        "action": "report_card_issue",
+        "notes": "Success if the assistant reports the stolen card via report_card_issue for the Rewards Card credit card account (after the user provides vague descriptions like 'my main card' and the assistant clarifies via list_customer_accounts), requests a replacement, and the user accepts or confirms the report."
+      },
+      "objective": "Report a stolen credit card"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Initially describe the card vaguely as 'my main card' or 'the one I use most'. Only provide the specific nickname 'Rewards Card' when the assistant lists the available cards and asks which one."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "credit_card",
+              "nickname": "Rewards Card",
+              "masked_number": "****4444",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "credit_card",
+              "nickname": "Travel Card",
+              "masked_number": "****5555",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-003",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****6666",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_044",
+      "name": "Aisha Patel",
+      "age": 26,
+      "hometown": "Cambridge, MA",
+      "occupation": "Museum educator",
+      "bio": "Aisha Patel develops interactive exhibits at a science museum in Cambridge, focusing on technology and innovation history. She creates hands-on demonstrations, writes exhibit text, and trains docents. She loves finding ways to show how historical innovations connect to modern technology that visitors use every day.",
+      "use_cases": [],
+      "sample_messages": [
+        "working on the computing history exhibit - need to source a working apple II or similar for the demo",
+        "docent training materials need updating for the new AI exhibit. can you schedule a team meeting?",
+        "field trip to the computer history museum in CA - book flights and hotel for 3 nights in may"
+      ],
+      "email": "aisha.patel@example.com",
+      "phone": "(617) 555-8142"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "need to report my main credit card as stolen and get a replacement sent out"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed card id and confirm stolen vs lost, shipping address preferences. Then call report_card_issue. But I don\u2019t have a tool to list cards; assume card_id must come from user. Ask concise clarifying questions. </think>\n<plan>\n1. Confirm details: which card, issue type (stolen), and replacement preference/shipping address.\n2. Once I have the card_id and preferences, submit the stolen card report and replacement request.\n3. Confirm to the user that the card is blocked and provide replacement details.\n</plan>\n<action type=\"say\">\nI can help with that. I need a couple of details to proceed:\n\n1) Which card is this?\n- If you know the internal/card ID from your account, share that (don\u2019t send the full card number).\n- Otherwise, tell me the nickname and last 4 digits (e.g., \u201cMain Visa ending 1234\u201d), and I\u2019ll refer to it that way and you can confirm the internal ID from your app/statement.\n\n2) Just to confirm: this is a **stolen** card (not just lost), correct?\n\n3) Where should the replacement be sent?\n- Use the primary mailing address on file, or\n- A different address (please provide the address exactly as it should appear).\n\nOnce you provide:\n- card_id (or confirm the internal ID you see in your app),\n- confirmation that it\u2019s stolen,\n- and the shipping address preference,\n\nI\u2019ll submit the stolen card report and request a replacement right away.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. I need a couple of details to proceed:\n\n1) Which card is this?\n- If you know the internal/card ID from your account, share that (don\u2019t send the full card number).\n- Otherwise, tell me the nickname and last 4 digits (e.g., \u201cMain Visa ending 1234\u201d), and I\u2019ll refer to it that way and you can confirm the internal ID from your app/statement.\n\n2) Just to confirm: this is a **stolen** card (not just lost), correct?\n\n3) Where should the replacement be sent?\n- Use the primary mailing address on file, or\n- A different address (please provide the address exactly as it should appear).\n\nOnce you provide:\n- card_id (or confirm the internal ID you see in your app),\n- confirmation that it\u2019s stolen,\n- and the shipping address preference,\n\nI\u2019ll submit the stolen card report and request a replacement right away."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "it\u2019s the one i use most \u2013 the main credit card on my account, ending in 4421  \n\nyes, it\u2019s stolen, not just misplaced  \n\nsend the replacement to my primary mailing address on file"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed card_id, can\u2019t infer from last4. Ask them to either give internal id or let me list accounts then clarify. Use tool list_customer_accounts, then ask them to confirm which is main ending 4421 so I get its account/card_id. </think>\n<plan>\n1. Retrieve the user\u2019s credit card accounts so we can identify the main card ending in 4421.\n2. Ask the user to confirm which listed card matches their main card.\n3. Call the report_card_issue tool for that card as stolen with replacement requested to primary address.\n4. Share the outcome and next steps with the user.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Rewards Card\",\n    \"masked_number\": \"****4444\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Travel Card\",\n    \"masked_number\": \"****5555\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-003\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****6666\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "credit_card",
+                "nickname": "Rewards Card",
+                "masked_number": "****4444",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "credit_card",
+                "nickname": "Travel Card",
+                "masked_number": "****5555",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-003",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****6666",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nNo 4421 card appears; need user to clarify which credit card is \u201cmain\u201d among 4444/5555 or note that 4421 isn\u2019t in this institution. Then, once I have the correct card_id, I can call report_card_issue as stolen with replacement. Ask succinctly. </think>\n<plan>\n1. Present the credit card list found and ask the user to choose which is their main card (or clarify about 4421).\n2. Once confirmed, report that specific card as stolen and request a replacement to the primary address.\n3. Confirm blocking and replacement details back to the user.\n</plan>\n<action type=\"say\">\nI don\u2019t see a card ending in 4421 on your profile here. The credit cards I do see are:\n\n- Rewards Card \u2014 credit card, ending in 4444 (ACC-001)  \n- Travel Card \u2014 credit card, ending in 5555 (ACC-002)\n\nWhich one of these is your \u201cmain\u201d card that you want to report as stolen?\n\nReply with:\n- \u201cRewards Card (4444)\u201d or \u201cTravel Card (5555)\u201d\n\nIf the stolen 4421 card is actually with a different bank than this one, I won\u2019t be able to block it from here, but I can walk you through the steps to contact that issuer immediately.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I don\u2019t see a card ending in 4421 on your profile here. The credit cards I do see are:\n\n- Rewards Card \u2014 credit card, ending in 4444 (ACC-001)  \n- Travel Card \u2014 credit card, ending in 5555 (ACC-002)\n\nWhich one of these is your \u201cmain\u201d card that you want to report as stolen?\n\nReply with:\n- \u201cRewards Card (4444)\u201d or \u201cTravel Card (5555)\u201d\n\nIf the stolen 4421 card is actually with a different bank than this one, I won\u2019t be able to block it from here, but I can walk you through the steps to contact that issuer immediately."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "rewards card 4444 is the main one i need to report"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNow I know the exact card: Rewards Card ending 4444, account_id ACC-001, issue type stolen, replacement to primary address. I should call report_card_issue with those parameters, requesting replacement. Then relay the result and brief next steps. </think>\n<plan>\n1. Report the Rewards Card (ACC-001) as stolen and request a replacement to your primary address.\n2. Review the tool response for blocking and replacement details.\n3. Confirm to you that the card is blocked and share the replacement info and immediate safety steps.\n</plan>\n<action type=\"tool\" name=\"report_card_issue\">\n{\"card_id\":\"ACC-001\",\"issue_type\":\"stolen\",\"notes\":\"User reported main Rewards Card ending 4444 as stolen via chat; request replacement to primary mailing address on file.\",\"request_replacement\":true}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "report_card_issue",
+            "args": {
+              "card_id": "ACC-001",
+              "issue_type": "stolen",
+              "notes": "User reported main Rewards Card ending 4444 as stolen via chat; request replacement to primary mailing address on file.",
+              "request_replacement": true
+            },
+            "raw": "report_card_issue({\"card_id\":\"ACC-001\",\"issue_type\":\"stolen\",\"notes\":\"User reported main Rewards Card ending 4444 as stolen via chat; request replacement to primary mailing address on file.\",\"request_replacement\":true})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"replacement_card_id\": \"ACC-001-R1\",\n  \"estimated_arrival\": \"2025-11-27T18:00:00Z\"\n}",
+            "parsed": {
+              "success": true,
+              "replacement_card_id": "ACC-001-R1",
+              "estimated_arrival": "2025-11-27T18:00:00Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nTool call succeeded: card blocked and replacement scheduled. I should confirm this, mention arrival timing in simple terms, and give brief safety guidance. No need for further tools. </think>\n<action type=\"say\">\nYour Rewards Card (ending in 4444) has been reported as stolen and is now blocked from new charges.\n\nA replacement card has been ordered:\n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: by 2025-11-27\n\nNext steps:\n- If you haven\u2019t already, review recent transactions on that card and tell me if you see anything you don\u2019t recognize\u2014I can help start a dispute.\n- Update any merchants where this card is on file once your new card arrives.\n\nDo you want me to help you review recent transactions on the Rewards Card now?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your Rewards Card (ending in 4444) has been reported as stolen and is now blocked from new charges.\n\nA replacement card has been ordered:\n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: by 2025-11-27\n\nNext steps:\n- If you haven\u2019t already, review recent transactions on that card and tell me if you see anything you don\u2019t recognize\u2014I can help start a dispute.\n- Update any merchants where this card is on file once your new card arrives.\n\nDo you want me to help you review recent transactions on the Rewards Card now?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

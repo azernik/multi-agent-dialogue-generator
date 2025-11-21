@@ -7,6 +7,9 @@ import sys
 from core import Message, MessageRole, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario
+from eval.syntax.parser import parse_action_blocks
+from eval.syntax.checks import _collect_structure_errors, _collect_tool_errors
+from eval.syntax.models import StepInput, ToolRegistry, ToolSchema, ToolParameterSpec
 
 @dataclass
 class ConversationResult:
@@ -30,7 +33,8 @@ class ConversationRunner:
                  max_turns: int = 20,
                  persona: Optional[Dict[str, Any]] = None,
                  task_override: Optional[Dict[str, Any]] = None,
-                 system_greeting: Optional[str] = DEFAULT_SYSTEM_GREETING):
+                 system_greeting: Optional[str] = DEFAULT_SYSTEM_GREETING,
+                 verbose: bool = False):
         self.scenario = scenario
         self.system_agent = system_agent
         self.user_agent = user_agent
@@ -39,7 +43,7 @@ class ConversationRunner:
         self.persona = persona
         self.task_context = task_override or scenario.task
         self.logger = logging.getLogger(__name__)
-        
+        self.verbose = verbose
         # Three separate conversation histories
         self.user_history: List[Message] = []
         self.system_history: List[Message] = []
@@ -58,6 +62,60 @@ class ConversationRunner:
             self.system_history.append(greeting_msg)
             self.user_history.append(greeting_msg)
         
+        # Cache tool registry for validation
+        self._tool_registry_cache: Optional[ToolRegistry] = None
+    
+    def _build_tool_registry(self) -> ToolRegistry:
+        """Build ToolRegistry from scenario.tools, caching the result."""
+        if self._tool_registry_cache is None:
+            registry = ToolRegistry()
+            for tool_name, tool_def in (self.scenario.tools or {}).items():
+                params = tool_def.get("parameters", {})
+                schema = ToolSchema(name=tool_name)
+                for param_name, param_def in params.items():
+                    schema.parameters[param_name] = ToolParameterSpec(
+                        name=param_name,
+                        required=bool(param_def.get("required")),
+                        type=param_def.get("type"),
+                        description=param_def.get("description"),
+                    )
+                registry.tools[tool_name] = schema
+            self._tool_registry_cache = registry
+        return self._tool_registry_cache
+    
+    def _validate_assistant_response(
+        self, 
+        response: str, 
+        turn_id: int, 
+        micro_step_index: int, 
+        is_first_step: bool
+    ) -> Tuple[bool, List[str]]:
+        """Validate an assistant response for syntax errors.
+        
+        Returns:
+            Tuple of (is_valid: bool, errors: List[str])
+        """
+        tool_registry = self._build_tool_registry()
+        step_input = StepInput(
+            turn_id=turn_id,
+            micro_step_index=micro_step_index,
+            content=response
+        )
+        
+        parsed = parse_action_blocks(response)
+        structure_errors = _collect_structure_errors(parsed, is_first_step=is_first_step)
+        tool_errors: List[str] = []
+        
+        if parsed.action_type == "tool":
+            tool_errors = _collect_tool_errors(parsed, tool_registry)
+        elif parsed.action_type is not None and parsed.action_type != "say":
+            structure_errors.append("syntax_illegal_action_type")
+        
+        all_errors = structure_errors + tool_errors
+        is_valid = len(all_errors) == 0
+        
+        return is_valid, all_errors
+    
     def _format_turn_summary(self, turn_id: int, user_text: str, system_steps: List[Dict[str, Any]]) -> str:
         """Format a one-line summary of a turn for progress logging."""
         # Truncate user text to fit on one line
@@ -116,8 +174,10 @@ class ConversationRunner:
             # Get steps from the last turn trace
             last_trace = self.turn_traces[-1] if self.turn_traces else {}
             system_steps = last_trace.get('assistant', {}).get('steps', [])
-            turn_summary = self._format_turn_summary(turn_id, user_text, system_steps)
-            print(turn_summary, file=sys.stderr)
+            
+            if self.verbose:
+                turn_summary = self._format_turn_summary(turn_id, user_text, system_steps)
+                print(turn_summary, file=sys.stderr)
             
             termination_result = self.check_termination(system_message, turn)
             if termination_result:
@@ -178,8 +238,46 @@ class ConversationRunner:
         while True:
             # Build context and get assistant output for the current micro-step
             system_context = self.build_system_context(turn_number)
-            system_response = self.system_agent.generate_response(system_context)
-            self.logger.info(f"\nsystem_agent response: {system_response}\n")
+            
+            # Retry loop with syntax validation
+            max_retries = 3
+            system_response = None
+            micro_step_index = len(steps)
+            is_first_step = (micro_step_index == 0)
+            
+            for retry_attempt in range(max_retries):
+                system_response = self.system_agent.generate_response(system_context)
+                self.logger.info(f"\nsystem_agent response: {system_response}\n")
+                
+                # Validate syntax
+                is_valid, errors = self._validate_assistant_response(
+                    system_response,
+                    turn_id,
+                    micro_step_index,
+                    is_first_step
+                )
+                
+                if is_valid:
+                    break
+                
+                # Log retry attempt with error details
+                error_names = ", ".join(errors) if errors else "unknown_error"
+                self.logger.warning(
+                    f"Retrying assistant message due to error {error_names}, turn {turn_id}.{micro_step_index + 1}"
+                )
+                
+                # If this is the last retry, log warning but use the response anyway
+                if retry_attempt == max_retries - 1:
+                    self.logger.warning(
+                        f"Max retries ({max_retries}) exceeded for turn {turn_id}.{micro_step_index + 1}, "
+                        f"proceeding with response despite errors: {error_names}"
+                    )
+                    break
+            
+            # Safety check: ensure system_response was set (should always be true)
+            if system_response is None:
+                raise RuntimeError(f"Failed to generate system response after {max_retries} retries")
+            
             system_messages_raw.append(system_response)
             if self.has_tool_call(system_response):
                 had_tool_call = True
@@ -281,7 +379,7 @@ class ConversationRunner:
             task_slots = self.task_context.get('slots', {})
             if task_slots:
                 ua.setdefault('slots', deepcopy(task_slots))
-            task_desc = self.task_context.get('description')
+            task_desc = self.task_context.get('objective') or self.task_context.get('description')
             if task_desc:
                 ua.setdefault('objective', task_desc)
         if self.persona:

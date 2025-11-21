@@ -57,7 +57,7 @@ def _format_user_messages(user_messages: List[Dict[str, Any]]) -> str:
 def evaluate_role_confusion(
     conversation_path: Path,
     *,
-    model: str = "gpt-4.1-mini",
+    model: str = "gpt-5.1",
     api_key: Optional[str] = None,
 ) -> RoleConfusionEvaluation:
     """Evaluate whether the user agent confused its role and acted like an assistant."""

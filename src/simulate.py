@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from core import LLMClient, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
-from scenario import ExampleScenario, load_system_prompts
+from scenario import ExampleScenario, load_system_prompts, resolve_scenario_id, resolve_scenario_target, resolve_scenario_pattern
 from runner import ConversationRunner, ConversationResult
 
 _PERSONA_CATALOG_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -50,37 +50,30 @@ def _prepare_persona_context(
     persona_context: Optional[Dict[str, Any]] = None
     persona_id: Optional[str] = None
 
-    if scenario.persona_catalog and scenario.persona_entries:
-        persona_id = persona_arg or next((entry.get('id') for entry in scenario.persona_entries if entry.get('id')), None)
-        if not persona_id:
-            raise ValueError("Persona entries configured but no valid id provided")
-        matching_entry = next((entry for entry in scenario.persona_entries if entry.get('id') == persona_id), None)
-        if matching_entry is None:
-            raise ValueError(f"Persona id '{persona_id}' not listed in scenario personas")
-
-        catalog_path = Path(scenario.persona_catalog)
-        if not catalog_path.is_absolute():
-            repo_root = Path(__file__).resolve().parent.parent
-            catalog_path = (repo_root / catalog_path).resolve()
-
+    # Use persona_arg if provided, otherwise use persona from scenario
+    persona_id = persona_arg or scenario.persona_id
+    
+    if persona_id:
+        # Hardcoded catalog path
+        repo_root = Path(__file__).resolve().parent.parent
+        catalog_path = (repo_root / "data/personas/catalog.json").resolve()
+        
+        if not catalog_path.exists():
+            raise FileNotFoundError(f"Persona catalog not found: {catalog_path}")
+        
         base_persona = _load_persona_from_catalog(catalog_path, persona_id)
         persona_context = dict(base_persona)
         persona_context['id'] = persona_id
-
-        slot_overrides = matching_entry.get('slot_overrides') if isinstance(matching_entry, dict) else None
-        task_override = _merge_task_slots(task_override, slot_overrides)
-        if slot_overrides:
-            persona_context['slot_overrides'] = slot_overrides
     elif persona_arg:
-        raise ValueError("Persona id provided but scenario has no personas configured")
+        raise ValueError("Persona id provided but scenario has no persona configured")
 
     return persona_context, task_override, persona_id
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
-    parser.add_argument('example_path', help='Path to scenario directory (e.g., data/domains/restaurant_booking/dine_in/rb_001)')
-    parser.add_argument('--model', default='gpt-5-mini', help='LLM model to use')
+    parser.add_argument('targets', nargs='+', help='Scenario file paths or scenario IDs (e.g., ca_oe_005__persona_001)')
+    parser.add_argument('--model', default='gpt-5.1', help='LLM model to use')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
@@ -88,13 +81,16 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--system-agent-prompt', help='Path to system agent prompt file')
     parser.add_argument('--user-agent-prompt', help='Path to user agent prompt file') 
     parser.add_argument('--tool-agent-prompt', help='Path to tool agent prompt file')
-    parser.add_argument('--prompt-version', default='v1', help='Version of prompts to use (default: v1)')
+    parser.add_argument('--prompt-version', default=None, help='Version of prompts to use for all agents (overrides per-agent versions if specified)')
+    parser.add_argument('--system-agent-prompt-version', default='v2', help='Version of system agent prompt (default: v2)')
+    parser.add_argument('--user-agent-prompt-version', default='v1', help='Version of user agent prompt (default: v1)')
+    parser.add_argument('--tool-agent-prompt-version', default='v1', help='Version of tool agent prompt (default: v1)')
     parser.add_argument('--debug-transcripts', action='store_true', help='Write system.md/user.md/tool.md and agent_flow.log')
     parser.add_argument('--export-steps-jsonl', action='store_true', help='Write turns.jsonl (one JSONL record per system turn)')
     parser.add_argument('--outputs-root', help='Root directory for outputs (default: env MADG_OUTPUT_ROOT or data/outputs)')
     parser.add_argument('--persona-id', help='Persona ID to use when scenario defines personas')
     parser.add_argument('--run-eval', action='store_true', help='Automatically run evaluation after conversation completes')
-    parser.add_argument('--eval-model', default='gpt-4.1-mini', help='Model to use for evaluation (default: gpt-4.1-mini)')
+    parser.add_argument('--eval-model', default='gpt-5.1', help='Model to use for evaluation (default: gpt-5.1)')
     parser.add_argument('--skip-faithfulness', action='store_true', help='Skip faithfulness evaluation when running --run-eval')
     parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
     return parser.parse_args()
@@ -112,34 +108,39 @@ def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Pa
     cwd = Path(__file__).resolve().parent.parent  # src/ -> repo root
     return cwd / 'data' / 'outputs'
 
-def _relative_scenario_path(example_dir: Path) -> Path:
-    """Compute scenario-relative path under data/scenarios or data/examples if present.
-    Falls back to just the leaf directory name.
+def _relative_scenario_path(example_path: Path) -> Path:
+    """Compute scenario-relative path under data/domains.
+    Falls back to just the filename (without extension).
     """
-    parts = example_dir.resolve().parts
+    parts = example_path.resolve().parts
     rel = None
     if 'domains' in parts:
         idx = parts.index('domains')
-        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
-    elif 'scenarios' in parts:
-        idx = parts.index('scenarios')
-        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
-    elif 'examples' in parts:
-        idx = parts.index('examples')
-        rel = Path(*parts[idx+1:]) if idx + 1 < len(parts) else None
-    return rel if rel and str(rel) else Path(example_dir.name)
+        # Include all parts after domains, but replace filename with base name (no extension)
+        domain_parts = parts[idx+1:]
+        if domain_parts:
+            # Replace last part (filename) with filename without extension
+            from scenario import extract_scenario_id_from_filename
+            base_parts = list(domain_parts[:-1])
+            filename_base = extract_scenario_id_from_filename(domain_parts[-1])
+            rel = Path(*base_parts) / filename_base if base_parts else Path(filename_base)
+    return rel if rel and str(rel) else Path(example_path.stem)
 
-def _scenario_key(example_dir: Path) -> str:
-    """Canonical scenario key: domain.use_case.scenario_id derived from data/domains path."""
-    parts = example_dir.resolve().parts
+def _scenario_key(example_path: Path) -> str:
+    """Canonical scenario key: domain.use_case.scenario_id derived from data/domains path and filename."""
+    from scenario import extract_scenario_id_from_filename, parse_scenario_filename
+    
+    parts = example_path.resolve().parts
     if 'domains' in parts:
         idx = parts.index('domains')
         tail = [p for p in parts[idx+1:]]
-        if len(tail) >= 3:
-            domain, use_case, scenario_id = tail[0], tail[1], tail[2]
+        if len(tail) >= 2:
+            domain, use_case = tail[0], tail[1]
+            # Extract scenario_id from filename (last part)
+            scenario_id = extract_scenario_id_from_filename(tail[-1])
             return f"{domain}.{use_case}.{scenario_id}"
-    # fallback: join remaining parts with dots
-    return '.'.join([example_dir.parent.name, example_dir.name])
+    # fallback: use filename without extension
+    return extract_scenario_id_from_filename(example_path.name)
 
 def _sanitize_persona_id(persona_id: Optional[str]) -> Optional[str]:
     if not persona_id:
@@ -159,7 +160,13 @@ def setup_logging(
     Returns: output_file, log_file, agent_flow_file, run_dir, run_id
     """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    example_dir = Path(example_path)
+    scenario_file = Path(example_path)
+    
+    # Extract persona from filename if not provided
+    if not persona_id:
+        from scenario import extract_persona_from_filename
+        persona_id = extract_persona_from_filename(scenario_file.name)
+    
     persona_slug = _sanitize_persona_id(persona_id)
     if persona_slug:
         run_id = f"simulate_{persona_slug}_{timestamp}"
@@ -167,7 +174,7 @@ def setup_logging(
         run_id = f"simulate_{timestamp}"
 
     # Compute centralized outputs path mirroring scenario hierarchy
-    scenario_key = _scenario_key(example_dir)
+    scenario_key = _scenario_key(scenario_file)
     run_dir = outputs_root / f"{scenario_key}__{run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
     
@@ -198,8 +205,9 @@ def _resolve_prompts_dir(example_path: str) -> Path:
     candidate_old = cwd / 'data' / 'system_prompts'
     if candidate_old.exists():
         return candidate_old
-    # Else, walk up from the example path to find siblings
-    cur = Path(example_path).resolve()
+    # Else, walk up from the scenario file's directory to find siblings
+    scenario_file = Path(example_path).resolve()
+    cur = scenario_file.parent  # Start from scenario file's directory
     for parent in [cur] + list(cur.parents):
         sibling_new = parent.parent / 'prompts'
         if sibling_new.exists():
@@ -211,11 +219,27 @@ def _resolve_prompts_dir(example_path: str) -> Path:
     return Path('prompts')
 
 
-def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tuple[ExampleScenario, Dict[str, str]]:
+def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tuple[ExampleScenario, Dict[str, str], Dict[str, str]]:
     """Load scenario and system prompts"""
     try:
         # Load scenario from example_path
         scenario = ExampleScenario.load(example_path)
+        
+        # Determine prompt versions: --prompt-version overrides all, otherwise use per-agent defaults
+        if args.prompt_version:
+            # Override mode: use same version for all agents
+            prompt_versions = {
+                'system_agent': args.prompt_version,
+                'user_agent': args.prompt_version,
+                'tool_agent': args.prompt_version
+            }
+        else:
+            # Per-agent version mode (defaults: v2 for system, v1 for others)
+            prompt_versions = {
+                'system_agent': args.system_agent_prompt_version,
+                'user_agent': args.user_agent_prompt_version,
+                'tool_agent': args.tool_agent_prompt_version
+            }
         
         # Load system prompts
         if args.system_agent_prompt or args.user_agent_prompt or args.tool_agent_prompt:
@@ -227,23 +251,27 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
                 'tool_agent': args.tool_agent_prompt
             }
             
+            prompts_dir = Path(args.system_prompts_dir) if args.system_prompts_dir else _resolve_prompts_dir(example_path)
             for agent_type, custom_path in custom_prompts.items():
                 if custom_path:
                     # Use custom path
                     with open(custom_path, 'r') as f:
                         system_prompts[agent_type] = f.read().strip()
                 else:
-                    # Fall back to default location
-                    prompts_dir = Path(args.system_prompts_dir) if args.system_prompts_dir else _resolve_prompts_dir(example_path)
-                    prompt_file = prompts_dir / agent_type / f"{args.prompt_version}.txt"
+                    # Fall back to versioned prompt file
+                    prompt_file = prompts_dir / agent_type / f"{prompt_versions[agent_type]}.txt"
                     with open(prompt_file, 'r') as f:
                         system_prompts[agent_type] = f.read().strip()
         else:
-            # Use directory-based loading
+            # Use directory-based loading with per-agent versions
             prompts_dir = Path(args.system_prompts_dir) if args.system_prompts_dir else _resolve_prompts_dir(example_path)
-            system_prompts = load_system_prompts(str(prompts_dir), args.prompt_version)
+            system_prompts = {}
+            for agent_type in ['system_agent', 'user_agent', 'tool_agent']:
+                prompt_file = prompts_dir / agent_type / f"{prompt_versions[agent_type]}.txt"
+                with open(prompt_file, 'r') as f:
+                    system_prompts[agent_type] = f.read().strip()
         
-        return scenario, system_prompts
+        return scenario, system_prompts, prompt_versions
         
     except FileNotFoundError as e:
         print(f"Error: Could not find required files: {e}", file=sys.stderr)
@@ -730,27 +758,27 @@ def _copy_to_valid_outputs(
     repo_root: Path
 ) -> Optional[Path]:
     """Copy successful simulation to valid_outputs directory. Returns destination path."""
-    # Determine valid_outputs root
-    valid_outputs_root = repo_root / "data" / "valid_outputs"
+    from scenario import parse_scenario_filename, extract_scenario_id_from_filename
     
-    # Extract domain/use_case/scenario_id from scenario_path
+    # Determine valid_outputs root
+    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v2"
+    
+    # Extract domain/use_case from scenario_path, scenario_id from filename
     parts = scenario_path.resolve().parts
     try:
         domains_idx = parts.index("domains")
-        if domains_idx + 3 <= len(parts):
+        if domains_idx + 2 <= len(parts):
             domain = parts[domains_idx + 1]
             use_case = parts[domains_idx + 2]
-            scenario_id = parts[domains_idx + 3]
         else:
-            # Fallback: use scenario name
             domain = "unknown"
             use_case = "unknown"
-            scenario_id = scenario_path.name
     except ValueError:
-        # Fallback if "domains" not in path
         domain = "unknown"
         use_case = "unknown"
-        scenario_id = scenario_path.name
+    
+    # Extract scenario_id from filename (remove persona suffix)
+    scenario_id = extract_scenario_id_from_filename(scenario_path.name)
     
     # Create destination structure: valid_outputs/<domain>/<use_case>/<scenario_id>__<persona>__<timestamp>/
     persona_str = persona_id or "default"
@@ -777,12 +805,12 @@ def _copy_to_valid_outputs(
 
 
 def _infer_domain_id(example_path: str) -> Optional[str]:
-    """Infer domain id from an example path like data/scenarios/<domain>/..."""
+    """Infer domain id from an example path like data/domains/<domain>/..."""
     try:
         p = Path(example_path).resolve()
         parts = list(p.parts)
-        if 'scenarios' in parts:
-            idx = parts.index('scenarios')
+        if 'domains' in parts:
+            idx = parts.index('domains')
             if idx + 1 < len(parts):
                 return parts[idx + 1]
     except Exception:
@@ -795,7 +823,7 @@ def write_single_conversation_file(
     example_path: str,
     output_dir: Path,
     model: str,
-    prompt_version: str,
+    prompt_versions: Dict[str, str],
     custom_prompt_paths: Optional[Dict[str, Optional[str]]] = None,
     seed: Optional[int] = None,
     toolset_id: Optional[str] = None,
@@ -808,11 +836,6 @@ def write_single_conversation_file(
     Returns the file path as a string.
     """
     domain_id = _infer_domain_id(example_path)
-    prompt_versions = {
-        'system_agent': prompt_version,
-        'user_agent': prompt_version,
-        'tool_agent': prompt_version
-    }
     meta: Dict[str, Any] = {
         'conversation_id': f"{domain_id}.{scenario.name}" if domain_id else scenario.name,
         'domain_id': domain_id,
@@ -874,20 +897,18 @@ def write_single_conversation_file(
         json.dump(conversation_obj, f, indent=2)
     return str(conversation_file)
 
-def main():
-    """Main CLI entry point"""
+def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
+    """Run a single simulation for the given scenario path.
+    
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
     try:
-        # Load environment variables from .env file
-        load_dotenv()
-        
-        # Parse arguments
-        args = parse_arguments()
-        
         # Resolve outputs root
-        outputs_root = _resolve_outputs_root(args.example_path, args.outputs_root)
+        outputs_root = _resolve_outputs_root(example_path, args.outputs_root)
 
         # Load scenario and prompts
-        scenario, system_prompts = load_scenario_and_prompts(args.example_path, args)
+        scenario, system_prompts, prompt_versions = load_scenario_and_prompts(example_path, args)
 
         persona_context, task_override, persona_id = _prepare_persona_context(
             scenario,
@@ -896,7 +917,7 @@ def main():
 
         # Set up logging/paths (persona-aware)
         output_file, log_file, agent_flow_file, run_dir, run_id = setup_logging(
-            args.example_path,
+            example_path,
             outputs_root,
             args.verbose,
             persona_id=persona_id,
@@ -932,6 +953,7 @@ def main():
                     args.max_turns,
                     persona=persona_context,
                     task_override=task_override,
+                    verbose=args.verbose,
                 )
                 result = runner.run_conversation()
         else:
@@ -945,6 +967,7 @@ def main():
                 args.max_turns,
                 persona=persona_context,
                 task_override=task_override,
+                verbose=args.verbose,
             )
             result = runner.run_conversation()
 
@@ -965,10 +988,10 @@ def main():
         conversation_file = write_single_conversation_file(
             result=result,
             scenario=scenario,
-            example_path=args.example_path,
+            example_path=example_path,
             output_dir=run_dir,
             model=args.model,
-            prompt_version=args.prompt_version,
+            prompt_versions=prompt_versions,
             custom_prompt_paths=custom_prompt_paths,
             seed=None,
             toolset_id=None,
@@ -991,7 +1014,7 @@ def main():
                     target_text = '\n'.join(t.get('system_messages_raw', []))
                     rec = {
                         'meta': {
-                            'conversation_id': f"{_infer_domain_id(args.example_path)}.{scenario.name}",
+                            'conversation_id': f"{_infer_domain_id(example_path)}.{scenario.name}",
                             'step_index': i
                         },
                         'history_before': t.get('history_before', []),
@@ -1004,7 +1027,7 @@ def main():
         
         # Append to global manifest
         try:
-            scenario_key = _scenario_key(Path(args.example_path))
+            scenario_key = _scenario_key(Path(example_path))
             manifest_line = {
                 "scenario_key": scenario_key,
                 "run_id": run_id,
@@ -1121,7 +1144,7 @@ def main():
                                 try:
                                     _copy_to_valid_outputs(
                                         output_dir=run_dir,
-                                        scenario_path=Path(args.example_path),
+                                        scenario_path=Path(example_path),
                                         persona_id=persona_id,
                                         repo_root=repo_root
                                     )
@@ -1162,7 +1185,40 @@ def main():
                 logger.warning(f"Could not run evaluation: {e}")
 
         # Exit with appropriate code
-        sys.exit(0 if result.success else 1)
+        return 0 if result.success else 1
+        
+    except Exception as e:
+        print(f"Unexpected error running simulation: {e}", file=sys.stderr)
+        return 1
+
+
+def main():
+    """Main CLI entry point"""
+    try:
+        # Load environment variables from .env file
+        load_dotenv()
+        
+        # Parse arguments
+        args = parse_arguments()
+        
+        # Resolve targets (paths, IDs, or patterns) to scenario file paths
+        scenario_paths = []
+        for target in args.targets:
+            if '*' in target and '/' not in target and not target.endswith('.json'):
+                # Treat as glob pattern
+                scenario_paths.extend(resolve_scenario_pattern(target))
+            else:
+                # Treat as path or ID
+                scenario_paths.append(resolve_scenario_target(target))
+        
+        # Run simulation for each scenario
+        exit_codes = []
+        for scenario_path in scenario_paths:
+            exit_code = _run_single_simulation(str(scenario_path), args)
+            exit_codes.append(exit_code)
+        
+        # Exit with error if any simulation failed
+        sys.exit(1 if any(code != 0 for code in exit_codes) else 0)
         
     except KeyboardInterrupt:
         print("\nInterrupted by user", file=sys.stderr)

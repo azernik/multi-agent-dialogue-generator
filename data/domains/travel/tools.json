@@ -1,0 +1,1101 @@
+{
+  "id": "toolset.travel.v1",
+  "tools": {
+    "search_flights": {
+      "description": "Search for available flights between origin and destination. Use when user wants to find flight options.",
+      "parameters": {
+        "origin": {
+          "type": "string",
+          "description": "Origin city or airport code (e.g., 'New York', 'NYC', 'JFK')",
+          "required": true
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination city or airport code (e.g., 'Los Angeles', 'LAX')",
+          "required": true
+        },
+        "departure_date": {
+          "type": "string",
+          "description": "Departure date (YYYY-MM-DD)",
+          "required": true
+        },
+        "return_date": {
+          "type": "string",
+          "description": "Return date for round-trip flights (YYYY-MM-DD). Omit for one-way.",
+          "required": false
+        },
+        "passengers": {
+          "type": "object",
+          "description": "Number of passengers",
+          "required": false,
+          "properties": {
+            "adults": { "type": "integer", "default": 1 },
+            "children": { "type": "integer", "default": 0 },
+            "infants": { "type": "integer", "default": 0 }
+          }
+        },
+        "class": {
+          "type": "string",
+          "description": "Cabin class preference: economy, premium_economy, business, first",
+          "required": false,
+          "enum": ["economy", "premium_economy", "business", "first"]
+        },
+        "flexible_dates": {
+          "type": "boolean",
+          "description": "If true, search ±3 days around specified dates",
+          "required": false,
+          "default": false
+        },
+        "max_stops": {
+          "type": "integer",
+          "description": "Maximum number of stops (0 for non-stop, 1 for one stop, etc.)",
+          "required": false
+        },
+        "preferred_airlines": {
+          "type": "array",
+          "description": "Preferred airline codes (e.g., ['AA', 'UA', 'DL'])",
+          "required": false,
+          "items": { "type": "string" }
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of available flight options",
+        "items": {
+          "type": "object",
+          "properties": {
+            "flight_id": { "type": "string", "description": "Unique flight identifier" },
+            "airline": { "type": "string", "description": "Airline name" },
+            "airline_code": { "type": "string", "description": "Airline code (e.g., 'AA', 'UA')" },
+            "flight_number": { "type": "string", "description": "Flight number" },
+            "departure": {
+              "type": "object",
+              "properties": {
+                "airport": { "type": "string", "description": "Airport code" },
+                "airport_name": { "type": "string", "description": "Full airport name" },
+                "datetime": { "type": "string", "description": "ISO8601 datetime" },
+                "terminal": { "type": "string" },
+                "gate": { "type": "string" }
+              },
+              "required": ["airport", "datetime"]
+            },
+            "arrival": {
+              "type": "object",
+              "properties": {
+                "airport": { "type": "string", "description": "Airport code" },
+                "airport_name": { "type": "string", "description": "Full airport name" },
+                "datetime": { "type": "string", "description": "ISO8601 datetime" },
+                "terminal": { "type": "string" },
+                "gate": { "type": "string" }
+              },
+              "required": ["airport", "datetime"]
+            },
+            "duration": { "type": "string", "description": "Flight duration (e.g., '5h 30m')" },
+            "stops": { "type": "integer", "description": "Number of stops" },
+            "stop_details": {
+              "type": "array",
+              "description": "Details about stops",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "airport": { "type": "string" },
+                  "duration": { "type": "string", "description": "Layover duration" }
+                }
+              }
+            },
+            "class": { "type": "string", "description": "Cabin class" },
+            "price": { "type": "number", "description": "Price per passenger" },
+            "currency": { "type": "string", "description": "Currency code (e.g., 'USD')" },
+            "refundable": { "type": "boolean", "description": "Whether ticket is refundable" },
+            "changeable": { "type": "boolean", "description": "Whether ticket can be changed" },
+            "baggage_included": {
+              "type": "object",
+              "properties": {
+                "carry_on": { "type": "boolean" },
+                "checked": { "type": "integer", "description": "Number of checked bags included" }
+              }
+            },
+            "seats_available": { "type": "integer", "description": "Remaining seats" }
+          },
+          "required": ["flight_id", "airline", "departure", "arrival", "price", "currency"]
+        }
+      }
+    },
+    "get_flight_details": {
+      "description": "Get detailed information about a specific flight including seat map, amenities, and policies.",
+      "parameters": {
+        "flight_id": {
+          "type": "string",
+          "description": "Unique flight identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "flight_id": { "type": "string" },
+          "airline": { "type": "string" },
+          "flight_number": { "type": "string" },
+          "departure": {
+            "type": "object",
+            "properties": {
+              "airport": { "type": "string" },
+              "airport_name": { "type": "string" },
+              "datetime": { "type": "string" },
+              "terminal": { "type": "string" },
+              "gate": { "type": "string" }
+            }
+          },
+          "arrival": {
+            "type": "object",
+            "properties": {
+              "airport": { "type": "string" },
+              "airport_name": { "type": "string" },
+              "datetime": { "type": "string" },
+              "terminal": { "type": "string" },
+              "gate": { "type": "string" }
+            }
+          },
+          "duration": { "type": "string" },
+          "aircraft": { "type": "string", "description": "Aircraft type" },
+          "amenities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Available amenities (wifi, entertainment, meals, etc.)"
+          },
+          "baggage_policy": {
+            "type": "object",
+            "properties": {
+              "carry_on": { "type": "boolean" },
+              "checked_included": { "type": "integer" },
+              "checked_fee": { "type": "number" },
+              "weight_limit": { "type": "string" }
+            }
+          },
+          "cancellation_policy": {
+            "type": "object",
+            "properties": {
+              "refundable": { "type": "boolean" },
+              "cancellation_fee": { "type": "number" },
+              "refund_deadline": { "type": "string", "description": "Deadline for free cancellation" }
+            }
+          },
+          "change_policy": {
+            "type": "object",
+            "properties": {
+              "changeable": { "type": "boolean" },
+              "change_fee": { "type": "number" },
+              "fare_difference_applies": { "type": "boolean" }
+            }
+          }
+        },
+        "required": ["flight_id", "departure", "arrival"]
+      }
+    },
+    "check_flight_availability": {
+      "description": "Check if a specific flight and class is still available for booking.",
+      "parameters": {
+        "flight_id": {
+          "type": "string",
+          "description": "Unique flight identifier",
+          "required": true
+        },
+        "class": {
+          "type": "string",
+          "description": "Cabin class",
+          "required": true,
+          "enum": ["economy", "premium_economy", "business", "first"]
+        },
+        "passengers": {
+          "type": "object",
+          "description": "Number of passengers",
+          "required": false,
+          "properties": {
+            "adults": { "type": "integer", "default": 1 },
+            "children": { "type": "integer", "default": 0 },
+            "infants": { "type": "integer", "default": 0 }
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "available": { "type": "boolean", "description": "Whether flight is available" },
+          "seats_remaining": { "type": "integer", "description": "Number of seats available" },
+          "price": { "type": "number", "description": "Current price per passenger" },
+          "currency": { "type": "string" },
+          "expires_at": { "type": "string", "description": "ISO8601 datetime when price expires" }
+        },
+        "required": ["available", "price", "currency"]
+      }
+    },
+    "book_flight": {
+      "description": "Create a flight booking. Requires flight selection and passenger information.",
+      "parameters": {
+        "flight_id": {
+          "type": "string",
+          "description": "Outbound flight identifier",
+          "required": true
+        },
+        "return_flight_id": {
+          "type": "string",
+          "description": "Return flight identifier for round-trip bookings",
+          "required": false
+        },
+        "passengers": {
+          "type": "array",
+          "description": "Passenger information",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "first_name": { "type": "string", "required": true },
+              "last_name": { "type": "string", "required": true },
+              "date_of_birth": { "type": "string", "description": "YYYY-MM-DD", "required": true },
+              "email": { "type": "string", "required": true },
+              "phone": { "type": "string", "required": true },
+              "passport_number": { "type": "string", "description": "Required for international flights" },
+              "passport_expiry": { "type": "string", "description": "YYYY-MM-DD, required for international" },
+              "frequent_flyer_number": { "type": "string" },
+              "frequent_flyer_airline": { "type": "string" },
+              "special_requests": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Special requests (wheelchair, meals, etc.)"
+              }
+            },
+            "required": ["first_name", "last_name", "date_of_birth", "email", "phone"]
+          }
+        },
+        "seat_preferences": {
+          "type": "array",
+          "description": "Seat preferences per passenger",
+          "required": false,
+          "items": {
+            "type": "object",
+            "properties": {
+              "passenger_index": { "type": "integer" },
+              "seat_preference": { "type": "string", "enum": ["window", "aisle", "middle"] },
+              "seat_number": { "type": "string" }
+            }
+          }
+        },
+        "payment": {
+          "type": "object",
+          "description": "Payment information",
+          "required": true,
+          "properties": {
+            "method": { "type": "string", "enum": ["credit_card", "debit_card", "paypal"] },
+            "card_number": { "type": "string" },
+            "card_expiry": { "type": "string", "description": "MM/YY" },
+            "card_cvv": { "type": "string" },
+            "billing_address": {
+              "type": "object",
+              "properties": {
+                "street": { "type": "string" },
+                "city": { "type": "string" },
+                "state": { "type": "string" },
+                "zip": { "type": "string" },
+                "country": { "type": "string" }
+              }
+            }
+          }
+        },
+        "special_requests": {
+          "type": "array",
+          "description": "Booking-level special requests",
+          "required": false,
+          "items": { "type": "string" }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string", "description": "Unique booking identifier" },
+          "confirmation_code": { "type": "string", "description": "Booking confirmation code" },
+          "itinerary": {
+            "type": "object",
+            "properties": {
+              "outbound": {
+                "type": "object",
+                "properties": {
+                  "flight_id": { "type": "string" },
+                  "flight_number": { "type": "string" },
+                  "departure": { "type": "object" },
+                  "arrival": { "type": "object" }
+                }
+              },
+              "return": {
+                "type": "object",
+                "properties": {
+                  "flight_id": { "type": "string" },
+                  "flight_number": { "type": "string" },
+                  "departure": { "type": "object" },
+                  "arrival": { "type": "object" }
+                }
+              }
+            }
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "seat": { "type": "string" }
+              }
+            }
+          },
+          "total_price": { "type": "number" },
+          "currency": { "type": "string" },
+          "cancellation_policy": {
+            "type": "object",
+            "properties": {
+              "refundable": { "type": "boolean" },
+              "cancellation_fee": { "type": "number" },
+              "free_cancellation_deadline": { "type": "string" }
+            }
+          },
+          "change_policy": {
+            "type": "object",
+            "properties": {
+              "changeable": { "type": "boolean" },
+              "change_fee": { "type": "number" }
+            }
+          }
+        },
+        "required": ["booking_id", "confirmation_code", "total_price", "currency"]
+      }
+    },
+    "search_hotels": {
+      "description": "Search for available hotels in a location for specified dates.",
+      "parameters": {
+        "location": {
+          "type": "string",
+          "description": "City name, address, or area",
+          "required": true
+        },
+        "check_in_date": {
+          "type": "string",
+          "description": "Check-in date (YYYY-MM-DD)",
+          "required": true
+        },
+        "check_out_date": {
+          "type": "string",
+          "description": "Check-out date (YYYY-MM-DD)",
+          "required": true
+        },
+        "guests": {
+          "type": "object",
+          "description": "Number of guests",
+          "required": false,
+          "properties": {
+            "adults": { "type": "integer", "default": 2 },
+            "children": { "type": "integer", "default": 0 }
+          }
+        },
+        "rooms": {
+          "type": "integer",
+          "description": "Number of rooms needed",
+          "required": false,
+          "default": 1
+        },
+        "room_type": {
+          "type": "string",
+          "description": "Preferred room type (standard, deluxe, suite, etc.)",
+          "required": false
+        },
+        "amenities": {
+          "type": "array",
+          "description": "Required amenities",
+          "required": false,
+          "items": {
+            "type": "string",
+            "enum": ["wifi", "pool", "gym", "spa", "parking", "breakfast", "pet_friendly", "air_conditioning"]
+          }
+        },
+        "price_range": {
+          "type": "object",
+          "description": "Price range per night",
+          "required": false,
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        },
+        "rating_min": {
+          "type": "number",
+          "description": "Minimum star rating (1-5)",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of available hotels",
+        "items": {
+          "type": "object",
+          "properties": {
+            "hotel_id": { "type": "string", "description": "Unique hotel identifier" },
+            "name": { "type": "string" },
+            "address": {
+              "type": "object",
+              "properties": {
+                "street": { "type": "string" },
+                "city": { "type": "string" },
+                "state": { "type": "string" },
+                "zip": { "type": "string" },
+                "country": { "type": "string" }
+              }
+            },
+            "rating": { "type": "number", "description": "Star rating (1-5)" },
+            "price_per_night": { "type": "number" },
+            "total_price": { "type": "number", "description": "Total for stay" },
+            "currency": { "type": "string" },
+            "amenities": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "room_types_available": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "max_occupancy": { "type": "integer" },
+                  "beds": { "type": "string" }
+                }
+              }
+            },
+            "cancellation_policy": {
+              "type": "object",
+              "properties": {
+                "free_cancellation": { "type": "boolean" },
+                "cancellation_deadline": { "type": "string", "description": "Deadline for free cancellation" },
+                "cancellation_fee": { "type": "number" }
+              }
+            },
+            "images": {
+              "type": "array",
+              "items": { "type": "string", "description": "Image URLs" }
+            }
+          },
+          "required": ["hotel_id", "name", "price_per_night", "total_price", "currency"]
+        }
+      }
+    },
+    "get_hotel_details": {
+      "description": "Get detailed information about a specific hotel including room types, amenities, and policies.",
+      "parameters": {
+        "hotel_id": {
+          "type": "string",
+          "description": "Unique hotel identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "hotel_id": { "type": "string" },
+          "name": { "type": "string" },
+          "address": { "type": "object" },
+          "rating": { "type": "number" },
+          "description": { "type": "string" },
+          "room_types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "description": { "type": "string" },
+                "max_occupancy": { "type": "integer" },
+                "beds": { "type": "string" },
+                "amenities": { "type": "array", "items": { "type": "string" } },
+                "price_per_night": { "type": "number" }
+              }
+            }
+          },
+          "amenities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "policies": {
+            "type": "object",
+            "properties": {
+              "check_in_time": { "type": "string" },
+              "check_out_time": { "type": "string" },
+              "cancellation_policy": { "type": "object" },
+              "pet_policy": { "type": "string" },
+              "smoking_policy": { "type": "string" }
+            }
+          },
+          "reviews": {
+            "type": "object",
+            "properties": {
+              "average_rating": { "type": "number" },
+              "total_reviews": { "type": "integer" }
+            }
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": { "type": "number" },
+              "longitude": { "type": "number" },
+              "nearby_attractions": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["hotel_id", "name"]
+      }
+    },
+    "check_hotel_availability": {
+      "description": "Check if a hotel has rooms available for specified dates.",
+      "parameters": {
+        "hotel_id": {
+          "type": "string",
+          "description": "Unique hotel identifier",
+          "required": true
+        },
+        "check_in_date": {
+          "type": "string",
+          "description": "Check-in date (YYYY-MM-DD)",
+          "required": true
+        },
+        "check_out_date": {
+          "type": "string",
+          "description": "Check-out date (YYYY-MM-DD)",
+          "required": true
+        },
+        "guests": {
+          "type": "object",
+          "description": "Number of guests",
+          "required": false,
+          "properties": {
+            "adults": { "type": "integer", "default": 2 },
+            "children": { "type": "integer", "default": 0 }
+          }
+        },
+        "room_type": {
+          "type": "string",
+          "description": "Preferred room type",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "available": { "type": "boolean" },
+          "rooms_remaining": { "type": "integer" },
+          "price": { "type": "number", "description": "Price per night" },
+          "total_price": { "type": "number" },
+          "currency": { "type": "string" },
+          "expires_at": { "type": "string", "description": "ISO8601 datetime when price expires" }
+        },
+        "required": ["available", "price", "currency"]
+      }
+    },
+    "book_hotel": {
+      "description": "Create a hotel booking. Requires hotel selection and guest information.",
+      "parameters": {
+        "hotel_id": {
+          "type": "string",
+          "description": "Unique hotel identifier",
+          "required": true
+        },
+        "check_in_date": {
+          "type": "string",
+          "description": "Check-in date (YYYY-MM-DD)",
+          "required": true
+        },
+        "check_out_date": {
+          "type": "string",
+          "description": "Check-out date (YYYY-MM-DD)",
+          "required": true
+        },
+        "guests": {
+          "type": "array",
+          "description": "Guest information",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "first_name": { "type": "string", "required": true },
+              "last_name": { "type": "string", "required": true },
+              "email": { "type": "string", "required": true },
+              "phone": { "type": "string", "required": true }
+            },
+            "required": ["first_name", "last_name", "email", "phone"]
+          }
+        },
+        "room_type": {
+          "type": "string",
+          "description": "Room type to book",
+          "required": true
+        },
+        "rooms": {
+          "type": "integer",
+          "description": "Number of rooms",
+          "required": false,
+          "default": 1
+        },
+        "special_requests": {
+          "type": "array",
+          "description": "Special requests (early check-in, late check-out, etc.)",
+          "required": false,
+          "items": { "type": "string" }
+        },
+        "payment": {
+          "type": "object",
+          "description": "Payment information",
+          "required": true,
+          "properties": {
+            "method": { "type": "string", "enum": ["credit_card", "debit_card", "paypal"] },
+            "card_number": { "type": "string" },
+            "card_expiry": { "type": "string", "description": "MM/YY" },
+            "card_cvv": { "type": "string" },
+            "billing_address": { "type": "object" }
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "hotel": {
+            "type": "object",
+            "properties": {
+              "hotel_id": { "type": "string" },
+              "name": { "type": "string" },
+              "address": { "type": "object" }
+            }
+          },
+          "check_in": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "time": { "type": "string" }
+            }
+          },
+          "check_out": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "time": { "type": "string" }
+            }
+          },
+          "guests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" }
+              }
+            }
+          },
+          "total_price": { "type": "number" },
+          "currency": { "type": "string" },
+          "cancellation_policy": {
+            "type": "object",
+            "properties": {
+              "free_cancellation": { "type": "boolean" },
+              "cancellation_deadline": { "type": "string" },
+              "cancellation_fee": { "type": "number" }
+            }
+          }
+        },
+        "required": ["booking_id", "confirmation_code", "total_price", "currency"]
+      }
+    },
+    "find_booking": {
+      "description": "Locate a booking by confirmation code, booking ID, email, or other identifiers. Works for flights, hotels, and packages.",
+      "parameters": {
+        "confirmation_code": {
+          "type": "string",
+          "description": "Booking confirmation code",
+          "required": false
+        },
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": false
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address used for booking",
+          "required": false
+        },
+        "last_name": {
+          "type": "string",
+          "description": "Last name of primary passenger/guest",
+          "required": false
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number used for booking",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching bookings",
+        "items": {
+          "type": "object",
+          "properties": {
+            "booking_id": { "type": "string" },
+            "confirmation_code": { "type": "string" },
+            "booking_type": {
+              "type": "string",
+              "enum": ["flight", "hotel", "package"],
+              "description": "Type of booking"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["confirmed", "pending", "cancelled", "completed"],
+              "description": "Booking status"
+            },
+            "created_at": { "type": "string", "description": "ISO8601 datetime" },
+            "primary_passenger": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "email": { "type": "string" }
+              }
+            },
+            "summary": {
+              "type": "object",
+              "description": "Brief summary of booking",
+              "properties": {
+                "departure_date": { "type": "string", "description": "For flights" },
+                "check_in_date": { "type": "string", "description": "For hotels" },
+                "destination": { "type": "string" },
+                "total_price": { "type": "number" },
+                "currency": { "type": "string" }
+              }
+            }
+          },
+          "required": ["booking_id", "confirmation_code", "booking_type", "status"]
+        }
+      }
+    },
+    "get_booking_details": {
+      "description": "Get full details of a booking including itinerary, passengers/guests, payment, and policies. Works for flights, hotels, and packages.",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "booking_type": {
+            "type": "string",
+            "enum": ["flight", "hotel", "package"]
+          },
+          "status": { "type": "string" },
+          "created_at": { "type": "string" },
+          "flight_details": {
+            "type": "object",
+            "description": "Present if booking_type is 'flight'",
+            "properties": {
+              "outbound": { "type": "object" },
+              "return": { "type": "object" },
+              "passengers": { "type": "array" }
+            }
+          },
+          "hotel_details": {
+            "type": "object",
+            "description": "Present if booking_type is 'hotel'",
+            "properties": {
+              "hotel": { "type": "object" },
+              "check_in": { "type": "object" },
+              "check_out": { "type": "object" },
+              "guests": { "type": "array" },
+              "room_type": { "type": "string" }
+            }
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "number" },
+              "currency": { "type": "string" },
+              "method": { "type": "string" }
+            }
+          },
+          "cancellation_policy": { "type": "object" },
+          "change_policy": { "type": "object" },
+          "changeable": { "type": "boolean" },
+          "cancelable": { "type": "boolean" }
+        },
+        "required": ["booking_id", "confirmation_code", "booking_type", "status"]
+      }
+    },
+    "get_change_options": {
+      "description": "Check what changes can be made to a booking and associated fees. Primarily for flight bookings.",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        },
+        "change_type": {
+          "type": "string",
+          "description": "Type of change requested",
+          "required": false,
+          "enum": ["dates", "times", "class", "route", "passengers"]
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "changeable": { "type": "boolean", "description": "Whether booking can be changed" },
+          "change_fee": { "type": "number", "description": "Fee for making changes" },
+          "fare_difference_applies": { "type": "boolean", "description": "Whether fare difference will be charged" },
+          "available_alternatives": {
+            "type": "array",
+            "description": "Available alternative flights/options",
+            "items": { "type": "object" }
+          },
+          "deadline": {
+            "type": "string",
+            "description": "Deadline for making changes (ISO8601 datetime)"
+          },
+          "notes": { "type": "string", "description": "Additional information about change policy" }
+        },
+        "required": ["changeable", "change_fee"]
+      }
+    },
+    "change_flight": {
+      "description": "Execute a change to a flight booking (dates, times, class, or route).",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        },
+        "new_flight_id": {
+          "type": "string",
+          "description": "New flight identifier (for route/time changes)",
+          "required": false
+        },
+        "new_return_flight_id": {
+          "type": "string",
+          "description": "New return flight identifier (for round-trip changes)",
+          "required": false
+        },
+        "change_type": {
+          "type": "string",
+          "enum": ["dates", "times", "class", "route"],
+          "required": true
+        },
+        "new_class": {
+          "type": "string",
+          "description": "New cabin class (if changing class)",
+          "required": false,
+          "enum": ["economy", "premium_economy", "business", "first"]
+        },
+        "passengers_affected": {
+          "type": "array",
+          "description": "Indices of passengers affected by change",
+          "required": false,
+          "items": { "type": "integer" }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "new_booking_id": { "type": "string", "description": "New booking ID (may be same as original)" },
+          "confirmation_code": { "type": "string" },
+          "change_fee": { "type": "number" },
+          "fare_difference": { "type": "number", "description": "Additional cost (positive) or refund (negative)" },
+          "new_itinerary": {
+            "type": "object",
+            "properties": {
+              "outbound": { "type": "object" },
+              "return": { "type": "object" }
+            }
+          },
+          "refund_amount": {
+            "type": "number",
+            "description": "If fare difference is negative, amount to be refunded"
+          }
+        },
+        "required": ["new_booking_id", "confirmation_code", "change_fee"]
+      }
+    },
+    "get_cancellation_options": {
+      "description": "Check cancellation policy and refund amount for a booking. Works for flights, hotels, and packages.",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        },
+        "booking_type": {
+          "type": "string",
+          "description": "Type of booking (inferred if not provided)",
+          "required": false,
+          "enum": ["flight", "hotel", "package"]
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "cancelable": { "type": "boolean", "description": "Whether booking can be cancelled" },
+          "cancellation_fee": { "type": "number", "description": "Fee for cancellation" },
+          "refund_amount": {
+            "type": "number",
+            "description": "Amount to be refunded (after fees)"
+          },
+          "refund_method": {
+            "type": "string",
+            "enum": ["original_payment", "travel_credit", "voucher"],
+            "description": "How refund will be processed"
+          },
+          "refund_timeline": {
+            "type": "string",
+            "description": "Expected time to receive refund (e.g., '7-10 business days')"
+          },
+          "cancellation_deadline": {
+            "type": "string",
+            "description": "Deadline for free cancellation (ISO8601 datetime)"
+          },
+          "notes": { "type": "string", "description": "Additional cancellation policy information" }
+        },
+        "required": ["cancelable", "cancellation_fee", "refund_amount"]
+      }
+    },
+    "cancel_booking": {
+      "description": "Cancel a booking (flight, hotel, or package). Returns cancellation confirmation and refund details.",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for cancellation (optional)",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "cancellation_confirmed": { "type": "boolean" },
+          "cancellation_id": { "type": "string", "description": "Unique cancellation identifier" },
+          "refund_amount": { "type": "number" },
+          "refund_timeline": { "type": "string" },
+          "cancellation_fee": { "type": "number" },
+          "refund_method": { "type": "string" }
+        },
+        "required": ["cancellation_confirmed", "cancellation_id", "refund_amount"]
+      }
+    },
+    "get_flight_status": {
+      "description": "Get real-time status of a flight including delays, gate changes, and arrival times.",
+      "parameters": {
+        "flight_number": {
+          "type": "string",
+          "description": "Flight number (e.g., 'AA123')",
+          "required": true
+        },
+        "date": {
+          "type": "string",
+          "description": "Flight date (YYYY-MM-DD)",
+          "required": true
+        },
+        "departure_airport": {
+          "type": "string",
+          "description": "Departure airport code (optional, helps disambiguate)",
+          "required": false
+        },
+        "arrival_airport": {
+          "type": "string",
+          "description": "Arrival airport code (optional, helps disambiguate)",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "flight_number": { "type": "string" },
+          "airline": { "type": "string" },
+          "date": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["on_time", "delayed", "cancelled", "boarding", "departed", "arrived"],
+            "description": "Current flight status"
+          },
+          "scheduled_departure": { "type": "string", "description": "ISO8601 datetime" },
+          "actual_departure": { "type": "string", "description": "ISO8601 datetime, if departed" },
+          "scheduled_arrival": { "type": "string", "description": "ISO8601 datetime" },
+          "actual_arrival": { "type": "string", "description": "ISO8601 datetime, if arrived" },
+          "departure_gate": { "type": "string" },
+          "departure_terminal": { "type": "string" },
+          "arrival_gate": { "type": "string" },
+          "arrival_terminal": { "type": "string" },
+          "delay_reason": { "type": "string", "description": "Reason for delay if delayed" },
+          "delay_minutes": { "type": "integer", "description": "Delay in minutes" }
+        },
+        "required": ["flight_number", "date", "status"]
+      }
+    },
+    "get_booking_status": {
+      "description": "Get current status of a booking including check-in status, seat assignments, and flight status.",
+      "parameters": {
+        "booking_id": {
+          "type": "string",
+          "description": "Unique booking identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "booking_status": {
+            "type": "string",
+            "enum": ["confirmed", "checked_in", "boarded", "completed", "cancelled"],
+            "description": "Overall booking status"
+          },
+          "flight_status": {
+            "type": "object",
+            "description": "Flight status information",
+            "properties": {
+              "outbound": { "type": "object" },
+              "return": { "type": "object" }
+            }
+          },
+          "check_in_status": {
+            "type": "object",
+            "properties": {
+              "checked_in": { "type": "boolean" },
+              "check_in_deadline": { "type": "string", "description": "ISO8601 datetime" },
+              "online_check_in_available": { "type": "boolean" }
+            }
+          },
+          "seat_assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "passenger_name": { "type": "string" },
+                "flight": { "type": "string", "description": "Flight number" },
+                "seat": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["booking_id", "booking_status"]
+      }
+    }
+  }
+}
+

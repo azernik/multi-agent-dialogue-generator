@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_006"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "credit_card",
+        "issue_type": "lost"
+      },
+      "preferences": {
+        "request_replacement": true
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "credit_card",
+        "nickname": "Student Card"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant reports the lost card via report_card_issue for the Student Card credit card account (after identifying it via list_customer_accounts), but then the user finds the card and wants to cancel the report. The assistant should explain that the card has been blocked and cannot be unblocked, but a new card can be issued if needed."
+    },
+    "objective": "Report a lost credit card"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.change_mind",
+        "instructions": "Initially report the card as lost and request a replacement. After the assistant confirms the card has been blocked and replacement is being processed, realize you found the card and ask if you can cancel the report and unblock the card."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Student Card",
+            "masked_number": "****7777",
+            "currency": "USD"
+          },
+          {
+            "account_id": "ACC-002",
+            "account_type": "checking",
+            "nickname": "College Checking",
+            "masked_number": "****8888",
+            "currency": "USD"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_045"
+}
+

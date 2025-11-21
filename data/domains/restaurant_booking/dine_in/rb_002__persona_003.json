@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "domain": "restaurant_booking",
+    "use_case": "dine_in",
+    "scenario_id": "rb_002"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "date": "this Friday",
+        "time_window": ">=19:00",
+        "party_size": 4,
+        "location": "San Francisco"
+      },
+      "preferences": {
+        "cuisine": "Italian"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "cuisine": "Italian",
+        "location": "San Francisco"
+      },
+      "action": "make_reservation",
+      "notes": "Success if the assistant makes a reservation via make_reservation at one of the seeded Italian restaurants in San Francisco for 4 people on 'this Friday' at or after 19:00 local time."
+    },
+    "objective": "Find and book a restaurant."
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "restaurants": [
+          {
+            "restaurant_id": "RST-001",
+            "name": "Bella Vista",
+            "cuisine": "Italian",
+            "address": "123 Columbus Ave, San Francisco, CA 94133",
+            "rating": 4.5,
+            "price_range": "$$",
+            "hours": "Mon-Sun 17:00-22:00"
+          },
+          {
+            "restaurant_id": "RST-002",
+            "name": "Trattoria Milano",
+            "cuisine": "Italian",
+            "address": "456 Lombard St, San Francisco, CA 94133",
+            "rating": 4.2,
+            "price_range": "$$$",
+            "hours": "Mon-Sun 18:00-23:00"
+          },
+          {
+            "restaurant_id": "RST-003",
+            "name": "Little Italy Bistro",
+            "cuisine": "Italian",
+            "address": "789 Grant Ave, San Francisco, CA 94108",
+            "rating": 4.0,
+            "price_range": "$",
+            "hours": "Mon-Sun 17:30-21:30"
+          }
+        ]
+      }
+    },
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results",
+        "instructions": "Return an empty result on the first search_restaurants call."
+      }
+    ]
+  },
+  "persona": "persona_003"
+}
+
