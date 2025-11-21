@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_006",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_006",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the checking account using get_account_balance, and tells the user the balance."
+      },
+      "objective": "Check the current bank account balance for my checking account"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "credit_card",
+              "nickname": "Rewards Card",
+              "masked_number": "****9876",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_035",
+      "name": "Terrence \"TJ\" Jackson",
+      "age": 27,
+      "hometown": "Brooklyn, NY",
+      "occupation": "Music producer",
+      "bio": "TJ Jackson produces hip-hop and R&B tracks in his Brooklyn studio, working with up-and-coming artists in the New York scene. He also DJs at local venues on weekends and teaches beat-making workshops for teenagers. His music often touches on social justice themes and community issues.",
+      "use_cases": [],
+      "sample_messages": [
+        "studio fully booked next week!! can we fit in the session with maya or push to the week after?",
+        "need new audio interface, the focusrite is dying. order the scarlett 18i20?",
+        "booking a venue for the beat workshop - need space for 15-20 kids with power outlets for laptops"
+      ],
+      "email": "tj.jackson@gmail.com",
+      "phone": "(718) 555-4821"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "need to check my checking account balance, can you pull that up for me?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants checking account balance. I must list accounts, identify checking, then fetch balance. Need tool. Then present result. Keep concise. </think>\n<plan>\n1. Retrieve the list of the user\u2019s accounts.\n2. Identify their checking account(s).\n3. Fetch the balance for the checking account.\n4. Present the balance and clarify if multiple checking accounts exist.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Rewards Card\",\n    \"masked_number\": \"****9876\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "credit_card",
+                "nickname": "Rewards Card",
+                "masked_number": "****9876",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have the list of accounts and see one checking account ACC-001. Next I should fetch its balance with get_account_balance and then report it to the user concisely. </think>\n<plan>\n1. Retrieve the current balance for the user\u2019s checking account.\n2. Present the balance clearly to the user.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 2483.17,\n  \"available_balance\": 2431.92,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:09Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 2483.17,
+              "available_balance": 2431.92,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:09Z"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nI now have the checking account balance and need to present it clearly and briefly. Include both current and available balances and that it\u2019s in USD, plus timestamp in simple terms. </think>\n<plan>\n1. Share the checking account\u2019s current and available balances with the user and confirm completion.\n</plan>\n<action type=\"say\">\nYour Everyday Checking (****1234) balance is:\n\n- Current balance: $2,483.17 USD  \n- Available balance: $2,431.92 USD  \n\nLast updated: 2025-11-21T14:32:09Z.\n\nAnything else you\u2019d like to do with this account?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your Everyday Checking (****1234) balance is:\n\n- Current balance: $2,483.17 USD  \n- Available balance: $2,431.92 USD  \n\nLast updated: 2025-11-21T14:32:09Z.\n\nAnything else you\u2019d like to do with this account?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 2,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

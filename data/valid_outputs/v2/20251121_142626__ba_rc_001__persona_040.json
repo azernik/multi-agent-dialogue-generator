@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_rc_001",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_rc_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_card": "credit_card",
+          "issue_type": "lost"
+        },
+        "preferences": {
+          "request_replacement": true
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "credit_card",
+          "nickname": "Rewards Card"
+        },
+        "action": "report_card_issue",
+        "notes": "Success if the assistant reports the lost card via report_card_issue for the Rewards Card credit card account (after identifying it via list_customer_accounts), requests a replacement card."
+      },
+      "objective": "Report a lost credit card"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "credit_card",
+              "nickname": "Rewards Card",
+              "masked_number": "****4321",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_040",
+      "name": "Rebecca Torres",
+      "age": 35,
+      "hometown": "Portland, ME",
+      "occupation": "Middle school science teacher",
+      "bio": "Rebecca Torres teaches 7th and 8th grade science at a middle school in Portland. She takes her students on nature walks, runs after-school science club, and designs hands-on experiments that get kids excited about how things work. She's always looking for new ways to make abstract concepts tangible and relevant to her students' lives.",
+      "use_cases": [],
+      "sample_messages": [
+        "Looking for tide pool field trip options near Portland - need something appropriate for 30 seventh graders",
+        "Science fair is coming up! Can you order lab supplies? Got a list of what we need for 25 projects",
+        "Trying to find guest speakers who work in STEM fields - anyone available to talk to middle schoolers about their job?"
+      ],
+      "email": "rebecca.torres@portlandschools.org",
+      "phone": "(207) 555-3814"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Need to report a lost credit card and get a replacement sent out"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants to report a lost credit card and get a replacement. I have a report_card_issue tool but it needs a card_id; I don\u2019t yet know which card. I should first clarify which credit card (nickname/last 4) and also confirm they indeed want it blocked and replaced, plus optional notes. Then I can call the tool once I have card_id and preferences. </think>\n<plan>\n1. Ask which specific credit card is lost and confirm they want it blocked and replaced.\n2. Once I have the needed details (especially card_id), call the report_card_issue tool.\n3. Share the confirmation and next steps with the user.\n</plan>\n<action type=\"say\">\nI can take care of that.\n\nTo report the card lost and order a replacement, I need a couple of details:\n\n1) Which credit card is it?  \n- You can tell me the nickname and last 4 digits (e.g., \u201cTravel Rewards ending in 1234\u201d).  \n- If you\u2019re not sure, tell me roughly which card it is (e.g., \u201cmy only credit card\u201d or \u201cthe blue Visa\u201d), and I\u2019ll help you pick from your list.\n\n2) Do you want me to:\n- Block the card immediately and\n- Ship a replacement card to the mailing address on file?\n\n3) Any notes you want added (e.g., \u201cwallet stolen in a taxi in New York on 11/20\u201d)?\n\nOnce you tell me which card and confirm blocking/replacement, I\u2019ll submit the report right away.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can take care of that.\n\nTo report the card lost and order a replacement, I need a couple of details:\n\n1) Which credit card is it?  \n- You can tell me the nickname and last 4 digits (e.g., \u201cTravel Rewards ending in 1234\u201d).  \n- If you\u2019re not sure, tell me roughly which card it is (e.g., \u201cmy only credit card\u201d or \u201cthe blue Visa\u201d), and I\u2019ll help you pick from your list.\n\n2) Do you want me to:\n- Block the card immediately and\n- Ship a replacement card to the mailing address on file?\n\n3) Any notes you want added (e.g., \u201cwallet stolen in a taxi in New York on 11/20\u201d)?\n\nOnce you tell me which card and confirm blocking/replacement, I\u2019ll submit the report right away."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "It\u2019s my only credit card, the blue Visa.\n\nYes, block it right away and send a replacement to the mailing address you already have on file.\n\nNote: pretty sure I lost it at the grocery store earlier today."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed to identify the card_id for their only credit card, but I have no tool to list cards specifically\u2014only report_card_issue which requires card_id. However, list_customer_accounts can show credit_card accounts, but not card_id vs account_id; still, in this system card_id likely maps to that credit_card account_id. I should call list_customer_accounts, filter for credit_card, and if exactly one exists, use its account_id as card_id in report_card_issue with issue_type \"lost\", include their note, and request_replacement true. Then report results. </think>\n<plan>\n1. Retrieve the customer\u2019s accounts to identify their single credit card.\n2. Use the credit card account_id as the card_id to report it lost and request a replacement, including the user\u2019s note.\n3. Confirm the block and replacement details back to the user, including any arrival estimate.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Rewards Card\",\n    \"masked_number\": \"****4321\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "credit_card",
+                "nickname": "Rewards Card",
+                "masked_number": "****4321",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have tool output listing one credit_card account ACC-001, which matches \u201conly credit card.\u201d I should now call report_card_issue with card_id ACC-001, issue_type \"lost\", include their note, and request_replacement true. Then I\u2019ll present confirmation and any replacement details to the user. </think>\n<plan>\n1. Report the identified credit card as lost and request a replacement using the tool.\n2. Share the outcome, including any replacement card ID and estimated arrival, and remind them about any follow-up steps.\n</plan>\n<action type=\"tool\" name=\"report_card_issue\">\n{ \n  \"card_id\": \"ACC-001\",\n  \"issue_type\": \"lost\",\n  \"notes\": \"Customer believes card was lost at a grocery store earlier today.\",\n  \"request_replacement\": true\n}</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "report_card_issue",
+            "args": {
+              "card_id": "ACC-001",
+              "issue_type": "lost",
+              "notes": "Customer believes card was lost at a grocery store earlier today.",
+              "request_replacement": true
+            },
+            "raw": "report_card_issue({\"card_id\":\"ACC-001\",\"issue_type\":\"lost\",\"notes\":\"Customer believes card was lost at a grocery store earlier today.\",\"request_replacement\":true})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"replacement_card_id\": \"ACC-001-R2\",\n  \"estimated_arrival\": \"2025-11-26T17:00:00Z\"\n}",
+            "parsed": {
+              "success": true,
+              "replacement_card_id": "ACC-001-R2",
+              "estimated_arrival": "2025-11-26T17:00:00Z"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nThe card has been successfully reported lost and a replacement ordered, with details from the tool response. Now I should relay this succinctly, including that it\u2019s blocked, replacement card ID, estimated arrival, and brief safety tips like monitoring transactions and disputing anything suspicious. That completes the user\u2019s request. </think>\n<plan>\n1. Confirm to the user that their card is blocked and a replacement is on the way, including key details and brief next steps.\n</plan>\n<action type=\"say\">\nYour blue Visa credit card is now blocked, and a replacement has been ordered.\n\nDetails:\n- Status: Card reported LOST and blocked immediately\n- Replacement card ID: ACC-001-R2\n- Estimated arrival: by 2025-11-26 (local time may vary slightly from the timestamp)\n\nNext steps:\n- Keep an eye on your recent transactions; tell me right away if you see anything you don\u2019t recognize and I can help start a dispute.\n- If you have this card saved with any merchants (subscriptions, mobile wallet, online shops), you\u2019ll need to update it once the new card arrives.\n\nIf you want, I can also help you review today\u2019s transactions on this card to check for anything suspicious.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your blue Visa credit card is now blocked, and a replacement has been ordered.\n\nDetails:\n- Status: Card reported LOST and blocked immediately\n- Replacement card ID: ACC-001-R2\n- Estimated arrival: by 2025-11-26 (local time may vary slightly from the timestamp)\n\nNext steps:\n- Keep an eye on your recent transactions; tell me right away if you see anything you don\u2019t recognize and I can help start a dispute.\n- If you have this card saved with any merchants (subscriptions, mobile wallet, online shops), you\u2019ll need to update it once the new card arrives.\n\nIf you want, I can also help you review today\u2019s transactions on this card to check for anything suspicious."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

@@ -1,0 +1,415 @@
+{
+  "meta": {
+    "conversation_id": "restaurant_booking.rb_001",
+    "domain_id": "restaurant_booking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "rb_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "date": "tomorrow",
+          "time_window": ">=18:00",
+          "party_size": 4,
+          "location": "Eugene"
+        },
+        "preferences": {
+          "cuisine": "Mediterranean"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "cuisine": "Mediterranean",
+          "location": "Eugene"
+        },
+        "action": "make_reservation",
+        "notes": "Success if the assistant makes a reservation via make_reservation at one of the seeded Mediterranean restaurants in Eugene for 4 people on the final agreed date (next Wednesday, after the user changes their mind) at or after 18:00 local time."
+      },
+      "objective": "Find and book a restaurant."
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.change_mind",
+          "instructions": "After initial query and results, change the preference for date from tomorrow to next Wednesday."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "restaurants": [
+            {
+              "restaurant_id": "RST-001",
+              "name": "Bella Vista Mediterranean",
+              "cuisine": "Mediterranean",
+              "address": "123 Main St, Eugene, OR",
+              "rating": 4.5,
+              "price_range": "$$",
+              "hours": "Mon-Sun 17:00-22:00"
+            },
+            {
+              "restaurant_id": "RST-002",
+              "name": "Trattoria Eugene",
+              "cuisine": "Mediterranean",
+              "address": "456 Market St, Eugene, OR",
+              "rating": 4.2,
+              "price_range": "$$$",
+              "hours": "Mon-Sun 18:00-23:00"
+            },
+            {
+              "restaurant_id": "RST-003",
+              "name": "Mediterranean Bistro",
+              "cuisine": "Mediterranean",
+              "address": "789 Oak Ave, Eugene, OR",
+              "rating": 4.0,
+              "price_range": "$",
+              "hours": "Mon-Sun 17:30-21:30"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_002",
+      "name": "Maya Chen",
+      "age": 34,
+      "hometown": "Eugene, OR",
+      "occupation": "Nutrition researcher",
+      "bio": "Maya Chen studies how everyday habits like water intake influence children's eating choices. She splits her time between lab work, preschool visits, and writing approachable summaries for parents and educators. Off the clock she hosts weekend brunches and keeps a shared calendar with her research collaborators.",
+      "use_cases": [
+        "calendar.schedule_cross_functional_team_meeting",
+        "calendar.schedule_recurring_one_on_one_meeting",
+        "restaurant_booking.dine_in_brunch",
+        "online_shopping.order_gift"
+      ],
+      "sample_messages": [
+        "hey there! brunch for 4 on sunday? someplace quiet so we can catch up",
+        "can we bump my sync w/ sara to wed? preschool visits ran long",
+        "thanks! sending this over to the project crew now"
+      ],
+      "writing_style": "casual and friendly, lowercase starts, abbreviations like 'w/' and 'ppl', warm conversational tone",
+      "email": "maya.chen@uoregon.edu",
+      "phone": "+1-541-555-0186"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "hey! i\u2019m looking for a dinner spot to book for 4 ppl in eugene tomorrow evening after 6, preferably mediterranean."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I should search with cuisine Mediterranean and Eugene, then clarify time flexibility if no availability. Need plan then tool.</think>\n<plan>\n1. Confirm search criteria (Eugene, Mediterranean, tomorrow evening after 18:00 for 4 people).\n2. Search for matching restaurants in Eugene.\n3. Check availability tomorrow evening after 18:00 for 4 people at promising options.\n4. Present available options and times, then proceed to book the user\u2019s choice.\n</plan>\n<action type=\"tool\" name=\"search_restaurants\">\n{\"location\":\"Eugene\",\"cuisine\":\"Mediterranean\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "search_restaurants",
+            "args": {
+              "location": "Eugene",
+              "cuisine": "Mediterranean"
+            },
+            "raw": "search_restaurants({\"location\":\"Eugene\",\"cuisine\":\"Mediterranean\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"restaurant_id\": \"RST-001\",\n    \"name\": \"Bella Vista Mediterranean\",\n    \"cuisine\": \"Mediterranean\",\n    \"address\": \"123 Main St, Eugene, OR\",\n    \"rating\": 4.5,\n    \"price_range\": \"$$\",\n    \"hours\": \"Mon-Sun 17:00-22:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-002\",\n    \"name\": \"Trattoria Eugene\",\n    \"cuisine\": \"Mediterranean\",\n    \"address\": \"456 Market St, Eugene, OR\",\n    \"rating\": 4.2,\n    \"price_range\": \"$$$\",\n    \"hours\": \"Mon-Sun 18:00-23:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-003\",\n    \"name\": \"Mediterranean Bistro\",\n    \"cuisine\": \"Mediterranean\",\n    \"address\": \"789 Oak Ave, Eugene, OR\",\n    \"rating\": 4.0,\n    \"price_range\": \"$\",\n    \"hours\": \"Mon-Sun 17:30-21:30\"\n  }\n]",
+            "parsed": [
+              {
+                "restaurant_id": "RST-001",
+                "name": "Bella Vista Mediterranean",
+                "cuisine": "Mediterranean",
+                "address": "123 Main St, Eugene, OR",
+                "rating": 4.5,
+                "price_range": "$$",
+                "hours": "Mon-Sun 17:00-22:00"
+              },
+              {
+                "restaurant_id": "RST-002",
+                "name": "Trattoria Eugene",
+                "cuisine": "Mediterranean",
+                "address": "456 Market St, Eugene, OR",
+                "rating": 4.2,
+                "price_range": "$$$",
+                "hours": "Mon-Sun 18:00-23:00"
+              },
+              {
+                "restaurant_id": "RST-003",
+                "name": "Mediterranean Bistro",
+                "cuisine": "Mediterranean",
+                "address": "789 Oak Ave, Eugene, OR",
+                "rating": 4.0,
+                "price_range": "$",
+                "hours": "Mon-Sun 17:30-21:30"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>Now check availability for all three tomorrow after 18:00 for 4.</think>\n<plan>\n1. Check availability tomorrow after 18:00 for 4 people at the three Mediterranean options in Eugene.\n2. Compare available times and present them clearly to the user.\n3. Ask which restaurant/time they prefer and collect name/phone to book.\n4. Make the reservation and share the confirmation details.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-001\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "tomorrow",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-001\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-001\",\n  \"available_times\": [\n    \"18:15\",\n    \"18:45\",\n    \"19:00\",\n    \"19:30\",\n    \"20:15\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-001",
+              "available_times": [
+                "18:15",
+                "18:45",
+                "19:00",
+                "19:30",
+                "20:15"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>Need availability for other two, batch tools not supported so call sequentially, then summarize choices and ask preference plus name/phone.</think>\n<plan>\n1. Check availability at the remaining two Mediterranean restaurants for tomorrow 18:00\u201321:00 for 4.\n2. Summarize all available times across restaurants.\n3. Ask the user to pick a restaurant/time and provide name and phone.\n4. Make the reservation and confirm details.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-002\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-002",
+              "date": "tomorrow",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-002\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-002\",\n  \"available_times\": [\n    \"18:00\",\n    \"18:30\",\n    \"19:15\",\n    \"20:00\",\n    \"20:45\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-002",
+              "available_times": [
+                "18:00",
+                "18:30",
+                "19:15",
+                "20:00",
+                "20:45"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 4,
+          "output_raw": "<think>Need last availability then present concise options and ask preference plus name/phone.</think>\n<plan>\n1. Check availability for the third Mediterranean option for tomorrow evening 18:00\u201321:00 for 4.\n2. Present all restaurants and times succinctly.\n3. Ask the user to choose a restaurant/time and provide name and phone so I can book.\n4. Make the reservation and confirm the booking details.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-003\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-003",
+              "date": "tomorrow",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-003\",\"date\":\"tomorrow\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-003\",\n  \"available_times\": [\n    \"18:30\",\n    \"18:45\",\n    \"19:30\",\n    \"20:00\",\n    \"20:30\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-003",
+              "available_times": [
+                "18:30",
+                "18:45",
+                "19:30",
+                "20:00",
+                "20:30"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 5,
+          "output_raw": "<think>I now have 3 Mediterranean options in Eugene with times; need to present clearly and get their choice plus name/phone to book.</think>\n<plan>\n1. List the three Mediterranean restaurants in Eugene with their available times after 18:00.\n2. Ask the user to choose a restaurant and time, and provide their name and phone number.\n3. Once chosen, place the reservation using the booking tool.\n4. Confirm the reservation details and share the confirmation code.\n</plan>\n<action type=\"say\">\nI found three Mediterranean spots in Eugene with availability tomorrow evening for 4 people (after 6 pm):\n\n1) Bella Vista Mediterranean (123 Main St, $$, rating 4.5) \u2014 hours 17:00\u201322:00  \n   Available times: 18:15, 18:45, 19:00, 19:30, 20:15\n\n2) Trattoria Eugene (456 Market St, $$$, rating 4.2) \u2014 hours 18:00\u201323:00  \n   Available times: 18:00, 18:30, 19:15, 20:00, 20:45\n\n3) Mediterranean Bistro (789 Oak Ave, $, rating 4.0) \u2014 hours 17:30\u201321:30  \n   Available times: 18:30, 18:45, 19:30, 20:00, 20:30\n\nWhich restaurant and time would you like?  \nAnd what name and mobile number should I use for the reservation for 4 people?\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I found three Mediterranean spots in Eugene with availability tomorrow evening for 4 people (after 6 pm):\n\n1) Bella Vista Mediterranean (123 Main St, $$, rating 4.5) \u2014 hours 17:00\u201322:00  \n   Available times: 18:15, 18:45, 19:00, 19:30, 20:15\n\n2) Trattoria Eugene (456 Market St, $$$, rating 4.2) \u2014 hours 18:00\u201323:00  \n   Available times: 18:00, 18:30, 19:15, 20:00, 20:45\n\n3) Mediterranean Bistro (789 Oak Ave, $, rating 4.0) \u2014 hours 17:30\u201321:30  \n   Available times: 18:30, 18:45, 19:30, 20:00, 20:30\n\nWhich restaurant and time would you like?  \nAnd what name and mobile number should I use for the reservation for 4 people?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "oh actually, i need to switch the date to next wednesday instead of tomorrow, same time window (after 6) and 4 ppl, mediterranean in eugene. can you see what\u2019s open then?"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>Need new availability for same 3 restaurants but date=next Wednesday, same window and party size.</think>\n<plan>\n1. Check availability for next Wednesday 18:00\u201321:00 for 4 people at each Mediterranean restaurant in Eugene previously found.\n2. Summarize which times are open.\n3. Ask the user to choose a restaurant and time, then collect name and phone to book.\n4. Make the reservation and confirm details.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-001\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "next Wednesday",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-001\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-001\",\n  \"available_times\": [\n    \"18:00\",\n    \"18:30\",\n    \"19:00\",\n    \"19:45\",\n    \"20:15\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-001",
+              "available_times": [
+                "18:00",
+                "18:30",
+                "19:00",
+                "19:45",
+                "20:15"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>Need availability for RST-002 and RST-003 next Wednesday, then summarize for user.</think>\n<plan>\n1. Check next Wednesday 18:00\u201321:00 availability for Trattoria Eugene (RST-002) and Mediterranean Bistro (RST-003) for 4 people.\n2. Present all three restaurants\u2019 available times for next Wednesday evening.\n3. Ask the user to choose a restaurant/time and provide name and phone.\n4. Once chosen, place the reservation and confirm details.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-002\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-002",
+              "date": "next Wednesday",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-002\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-002\",\n  \"available_times\": [\n    \"18:15\",\n    \"18:45\",\n    \"19:30\",\n    \"20:00\",\n    \"20:30\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-002",
+              "available_times": [
+                "18:15",
+                "18:45",
+                "19:30",
+                "20:00",
+                "20:30"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>Get last restaurant availability then present concise options.</think>\n<plan>\n1. Fetch next Wednesday evening availability for Mediterranean Bistro (RST-003) for 4 people.\n2. Summarize all three restaurants\u2019 available times after 18:00.\n3. Ask the user to pick a restaurant/time and provide name and phone so I can book.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n{\"restaurant_id\":\"RST-003\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-003",
+              "date": "next Wednesday",
+              "time_window": "18:00-21:00",
+              "party_size": 4
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-003\",\"date\":\"next Wednesday\",\"time_window\":\"18:00-21:00\",\"party_size\":4})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-003\",\n  \"available_times\": [\n    \"18:00\",\n    \"18:20\",\n    \"18:50\",\n    \"19:10\",\n    \"20:05\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-003",
+              "available_times": [
+                "18:00",
+                "18:20",
+                "18:50",
+                "19:10",
+                "20:05"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 4,
+          "output_raw": "<think>Now I should summarize next Wednesday options and ask user to choose + provide name/phone.</think>\n<plan>\n1. Present all Mediterranean options in Eugene with next Wednesday availability after 18:00 for 4 people.\n2. Ask the user to choose a restaurant and time, and provide reservation name and phone.\n3. Once chosen, place the reservation and confirm details.\n</plan>\n<action type=\"say\">\nHere\u2019s what\u2019s open next Wednesday evening (after 6 pm) in Eugene for 4 people:\n\n1) Bella Vista Mediterranean (RST-001)  \n   Available: 18:00, 18:30, 19:00, 19:45, 20:15\n\n2) Trattoria Eugene (RST-002)  \n   Available: 18:15, 18:45, 19:30, 20:00, 20:30\n\n3) Mediterranean Bistro (RST-003)  \n   Available: 18:00, 18:20, 18:50, 19:10, 20:05\n\nWhich restaurant and exact time would you like?  \nAnd what name and mobile number should I use for the reservation for 4 people?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s what\u2019s open next Wednesday evening (after 6 pm) in Eugene for 4 people:\n\n1) Bella Vista Mediterranean (RST-001)  \n   Available: 18:00, 18:30, 19:00, 19:45, 20:15\n\n2) Trattoria Eugene (RST-002)  \n   Available: 18:15, 18:45, 19:30, 20:00, 20:30\n\n3) Mediterranean Bistro (RST-003)  \n   Available: 18:00, 18:20, 18:50, 19:10, 20:05\n\nWhich restaurant and exact time would you like?  \nAnd what name and mobile number should I use for the reservation for 4 people?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "let\u2019s do bella vista at 7:00 pm next wednesday.  \n\nname: maya chen  \nmobile: +1-541-555-0186"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>Need to book Bella Vista (RST-001) next Wednesday at 19:00 for 4 under Maya with phone. Then confirm.</think>\n<plan>\n1. Place the reservation at Bella Vista Mediterranean (RST-001) for next Wednesday at 19:00 for 4 people under Maya Chen.\n2. Receive confirmation details from the booking system.\n3. Share the confirmation status and any code with the user.\n</plan>\n<action type=\"tool\" name=\"make_reservation\">\n{\"restaurant_id\":\"RST-001\",\"date\":\"next Wednesday\",\"time\":\"19:00\",\"party_size\":4,\"name\":\"Maya Chen\",\"phone\":\"+1-541-555-0186\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "make_reservation",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "next Wednesday",
+              "time": "19:00",
+              "party_size": 4,
+              "name": "Maya Chen",
+              "phone": "+1-541-555-0186"
+            },
+            "raw": "make_reservation({\"restaurant_id\":\"RST-001\",\"date\":\"next Wednesday\",\"time\":\"19:00\",\"party_size\":4,\"name\":\"Maya Chen\",\"phone\":\"+1-541-555-0186\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"confirmation_code\": \"CNF-7K3D9Q\"\n}",
+            "parsed": {
+              "success": true,
+              "confirmation_code": "CNF-7K3D9Q"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>Mention success, details, code, and offer help; be brief.</think>\n<plan>\n1. Confirm the reservation details and provide the confirmation code.\n2. Offer help if they need changes or cancellation later.\n</plan>\n<action type=\"say\">\nYou\u2019re all set!\n\nI booked:\n- Bella Vista Mediterranean (Eugene)  \n- Next Wednesday, 7:00 pm  \n- Party of 4  \n- Name: Maya Chen  \n- Mobile: +1-541-555-0186  \n\nConfirmation code: CNF-7K3D9Q\n\nIf you\u2019d like, I can also note any special requests (birthday, dietary needs, etc.).</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "You\u2019re all set!\n\nI booked:\n- Bella Vista Mediterranean (Eugene)  \n- Next Wednesday, 7:00 pm  \n- Party of 4  \n- Name: Maya Chen  \n- Mobile: +1-541-555-0186  \n\nConfirmation code: CNF-7K3D9Q\n\nIf you\u2019d like, I can also note any special requests (birthday, dietary needs, etc.)."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

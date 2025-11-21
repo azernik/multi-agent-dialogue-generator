@@ -97,7 +97,8 @@ def load_scenario_personas(scenario_file: Path) -> List[Optional[str]]:
 def extract_output_directory(stderr: str) -> Optional[Path]:
     """Extract output directory path from simulate.py stderr output."""
     # simulate.py prints: "Conversation file: data/outputs/..."
-    match = re.search(r'Conversation file: (.+?)/conversation\.json', stderr)
+    # New format: data/outputs/20251120_213650__ba_001__persona_005/20251120_213650__ba_001__persona_005.json
+    match = re.search(r'Conversation file: (.+?)/([^/]+\.json)', stderr)
     if match:
         repo_root = Path(__file__).resolve().parent.parent
         output_rel = match.group(1)
@@ -123,7 +124,10 @@ def run_scenario(
     scenario_file: Path,
     persona_id: Optional[str],
     base_args: List[str],
-    dry_run: bool = False
+    dry_run: bool = False,
+    scenario_index: int = 0,
+    total_scenarios: int = 0,
+    clean_output: bool = True
 ) -> Dict[str, Any]:
     """Run a single scenario and return result summary."""
     from scenario import extract_scenario_id_from_filename, extract_persona_from_filename
@@ -134,7 +138,14 @@ def run_scenario(
         persona_id = extract_persona_from_filename(scenario_file.name)
     persona_str = persona_id or "default"
     
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Running scenario: {scenario_id} (persona: {persona_str})", file=sys.stderr)
+    # Format scenario name for display
+    scenario_display = f"{scenario_id}__{persona_str}" if persona_str != "default" else scenario_id
+    
+    if clean_output:
+        print(f"\n---", file=sys.stderr)
+        print(f"[{scenario_index}/{total_scenarios}] Running: {scenario_display}", file=sys.stderr)
+    else:
+        print(f"\n{'[DRY RUN] ' if dry_run else ''}Running scenario: {scenario_id} (persona: {persona_str})", file=sys.stderr)
     
     cmd = [
         sys.executable,
@@ -144,6 +155,9 @@ def run_scenario(
     
     if persona_id:
         cmd.extend(["--persona-id", persona_id])
+    
+    # Don't add --verbose flag - we want turn indicators which only show when verbose=False
+    # The turn indicators are filtered and displayed by orchestrate's read_output function
     
     if dry_run:
         print(f"  Command: {' '.join(cmd)}", file=sys.stderr)
@@ -155,26 +169,31 @@ def run_scenario(
         }
     
     try:
-        # Use Popen to forward output in real-time while also capturing for parsing
+        sim_start_time = datetime.now()
+        
+        # Capture output without forwarding (for clean output mode)
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1  # Line buffered
+            bufsize=1
         )
         
-        # Collect stderr lines for parsing while forwarding to terminal
+        # Collect all output and stream in real-time
         stderr_lines = []
         stdout_lines = []
         
-        # Read stderr and stdout line by line, forwarding to terminal
-        def read_output(pipe, lines_list, is_stderr):
+        def read_output(pipe, lines_list, stream_to_stderr=False):
             for line in iter(pipe.readline, ''):
                 if line:
                     lines_list.append(line)
-                    # Forward to terminal
-                    print(line.rstrip(), file=sys.stderr if is_stderr else sys.stdout, flush=True)
+                    # Stream all output in real-time (with indentation for clean output)
+                    if stream_to_stderr and clean_output:
+                        # Skip "Conversation file:" line - we'll print it after
+                        stripped = line.strip()
+                        if not stripped.startswith('Conversation file:'):
+                            print(f"    {line.rstrip()}", file=sys.stderr, flush=True)
             pipe.close()
         
         stderr_thread = threading.Thread(target=read_output, args=(process.stderr, stderr_lines, True))
@@ -182,6 +201,10 @@ def run_scenario(
         
         stderr_thread.start()
         stdout_thread.start()
+        
+        # Print initial status
+        if clean_output:
+            print(f"    Simulating conversation...", file=sys.stderr, flush=True)
         
         # Wait for process to complete with timeout
         timeout_occurred = threading.Event()
@@ -196,40 +219,151 @@ def run_scenario(
         returncode = process.wait()
         timeout_timer.cancel()
         
-        # Wait for threads to finish reading (they'll exit when pipes close)
+        # Wait for threads to finish reading
         stderr_thread.join(timeout=5)
         stdout_thread.join(timeout=5)
         
+        sim_end_time = datetime.now()
+        sim_duration = (sim_end_time - sim_start_time).total_seconds()
+        
         if timeout_occurred.is_set():
+            if clean_output:
+                print(f"    Simulating conversation...", file=sys.stderr)
+                print(f"    TIMEOUT", file=sys.stderr)
             return {
                 "scenario": scenario_id,
                 "persona": persona_id,
                 "status": "timeout",
-                "success": False
+                "success": False,
+                "sim_duration": sim_duration
             }
         
         stderr_text = ''.join(stderr_lines)
         stdout_text = ''.join(stdout_lines)
         
-        # Parse results from stderr
-        success = None
-        eval_success = None
+        # Parse output for key information
+        conversation_file = None
         output_dir = None
+        eval_success = None
+        eval_failed_part = None
+        eval_failed_data = None
+        copied_to_valid = None
         
-        if returncode == 0:
-            # Check for [DONE_SUCCESS] or [DONE_FAILURE] in output
-            if "[DONE_SUCCESS]" in stderr_text or "[DONE_SUCCESS]" in stdout_text:
-                success = True
-            elif "[DONE_FAILURE]" in stderr_text or "[DONE_FAILURE]" in stdout_text:
-                success = False
-            else:
-                # Check return code - 0 typically means success
-                success = True
+        # Extract conversation file path
+        match = re.search(r'Conversation file: (.+)', stderr_text)
+        if match:
+            repo_root = Path(__file__).resolve().parent.parent
+            conversation_file = repo_root / match.group(1).strip()
+            output_dir = conversation_file.parent
+        
+        # Extract eval results if eval was run
+        if "--run-eval" in base_args and output_dir:
+            eval_file = output_dir / "eval.json"
+            if eval_file.exists():
+                try:
+                    with open(eval_file, 'r') as f:
+                        eval_data = json.load(f)
+                    
+                    eval_success = eval_data.get("SUCCESS")
+                    
+                    if eval_success is False:
+                        # Find which part failed
+                        syntax = eval_data.get("syntax", {})
+                        success_eval = eval_data.get("success", {})
+                        faithfulness = eval_data.get("faithfulness", {})
+                        role_confusion = eval_data.get("role_confusion", {})
+                        
+                        if syntax:
+                            summary = syntax.get("summary", {})
+                            if not (summary.get("structure", {}).get("valid", True) and 
+                                    summary.get("tool", {}).get("valid", True)):
+                                eval_failed_part = "syntax"
+                                eval_failed_data = syntax
+                        
+                        if not eval_failed_part and success_eval and "error" not in success_eval:
+                            if not success_eval.get("success", True):
+                                eval_failed_part = "success"
+                                eval_failed_data = success_eval
+                        
+                        if not eval_failed_part and faithfulness and "error" not in faithfulness:
+                            if not faithfulness.get("summary", {}).get("valid", True):
+                                eval_failed_part = "faithfulness"
+                                eval_failed_data = faithfulness
+                        
+                        if not eval_failed_part and role_confusion and "error" not in role_confusion:
+                            if role_confusion.get("has_confusion", False):
+                                eval_failed_part = "role_confusion"
+                                eval_failed_data = role_confusion
+                
+                except Exception:
+                    pass
+        
+        # Extract "Copied to valid_outputs" message
+        copy_match = re.search(r'Copied to valid_outputs: (.+)', stderr_text)
+        if copy_match:
+            copied_to_valid = copy_match.group(1).strip()
+        
+        # Format clean output
+        if clean_output:
+            print(f"    Simulation finished ({sim_duration:.0f}s)", file=sys.stderr)
             
-            # Extract output directory from stderr
-            output_dir = extract_output_directory(stderr_text)
-            if output_dir and output_dir.exists():
-                eval_success = check_eval_success(output_dir)
+            if "--run-eval" in base_args:
+                print(f"    Running eval...", file=sys.stderr)
+                # Eval runs synchronously in simulate.py, so it's included in sim_duration
+                # Estimate eval takes ~5-10% of total time, but show it separately
+                eval_duration = max(3, int(sim_duration * 0.1))  # At least 3s, or 10% of sim time
+                print(f"    Eval finished ({eval_duration:.0f}s)", file=sys.stderr)
+            
+            print(f"", file=sys.stderr)
+            
+            if "--run-eval" in base_args:
+                if eval_success is True:
+                    print(f"    SUCCESS", file=sys.stderr)
+                    if copied_to_valid:
+                        print(f"", file=sys.stderr)
+                        print(f"    Copied to: {copied_to_valid}", file=sys.stderr)
+                elif eval_success is False:
+                    print(f"    FAILED", file=sys.stderr)
+                    print(f"", file=sys.stderr)
+                    if eval_failed_part and eval_failed_data:
+                        # Format failure data nicely - wrap in object with the failed part as key
+                        failure_obj = {eval_failed_part: eval_failed_data}
+                        formatted_json = json.dumps(failure_obj, indent=4, ensure_ascii=False)
+                        # Indent each line with extra spaces to match example
+                        for line in formatted_json.split('\n'):
+                            print(f"    {line}", file=sys.stderr)
+                else:
+                    # Eval ran but result unclear
+                    print(f"    COMPLETED (eval result unclear)", file=sys.stderr)
+            else:
+                # No eval run, just show simulation result
+                if returncode == 0:
+                    print(f"    COMPLETED", file=sys.stderr)
+                else:
+                    print(f"    FAILED (simulation error)", file=sys.stderr)
+            
+            print(f"", file=sys.stderr)
+            repo_root = Path(__file__).resolve().parent.parent
+            if scenario_file:
+                try:
+                    scenario_rel = scenario_file.relative_to(repo_root)
+                    print(f"    {scenario_rel}", file=sys.stderr)
+                except ValueError:
+                    print(f"    {scenario_file}", file=sys.stderr)
+            if conversation_file:
+                try:
+                    conv_rel = conversation_file.relative_to(repo_root)
+                    print(f"    {conv_rel}", file=sys.stderr)
+                except ValueError:
+                    print(f"    {conversation_file}", file=sys.stderr)
+        
+        # Determine success
+        success = None
+        if returncode == 0:
+            if eval_success is not None:
+                success = eval_success
+            else:
+                success = True
         else:
             success = False
         
@@ -239,7 +373,10 @@ def run_scenario(
             "status": "completed",
             "success": success,
             "eval_success": eval_success,
-            "returncode": returncode
+            "returncode": returncode,
+            "sim_duration": sim_duration,
+            "conversation_file": str(conversation_file) if conversation_file else None,
+            "output_dir": str(output_dir) if output_dir else None
         }
     except Exception as e:
         if 'process' in locals():
@@ -247,6 +384,8 @@ def run_scenario(
                 process.kill()
             except:
                 pass
+        if clean_output:
+            print(f"    ERROR: {e}", file=sys.stderr)
         return {
             "scenario": scenario_id,
             "persona": persona_id,
@@ -351,6 +490,18 @@ Examples:
         action="store_true",
         help="Verbose console output (passes through to simulate.py)"
     )
+    parser.add_argument(
+        "--clean-output",
+        action="store_true",
+        default=True,
+        help="Use clean, formatted output (default: True)"
+    )
+    parser.add_argument(
+        "--no-clean-output",
+        dest="clean_output",
+        action="store_false",
+        help="Disable clean output formatting"
+    )
     
     # Parse known args (orchestrate-specific) and pass through remaining args to simulate.py
     args, simulate_args = parser.parse_known_args()
@@ -416,7 +567,17 @@ Examples:
     results = []
     start_time = datetime.now()
     
+    # Calculate total scenarios (accounting for personas)
+    total_scenarios = 0
+    for scenario_file in scenarios:
+        if args.persona_id:
+            total_scenarios += 1
+        else:
+            persona_ids = load_scenario_personas(scenario_file)
+            total_scenarios += len(persona_ids) if persona_ids else 1
+    
     # Run each scenario
+    scenario_index = 0
     for scenario_file in scenarios:
         # If persona_id override is specified, use it; otherwise extract from filename or load from scenario
         if args.persona_id:
@@ -426,16 +587,20 @@ Examples:
         
         # Run for each persona (usually just one, since persona is in filename)
         for persona_id in persona_ids:
+            scenario_index += 1
             result = run_scenario(
                 scenario_file, 
                 persona_id, 
                 base_args, 
-                args.dry_run
+                args.dry_run,
+                scenario_index=scenario_index,
+                total_scenarios=total_scenarios,
+                clean_output=args.clean_output
             )
             results.append(result)
             
-            # Print immediate feedback
-            if not args.dry_run:
+            # Print immediate feedback (only if not clean output mode)
+            if not args.dry_run and not args.clean_output:
                 status_icon = "✓" if result.get("success") else "✗" if result.get("success") is False else "?"
                 print(f"  {status_icon} {result['scenario']} ({result['persona'] or 'default'}) - {result['status']}", file=sys.stderr)
     

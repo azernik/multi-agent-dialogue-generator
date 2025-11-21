@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_001",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the checking account using get_account_balance (after identifying it via list_customer_accounts)."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "savings",
+              "nickname": "Emergency Fund",
+              "masked_number": "****5678",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_005",
+      "name": "Jordan Miles",
+      "age": 29,
+      "hometown": "Minneapolis, MN",
+      "occupation": "Elementary school teacher",
+      "bio": "Jordan Miles teaches fourth grade and loves turning lessons into games that keep students moving and laughing. Weekends are for brunch with friends, planning field trips, and catching up on travel deals during school breaks.",
+      "use_cases": [
+        "restaurant_booking.dine_in_brunch",
+        "calendar.schedule_outdoor_event",
+        "online_shopping.return_order",
+        "travel.check_flight_status"
+      ],
+      "writing_style": "Warm energy, mix of caps/lowercase, exclamation marks, casual",
+      "sample_messages": [
+        "weather looks good for saturday! let's lock in that zoo field trip",
+        "Does the park allow groups of 25 kids or do we need a permit?",
+        "perfect!! forwarding this to the other teachers now"
+      ],
+      "email": "jordan.miles@mpls.k12.mn.us",
+      "phone": "+1-612-555-0476"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "hey! i wanna check the balance on my account, can you help with that?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I should get their accounts, then ask which one, then fetch balance.</think>\n<plan>\n1. Retrieve the list of the user\u2019s accounts.\n2. Ask the user which specific account they want the balance for.\n3. Fetch and present the balance for the chosen account.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Emergency Fund\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "savings",
+                "nickname": "Emergency Fund",
+                "masked_number": "****5678",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>User wants a balance; I have two accounts listed. I should show them and ask which one.</think>\n<plan>\n1. Present the available accounts to the user.\n2. Have the user pick which account they want the balance for.\n3. Once they choose, fetch and display that account\u2019s balance.\n</plan>\n<action type=\"say\">\nI can help with that. You have these accounts:\n\n1) Everyday Checking (checking) ending in ****1234  \n2) Emergency Fund (savings) ending in ****5678  \n\nWhich account would you like to check the balance for? You can reply with \u201cchecking\u201d, \u201csavings\u201d, or the number (1 or 2).\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. You have these accounts:\n\n1) Everyday Checking (checking) ending in ****1234  \n2) Emergency Fund (savings) ending in ****5678  \n\nWhich account would you like to check the balance for? You can reply with \u201cchecking\u201d, \u201csavings\u201d, or the number (1 or 2)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "checking please!"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I need balance for ACC-001 and then present it.</think>\n<plan>\n1. Retrieve the balance for the Everyday Checking account.\n2. Present the current (and available, if present) balance to the user.\n3. Ask if they want balances for any other accounts.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 1542.37,\n  \"available_balance\": 1490.12,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:09Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 1542.37,
+              "available_balance": 1490.12,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:09Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>Share balance clearly and briefly, then offer quick next step.</think>\n<plan>\n1. Present the checking account balance.\n2. Offer to show savings balance or recent transactions.\n</plan>\n<action type=\"say\">\nHere\u2019s your Everyday Checking (****1234):\n\n- Current balance: $1,542.37  \n- Available balance: $1,490.12  \n- Last updated: 2025-11-21T14:32:09Z\n\nDo you also want to see your savings balance or recent transactions on this account?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your Everyday Checking (****1234):\n\n- Current balance: $1,542.37  \n- Available balance: $1,490.12  \n- Last updated: 2025-11-21T14:32:09Z\n\nDo you also want to see your savings balance or recent transactions on this account?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

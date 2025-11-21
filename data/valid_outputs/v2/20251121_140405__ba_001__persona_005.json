@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_001",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the checking account using get_account_balance (after identifying it via list_customer_accounts)."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "savings",
+              "nickname": "Emergency Fund",
+              "masked_number": "****5678",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_005",
+      "name": "Jordan Miles",
+      "age": 29,
+      "hometown": "Minneapolis, MN",
+      "occupation": "Elementary school teacher",
+      "bio": "Jordan Miles teaches fourth grade and loves turning lessons into games that keep students moving and laughing. Weekends are for brunch with friends, planning field trips, and catching up on travel deals during school breaks.",
+      "use_cases": [
+        "restaurant_booking.dine_in_brunch",
+        "calendar.schedule_outdoor_event",
+        "online_shopping.return_order",
+        "travel.check_flight_status"
+      ],
+      "writing_style": "Warm energy, mix of caps/lowercase, exclamation marks, casual",
+      "sample_messages": [
+        "weather looks good for saturday! let's lock in that zoo field trip",
+        "Does the park allow groups of 25 kids or do we need a permit?",
+        "perfect!! forwarding this to the other teachers now"
+      ],
+      "email": "jordan.miles@mpls.k12.mn.us",
+      "phone": "+1-612-555-0476"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "hey! i wanna check the balance on my account, can you help with that?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants a balance. Need which account or list first. Use tool list_customer_accounts, then ask which one, then get_account_balance. Start plan.<think>\nI know the user wants to check their account balance but hasn\u2019t specified which account, and an authenticated context is implied because banking tools are available. I should first fetch their list of accounts, then let them pick one, then get the balance. I\u2019ll keep the question simple and offer to show all balances if they prefer.\n</think>\n<plan>\n1. Retrieve the user\u2019s list of accounts.\n2. Present the accounts in a simple way and ask which one they want the balance for (or if they want all).\n3. Once they choose, fetch and share the balance for the selected account(s).\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Emergency Fund\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "savings",
+                "nickname": "Emergency Fund",
+                "masked_number": "****5678",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have two accounts from the tool. User wants to check balance; I should ask which account or if they want both. Keep it concise and clear. Then next step will be calling get_account_balance for chosen account(s).\n</think>\n<plan>\n1. Confirm which of the listed accounts the user wants the balance for (or if they want both).\n2. Once they choose, fetch the balance(s) and present them.\n</plan>\n<action type=\"say\">\nI see two accounts for you:\n\n1) Everyday Checking (checking, ****1234)  \n2) Emergency Fund (savings, ****5678)\n\nWhich account would you like to see the balance for, or should I show balances for both?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I see two accounts for you:\n\n1) Everyday Checking (checking, ****1234)  \n2) Emergency Fund (savings, ****5678)\n\nWhich account would you like to see the balance for, or should I show balances for both?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "just the checking one please!"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser chose checking, which maps to ACC-001. I should call get_account_balance with that ID, then return the balance concisely. No need to ask more questions.\n</think>\n<plan>\n1. Retrieve the balance for the Everyday Checking account (ACC-001).\n2. Present the current (and available, if present) balance to the user.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 1842.37,\n  \"available_balance\": 1790.12,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:08Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 1842.37,
+              "available_balance": 1790.12,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:08Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have the balance data for the user\u2019s checking account and just need to present it clearly and briefly. I\u2019ll include both current and available balances plus the currency. That completes the request.\n</think>\n<plan>\n1. Present the checking account balance details to the user and confirm completion.\n</plan>\n<action type=\"say\">\nHere\u2019s your Everyday Checking (****1234):\n\n- Current balance: $1,842.37 USD\n- Available balance: $1,790.12 USD\n- Last updated: 2025-11-21T14:32:08Z\n\nAnything else you\u2019d like to do with this account?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your Everyday Checking (****1234):\n\n- Current balance: $1,842.37 USD\n- Available balance: $1,790.12 USD\n- Last updated: 2025-11-21T14:32:08Z\n\nAnything else you\u2019d like to do with this account?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

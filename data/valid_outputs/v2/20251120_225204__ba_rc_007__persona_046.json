@@ -1,0 +1,222 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_rc_007",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_rc_007",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_card": "credit_card",
+          "issue_type": "damaged"
+        },
+        "preferences": {
+          "request_replacement": true
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "credit_card",
+          "nickname": "Business Card"
+        },
+        "action": "report_card_issue",
+        "notes": "Success if the assistant reports the damaged card via report_card_issue for the Business Card credit card account (after the user reveals card details gradually over multiple turns - first mentioning a problem, then specifying it's damaged, then identifying which card), requests a replacement."
+      },
+      "objective": "Report a damaged credit card"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Don't provide all information at once. First mention you're having trouble with your card. When asked what's wrong, reveal it's damaged. When asked which card, reveal it's the Business Card. When asked about replacement, confirm you want a new one."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "credit_card",
+              "nickname": "Business Card",
+              "masked_number": "****9999",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "credit_card",
+              "nickname": "Personal Card",
+              "masked_number": "****0000",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-003",
+              "account_type": "checking",
+              "nickname": "Main Checking",
+              "masked_number": "****1111",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_046",
+      "name": "Dr. Jennifer Walsh",
+      "age": 39,
+      "hometown": "Philadelphia, PA",
+      "occupation": "Business ethics researcher",
+      "bio": "Jennifer Walsh researches corporate social responsibility at the Wharton School, focusing on how pharmaceutical companies balance profit with public health goals. She publishes case studies, teaches MBA students, and consults with companies trying to improve their ethical practices. She's always juggling research deadlines, teaching prep, and conference travel.",
+      "use_cases": [],
+      "sample_messages": [
+        "Case study draft due Friday - can you pull the latest pharma industry CSR reports?",
+        "Conference in Chicago next week. Book flight Tuesday AM, return Thursday PM",
+        "Student presentations tomorrow 2-5pm - need to reserve the seminar room with the projector"
+      ],
+      "email": "jennifer.walsh@example.com",
+      "phone": "(215) 555-8392"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "having trouble with my card \u2013 need to get something sorted out with it"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I need to clarify what kind of trouble and whether this is about loss/theft/damage vs. a transaction issue, then choose the right tool (report_card_issue or submit_dispute, etc.).</think>\n<plan>\n1. Ask a couple of focused questions to understand the exact card problem (lost/stolen/damaged vs. charges vs. decline).\n2. Based on their answer, decide whether to block/report the card, dispute a transaction, or troubleshoot usage.\n3. If it\u2019s a card issue like lost/stolen/damaged, collect details and use the appropriate tool.\n4. Confirm what was done and next steps for the user.\n</plan>\n<action type=\"say\">\nLet\u2019s get this fixed. I need a bit more detail about what\u2019s going on with your card:\n\n1) What kind of issue is it?\n- It\u2019s lost  \n- It was stolen  \n- It\u2019s damaged / not working physically  \n- There\u2019s a charge I don\u2019t recognize  \n- My card keeps getting declined  \n- Something else (please describe)\n\n2) Is this for your debit card or credit card?\n\nOnce I know that, I can either block the card and request a replacement, or help with the specific problem (like disputing a charge or a decline).\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Let\u2019s get this fixed. I need a bit more detail about what\u2019s going on with your card:\n\n1) What kind of issue is it?\n- It\u2019s lost  \n- It was stolen  \n- It\u2019s damaged / not working physically  \n- There\u2019s a charge I don\u2019t recognize  \n- My card keeps getting declined  \n- Something else (please describe)\n\n2) Is this for your debit card or credit card?\n\nOnce I know that, I can either block the card and request a replacement, or help with the specific problem (like disputing a charge or a decline)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "it\u2019s physically damaged / not working  \n\ncredit card"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>Need to confirm they want it blocked/replaced and then call report_card_issue, but I don\u2019t yet know which specific card_id.</think>\n<plan>\n1. Confirm they want to report the damaged credit card and get a replacement.\n2. Identify which credit card (if they have more than one) so I can target the right card_id.\n3. Call the tool to report the issue and request a replacement.\n4. Share confirmation and next steps (arrival timing, using virtual card if applicable).\n</plan>\n<action type=\"say\">\nGot it: damaged credit card.\n\nTo take care of this, I\u2019ll need two things from you:\n\n1) Do you want me to:\n- Block this card and request a replacement card right away, or  \n- Just note the damage and keep it active for now?\n\n2) Which credit card is it?  \nIf you have multiple cards, please identify it the way you see it in your account (for example: \u201cVisa ending in 1234\u201d or the nickname you use), and confirm that\u2019s the one you want to report as damaged.\n\nOnce I know those, I\u2019ll block/request a replacement for that specific card and confirm what\u2019s been done.  \n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Got it: damaged credit card.\n\nTo take care of this, I\u2019ll need two things from you:\n\n1) Do you want me to:\n- Block this card and request a replacement card right away, or  \n- Just note the damage and keep it active for now?\n\n2) Which credit card is it?  \nIf you have multiple cards, please identify it the way you see it in your account (for example: \u201cVisa ending in 1234\u201d or the nickname you use), and confirm that\u2019s the one you want to report as damaged.\n\nOnce I know those, I\u2019ll block/request a replacement for that specific card and confirm what\u2019s been done."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "please block it and send a replacement  \n\nit\u2019s my Business Card"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>Need specific card_id; use list_customer_accounts to identify credit_card with nickname Business Card, then call report_card_issue with issue_type damaged and request_replacement true.</think>\n<plan>\n1. Retrieve the user\u2019s accounts to locate the \u201cBusiness Card\u201d credit card.\n2. Use the card\u2019s ID to report it as damaged, block it, and request a replacement.\n3. Confirm the action and any available details (like estimated arrival) to the user.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Business Card\",\n    \"masked_number\": \"****9999\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Personal Card\",\n    \"masked_number\": \"****0000\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-003\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Main Checking\",\n    \"masked_number\": \"****1111\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "credit_card",
+                "nickname": "Business Card",
+                "masked_number": "****9999",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "credit_card",
+                "nickname": "Personal Card",
+                "masked_number": "****0000",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-003",
+                "account_type": "checking",
+                "nickname": "Main Checking",
+                "masked_number": "****1111",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>We found the Business Card\u2019s account_id; now call report_card_issue with damaged and request_replacement true, then relay results.</think>\n<plan>\n1. Use the Business Card\u2019s account_id to report it as damaged, block it, and request a replacement.\n2. Read the tool\u2019s response (replacement card id, ETA).\n3. Confirm to the user what\u2019s been done and share key next steps.\n</plan>\n<action type=\"tool\" name=\"report_card_issue\">\n  { \"card_id\": \"ACC-001\", \"issue_type\": \"damaged\", \"request_replacement\": true }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "report_card_issue",
+            "args": {
+              "card_id": "ACC-001",
+              "issue_type": "damaged",
+              "request_replacement": true
+            },
+            "raw": "report_card_issue({\"card_id\":\"ACC-001\",\"issue_type\":\"damaged\",\"request_replacement\":true})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"replacement_card_id\": \"ACC-001-R1\",\n  \"estimated_arrival\": \"2025-11-27T17:00:00Z\"\n}",
+            "parsed": {
+              "success": true,
+              "replacement_card_id": "ACC-001-R1",
+              "estimated_arrival": "2025-11-27T17:00:00Z"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>Explain clearly what was done and basic next steps, being concise.</think>\n<plan>\n1. Confirm that the Business Card has been blocked and a replacement ordered.\n2. Provide the estimated arrival and simple guidance on what to expect next.\n</plan>\n<action type=\"say\">\nYour Business Card has been blocked and marked as damaged, and a replacement has been ordered.\n\n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: 2025-11-27 (by end of day, local time may vary)\n\nYou won\u2019t be able to use the damaged card anymore (in-store, online, or for new recurring payments). Existing recurring payments may fail once merchants attempt new authorizations, so it\u2019s a good idea to update your card details with any key vendors once the new card arrives.\n\nDo you also want to:\n- Review any recent transactions on this Business Card, or  \n- Check which upcoming payments might be impacted?  \n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your Business Card has been blocked and marked as damaged, and a replacement has been ordered.\n\n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: 2025-11-27 (by end of day, local time may vary)\n\nYou won\u2019t be able to use the damaged card anymore (in-store, online, or for new recurring payments). Existing recurring payments may fail once merchants attempt new authorizations, so it\u2019s a good idea to update your card details with any key vendors once the new card arrives.\n\nDo you also want to:\n- Review any recent transactions on this Business Card, or  \n- Check which upcoming payments might be impacted?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

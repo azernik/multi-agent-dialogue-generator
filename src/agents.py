@@ -43,20 +43,9 @@ class BaseAgent(ABC):
     
     def _add_conversation_history(self, messages: List[Dict[str, str]], context: ConversationContext):
         for msg in context.messages:
-            if msg.role == MessageRole.USER:
-                role = "user"
-                content = msg.content
-            elif msg.role == MessageRole.TOOL:
-                # Convert TOOL to assistant role but wrap content in <observation> tags
-                # so the model can distinguish tool outputs from regular assistant messages
-                role = "assistant"
-                content = f"<observation>\n{msg.content}\n</observation>"
-            else:
-                role = "assistant"
-                content = msg.content
             messages.append({
-                "role": role,
-                "content": content
+                "role": "user" if msg.role == MessageRole.USER else "assistant",
+                "content": msg.content
             })
     
     @abstractmethod
@@ -213,19 +202,9 @@ class UserAgent(BaseAgent):
                 })
             
             # Add the actual message
-            if msg.role == MessageRole.USER:
-                role = "user"
-                content = msg.content
-            elif msg.role == MessageRole.TOOL:
-                # Convert TOOL to assistant role but wrap content in <observation> tags
-                role = "assistant"
-                content = f"<observation>\n{msg.content}\n</observation>"
-            else:
-                role = "assistant"
-                content = msg.content
             messages.append({
-                "role": role,
-                "content": content
+                "role": "user" if msg.role == MessageRole.USER else "assistant",
+                "content": msg.content
             })
 
         return messages

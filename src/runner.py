@@ -145,6 +145,12 @@ class ConversationRunner:
         
         for turn in range(self.max_turns):
             user_message = self.process_user_turn(turn)
+            
+            # Print user turn at start
+            if not self.verbose:
+                turn_id = turn + 1
+                print(f"    User ({turn_id})", file=sys.stderr, flush=True)
+            
             termination_result = self.check_termination(user_message, turn)
             if termination_result:
                 termination_reason, success = termination_result
@@ -168,16 +174,26 @@ class ConversationRunner:
             if had_tool_call:
                 had_tool_calls = True
             
-            # Log turn summary (one line per turn)
+            # Log turn summary with step-by-step progress
             turn_id = turn + 1
-            user_text = user_message.content
             # Get steps from the last turn trace
             last_trace = self.turn_traces[-1] if self.turn_traces else {}
             system_steps = last_trace.get('assistant', {}).get('steps', [])
             
-            if self.verbose:
-                turn_summary = self._format_turn_summary(turn_id, user_text, system_steps)
-                print(turn_summary, file=sys.stderr)
+            if not self.verbose:
+                # Simple step-by-step format
+                step_idx = 1
+                for step in system_steps:
+                    action = step.get('action_structured', {})
+                    action_type = action.get('type', 'unknown')
+                    if action_type == 'tool_call':
+                        tool_name = action.get('name', 'tool')
+                        print(f"    Assistant ({turn_id}.{step_idx} - tool call: {tool_name})", file=sys.stderr, flush=True)
+                        print(f"    Tool", file=sys.stderr, flush=True)
+                        step_idx += 1
+                    elif action_type == 'say':
+                        print(f"    Assistant ({turn_id}.{step_idx} - say)", file=sys.stderr, flush=True)
+                        step_idx += 1
             
             termination_result = self.check_termination(system_message, turn)
             if termination_result:
@@ -216,7 +232,7 @@ class ConversationRunner:
     def process_user_turn(self, turn_number: int) -> Message:
         user_context = self.build_user_context(turn_number)
         user_response = self.user_agent.generate_response(user_context)
-        self.logger.info(f"\nuser_agent response: {user_response}\n")
+        self.logger.info(f"user_agent response: {user_response}\n")
         turn_id = turn_number + 1
         user_message = Message(MessageRole.USER, user_response, metadata={"turn_id": turn_id})
         self.user_history.append(user_message)
@@ -247,7 +263,7 @@ class ConversationRunner:
             
             for retry_attempt in range(max_retries):
                 system_response = self.system_agent.generate_response(system_context)
-                self.logger.info(f"\nsystem_agent response: {system_response}\n")
+                self.logger.info(f"system_agent response: {system_response}\n")
                 
                 # Validate syntax
                 is_valid, errors = self._validate_assistant_response(
@@ -354,7 +370,7 @@ class ConversationRunner:
     def process_tool_call(self, system_response: str, turn_number: int) -> str:
         tool_context = self.build_tool_context(system_response, turn_number)
         tool_result = self.tool_agent.generate_response(tool_context)
-        self.logger.info(f"\ntool_agent response: {tool_result}\n")
+        self.logger.info(f"tool_agent response: {tool_result}\n")
         tool_call_only = self.extract_tool_call(system_response)
         self.tool_history.append(Message(MessageRole.USER, tool_call_only))
         self.tool_history.append(Message(MessageRole.ASSISTANT, tool_result))

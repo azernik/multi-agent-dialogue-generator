@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_008",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_008",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "loan"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "loan"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the loan account using get_account_balance (after identifying it via list_customer_accounts), explains that the negative balance represents the remaining amount owed on the loan."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "loan",
+              "nickname": "Student Loan",
+              "masked_number": "****3456",
+              "current_balance": -45200.0,
+              "available_balance": 0.0,
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "current_balance": 6800.0,
+              "available_balance": 6800.0,
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-003",
+              "account_type": "savings",
+              "nickname": "Emergency Fund",
+              "masked_number": "****5678",
+              "current_balance": 12000.0,
+              "available_balance": 12000.0,
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_037",
+      "name": "Dr. Vanessa Martinez",
+      "age": 44,
+      "hometown": "Sacramento, CA",
+      "occupation": "Education policy director",
+      "bio": "Vanessa Martinez directs a nonprofit focused on improving public education in California. She researches effective teaching practices, advocates for education funding, and consults with school districts on technology integration. She testifies at state legislature hearings and writes policy briefs that actually get read.",
+      "use_cases": [],
+      "sample_messages": [
+        "Legislative hearing on ed tech next Tuesday - can you prep talking points and schedule prep call with our team?",
+        "Need research: what states have successful 1:1 device programs? Looking for models to propose here",
+        "Superintendent meeting in fresno thursday - book me on an early flight so i can prep with them before the board meeting"
+      ],
+      "email": "vanessa.martinez@caedpolicy.org",
+      "phone": "(916) 555-7142"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "need to check my bank balance on one of my accounts"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I should list accounts, show them, and ask which one, then fetch that balance. Need tool calls.</think>\n<plan>\n1. Retrieve and show the list of your accounts.\n2. Ask you which account you want to check.\n3. Fetch and display the balance for the selected account.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"loan\",\n    \"nickname\": \"Student Loan\",\n    \"masked_number\": \"****3456\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-003\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Emergency Fund\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "loan",
+                "nickname": "Student Loan",
+                "masked_number": "****3456",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-003",
+                "account_type": "savings",
+                "nickname": "Emergency Fund",
+                "masked_number": "****5678",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>I have list of accounts; now I should show them and ask which one, then later call get_account_balance.</think>\n<plan>\n1. Present your available accounts for selection.\n2. Have you confirm which account you want to check.\n3. Retrieve and display the balance for that specific account.\n</plan>\n<action type=\"say\">\nI can help with that. Here are your accounts:\n\n1) Everyday Checking (checking), ending in ****1234 \u2014 ID: ACC-002  \n2) Emergency Fund (savings), ending in ****5678 \u2014 ID: ACC-003  \n3) Student Loan (loan), ending in ****3456 \u2014 ID: ACC-001  \n\nWhich account would you like to see the balance for?  \nYou can reply with the nickname (e.g., \u201cEveryday Checking\u201d) or the ID (e.g., \u201cACC-002\u201d).\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. Here are your accounts:\n\n1) Everyday Checking (checking), ending in ****1234 \u2014 ID: ACC-002  \n2) Emergency Fund (savings), ending in ****5678 \u2014 ID: ACC-003  \n3) Student Loan (loan), ending in ****3456 \u2014 ID: ACC-001  \n\nWhich account would you like to see the balance for?  \nYou can reply with the nickname (e.g., \u201cEveryday Checking\u201d) or the ID (e.g., \u201cACC-002\u201d)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "student loan account, the loan one"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>User chose student loan; I know its ID; now call get_account_balance then show result.</think>\n<plan>\n1. Retrieve the current balance for the Student Loan account.\n2. Present the balance and any relevant details to you.\n3. Ask if you want balances for any other accounts.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": -45200.0,\n  \"available_balance\": 0.0,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T10:32:15Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": -45200.0,
+              "available_balance": 0.0,
+              "currency": "USD",
+              "last_updated": "2025-11-21T10:32:15Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>Explain result briefly, note negative loan balance, offer help.</think>\n<plan>\n1. Show the student loan balance clearly.\n2. Clarify what the negative balance means for a loan.\n3. Ask if they want info on other accounts or transactions.\n</plan>\n<action type=\"say\">\nHere\u2019s your Student Loan account balance:\n\n- Account: Student Loan (****3456)\n- Current balance: -$45,200.00 USD  \n- Available balance: $0.00  \n- Last updated: 2025-11-21T10:32:15Z\n\nFor a loan, a negative balance means you owe $45,200.00.\n\nDo you want to:\n- check another account balance, or  \n- see recent transactions on this loan, or  \n- talk about payoff or repayment strategies?  \n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your Student Loan account balance:\n\n- Account: Student Loan (****3456)\n- Current balance: -$45,200.00 USD  \n- Available balance: $0.00  \n- Last updated: 2025-11-21T10:32:15Z\n\nFor a loan, a negative balance means you owe $45,200.00.\n\nDo you want to:\n- check another account balance, or  \n- see recent transactions on this loan, or  \n- talk about payoff or repayment strategies?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_004",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v2",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_004",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the checking account using get_account_balance (after clarifying which account the user means when they initially provide vague descriptions like 'my main account' or 'the regular one')."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Initially don't specify the account type clearly. Use vague descriptions like 'my main account' or 'the regular checking account' when first asked. Only clarify that you mean the checking account when the assistant asks for clarification or lists the available accounts."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Main Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "savings",
+              "nickname": "Vacation Fund",
+              "masked_number": "****5678",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_033",
+      "name": "Linda Carlson",
+      "age": 58,
+      "hometown": "Duluth, MN",
+      "occupation": "Local historian",
+      "bio": "Linda Carlson works at the Lake Superior Maritime Museum documenting the region's logging and shipping history. She gives tours, curates exhibits, manages the archives, and writes for the local historical society newsletter. She's spent decades collecting oral histories from families whose grandparents worked in the lumber camps.",
+      "use_cases": [],
+      "sample_messages": [
+        "Found some logging camp photos at an estate sale - need to get them professionally scanned and archived",
+        "Scheduling oral history interview with the Peterson family, they have letters from 1890s lumber camp",
+        "Can you order archival storage supplies? The usual: acid-free boxes, tissue paper, cotton gloves"
+      ],
+      "email": "linda.carlson@lakesuperiormaritime.org",
+      "phone": "(218) 555-7261"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Need to check the balance on my main bank account."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>I need to find which account is their \u201cmain bank account.\u201d First, I should list their accounts, then either identify one labeled as main/primary/checking, or ask them to choose if it\u2019s ambiguous. Start with tool to list accounts.</think>\n<plan>\n1. Retrieve the list of the customer\u2019s accounts.\n2. Identify which account is likely the \u201cmain\u201d one, or present options if unclear.\n3. Fetch the balance for the selected account.\n4. Present the balance to the user and confirm if they need anything else.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Main Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Vacation Fund\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Main Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "savings",
+                "nickname": "Vacation Fund",
+                "masked_number": "****5678",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>The accounts are listed; \u201cMain Checking\u201d is clearly their main bank account. Now I should fetch its balance.</think>\n<plan>\n1. Retrieve the current balance for \u201cMain Checking\u201d (ACC-001).\n2. Present the balance to the user.\n3. Ask if they want balances for any other accounts or more details.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-001\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 2450.37,\n  \"available_balance\": 2385.12,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:09Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 2450.37,
+              "available_balance": 2385.12,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:09Z"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>I have the balance details for Main Checking; now I should present them concisely and offer further help.</think>\n<plan>\n1. Share the current and available balances on the main account.\n2. Ask if they need balances for any other accounts or recent transactions.\n</plan>\n<action type=\"say\">\nYour main account \u201cMain Checking\u201d (****1234) has:\n\n- Current balance: $2,450.37 USD  \n- Available balance: $2,385.12 USD  \n- Last updated: 2025-11-21T14:32:09Z\n\nDo you want to see recent transactions or balances for any other accounts?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your main account \u201cMain Checking\u201d (****1234) has:\n\n- Current balance: $2,450.37 USD  \n- Available balance: $2,385.12 USD  \n- Last updated: 2025-11-21T14:32:09Z\n\nDo you want to see recent transactions or balances for any other accounts?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 2,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

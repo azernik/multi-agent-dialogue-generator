@@ -82,7 +82,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--user-agent-prompt', help='Path to user agent prompt file') 
     parser.add_argument('--tool-agent-prompt', help='Path to tool agent prompt file')
     parser.add_argument('--prompt-version', default=None, help='Version of prompts to use for all agents (overrides per-agent versions if specified)')
-    parser.add_argument('--system-agent-prompt-version', default='v2', help='Version of system agent prompt (default: v2)')
+    parser.add_argument('--system-agent-prompt-version', default='v3', help='Version of system agent prompt (default: v3)')
     parser.add_argument('--user-agent-prompt-version', default='v1', help='Version of user agent prompt (default: v1)')
     parser.add_argument('--tool-agent-prompt-version', default='v1', help='Version of tool agent prompt (default: v1)')
     parser.add_argument('--debug-transcripts', action='store_true', help='Write system.md/user.md/tool.md and agent_flow.log')
@@ -155,27 +155,31 @@ def setup_logging(
     outputs_root: Path,
     verbose: bool = False,
     persona_id: Optional[str] = None,
-) -> Tuple[str, str, str, Path, str]:
+) -> Tuple[str, str, str, Path, str, str, str, str]:
     """Set up logging and return output paths.
-    Returns: output_file, log_file, agent_flow_file, run_dir, run_id
+    Returns: output_file, log_file, agent_flow_file, run_dir, run_id, timestamp, scenario_id, persona_id
     """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     scenario_file = Path(example_path)
     
+    # Extract scenario_id from filename
+    from scenario import extract_scenario_id_from_filename, extract_persona_from_filename
+    scenario_id = extract_scenario_id_from_filename(scenario_file.name)
+    
     # Extract persona from filename if not provided
     if not persona_id:
-        from scenario import extract_persona_from_filename
         persona_id = extract_persona_from_filename(scenario_file.name)
     
     persona_slug = _sanitize_persona_id(persona_id)
+    persona_str = persona_id or "default"
+    
     if persona_slug:
         run_id = f"simulate_{persona_slug}_{timestamp}"
     else:
         run_id = f"simulate_{timestamp}"
 
-    # Compute centralized outputs path mirroring scenario hierarchy
-    scenario_key = _scenario_key(scenario_file)
-    run_dir = outputs_root / f"{scenario_key}__{run_id}"
+    # New format: timestamp__scenario_id__persona_id
+    run_dir = outputs_root / f"{timestamp}__{scenario_id}__{persona_str}"
     run_dir.mkdir(parents=True, exist_ok=True)
     
     log_file = run_dir / "simulate.log"
@@ -185,14 +189,17 @@ def setup_logging(
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format='%(levelname)s:  %(message)s',
         handlers=[
             logging.FileHandler(log_file),
             logging.StreamHandler(sys.stderr) if verbose else logging.NullHandler()
         ]
     )
     
-    return str(output_file), str(log_file), str(agent_flow_file), run_dir, run_id
+    # Suppress httpx HTTP request logs
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+    
+    return str(output_file), str(log_file), str(agent_flow_file), run_dir, run_id, timestamp, scenario_id, persona_str
 
 
 def _resolve_prompts_dir(example_path: str) -> Path:
@@ -234,7 +241,7 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
                 'tool_agent': args.prompt_version
             }
         else:
-            # Per-agent version mode (defaults: v2 for system, v1 for others)
+            # Per-agent version mode
             prompt_versions = {
                 'system_agent': args.system_agent_prompt_version,
                 'user_agent': args.user_agent_prompt_version,
@@ -753,55 +760,25 @@ def write_conversation_log(result: ConversationResult, output_dir: Path) -> str:
 
 def _copy_to_valid_outputs(
     output_dir: Path,
-    scenario_path: Path,
-    persona_id: Optional[str],
+    conversation_filename: str,
     repo_root: Path
 ) -> Optional[Path]:
-    """Copy successful simulation to valid_outputs directory. Returns destination path."""
-    from scenario import parse_scenario_filename, extract_scenario_id_from_filename
-    
+    """Copy successful simulation conversation file to valid_outputs directory (flat structure).
+    Returns destination file path."""
     # Determine valid_outputs root
     valid_outputs_root = repo_root / "data" / "valid_outputs" / "v2"
     
-    # Extract domain/use_case from scenario_path, scenario_id from filename
-    parts = scenario_path.resolve().parts
-    try:
-        domains_idx = parts.index("domains")
-        if domains_idx + 2 <= len(parts):
-            domain = parts[domains_idx + 1]
-            use_case = parts[domains_idx + 2]
-        else:
-            domain = "unknown"
-            use_case = "unknown"
-    except ValueError:
-        domain = "unknown"
-        use_case = "unknown"
+    # Flat structure: just copy the conversation file with same name
+    src_file = output_dir / conversation_filename
+    if not src_file.exists():
+        return None
     
-    # Extract scenario_id from filename (remove persona suffix)
-    scenario_id = extract_scenario_id_from_filename(scenario_path.name)
+    dest_file = valid_outputs_root / conversation_filename
+    dest_file.parent.mkdir(parents=True, exist_ok=True)
     
-    # Create destination structure: valid_outputs/<domain>/<use_case>/<scenario_id>__<persona>__<timestamp>/
-    persona_str = persona_id or "default"
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    dest_dir = valid_outputs_root / domain / use_case / f"{scenario_id}__{persona_str}__{timestamp}"
+    shutil.copy2(src_file, dest_file)
     
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Copy key files
-    files_to_copy = ["conversation.json", "eval.json"]
-    copied_files = []
-    
-    for filename in files_to_copy:
-        src_file = output_dir / filename
-        if src_file.exists():
-            dest_file = dest_dir / filename
-            shutil.copy2(src_file, dest_file)
-            copied_files.append(filename)
-    
-    if copied_files:
-        print(f"Copied to valid_outputs: {dest_dir.relative_to(valid_outputs_root)}", file=sys.stderr)
-        return dest_dir
-    return None
+    return dest_file
 
 
 def _infer_domain_id(example_path: str) -> Optional[str]:
@@ -824,6 +801,9 @@ def write_single_conversation_file(
     output_dir: Path,
     model: str,
     prompt_versions: Dict[str, str],
+    timestamp: str,
+    scenario_id: str,
+    persona_id: str,
     custom_prompt_paths: Optional[Dict[str, Optional[str]]] = None,
     seed: Optional[int] = None,
     toolset_id: Optional[str] = None,
@@ -892,7 +872,9 @@ def write_single_conversation_file(
     if persona:
         conversation_obj['config']['persona'] = persona
 
-    conversation_file = output_dir / 'conversation.json'
+    # New format: timestamp__scenario_id__persona_id.json
+    conversation_filename = f"{timestamp}__{scenario_id}__{persona_id}.json"
+    conversation_file = output_dir / conversation_filename
     with open(conversation_file, 'w') as f:
         json.dump(conversation_obj, f, indent=2)
     return str(conversation_file)
@@ -909,6 +891,9 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
 
         # Load scenario and prompts
         scenario, system_prompts, prompt_versions = load_scenario_and_prompts(example_path, args)
+        
+        # Print prompt versions at the start
+        print(f"Prompt versions: {json.dumps(prompt_versions, indent=2)}", file=sys.stderr)
 
         persona_context, task_override, persona_id = _prepare_persona_context(
             scenario,
@@ -916,7 +901,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         )
 
         # Set up logging/paths (persona-aware)
-        output_file, log_file, agent_flow_file, run_dir, run_id = setup_logging(
+        output_file, log_file, agent_flow_file, run_dir, run_id, timestamp, scenario_id, persona_str = setup_logging(
             example_path,
             outputs_root,
             args.verbose,
@@ -992,6 +977,9 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             output_dir=run_dir,
             model=args.model,
             prompt_versions=prompt_versions,
+            timestamp=timestamp,
+            scenario_id=scenario_id,
+            persona_id=persona_str,
             custom_prompt_paths=custom_prompt_paths,
             seed=None,
             toolset_id=None,
@@ -1056,7 +1044,10 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         relative_path = conversation_path.relative_to(repo_root)
         
         print(f"\nConversation file: {relative_path}", file=sys.stderr)
-        print(f"Eval command: PYTHONPATH=src python -m eval.run {relative_path}", file=sys.stderr)
+
+        # Initialize eval result variables
+        eval_overall_success = None
+        eval_copied_to_valid = None
 
         # Run evaluation if requested
         if args.run_eval:
@@ -1091,68 +1082,30 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         with open(eval_output_file, 'w') as f:
                             json.dump(eval_output, f, indent=2, ensure_ascii=False)
                         
-                        # Print SUCCESS summary
+                        # Process eval results
                         overall_success = eval_output.get("SUCCESS", None)
-                        if overall_success is False:
-                            # Find which part failed
-                            failed_part = None
-                            failed_data = None
-                            
-                            # Check syntax
-                            syntax = eval_output.get("syntax", {})
-                            if syntax:
-                                summary = syntax.get("summary", {})
-                                if not (summary.get("structure", {}).get("valid", True) and 
-                                        summary.get("tool", {}).get("valid", True)):
-                                    failed_part = "syntax"
-                                    failed_data = syntax
-                            
-                            # Check success
-                            if not failed_part:
-                                success = eval_output.get("success", {})
-                                if success and "error" not in success:
-                                    if not success.get("success", True):
-                                        failed_part = "success"
-                                        failed_data = success
-                            
-                            # Check faithfulness
-                            if not failed_part:
-                                faithfulness = eval_output.get("faithfulness", {})
-                                if faithfulness and "error" not in faithfulness:
-                                    if not faithfulness.get("summary", {}).get("valid", True):
-                                        failed_part = "faithfulness"
-                                        failed_data = faithfulness
-                            
-                            # Check role confusion
-                            if not failed_part:
-                                role_confusion = eval_output.get("role_confusion", {})
-                                if role_confusion and "error" not in role_confusion:
-                                    if role_confusion.get("has_confusion", False):
-                                        failed_part = "role_confusion"
-                                        failed_data = role_confusion
-                            
-                            if failed_part and failed_data:
-                                print(f"\nSUCCESS: false (failed: {failed_part})", file=sys.stderr)
-                                print(f"Failed {failed_part}: {json.dumps(failed_data, indent=2, ensure_ascii=False)}", file=sys.stderr)
-                            else:
-                                print(f"\nSUCCESS: false", file=sys.stderr)
-                        else:
-                            print(f"\nSUCCESS: {overall_success}", file=sys.stderr)
-                            
-                            # If eval succeeded, automatically copy to valid_outputs
-                            if overall_success is True:
-                                try:
-                                    _copy_to_valid_outputs(
-                                        output_dir=run_dir,
-                                        scenario_path=Path(example_path),
-                                        persona_id=persona_id,
-                                        repo_root=repo_root
-                                    )
-                                except Exception as e:
-                                    logger.warning(f"Failed to copy to valid_outputs: {e}")
-                                    print(f"Warning: Failed to copy to valid_outputs: {e}", file=sys.stderr)
+                        copied_to_valid = None
                         
-                        print(f"Eval results saved to: {eval_output_file.relative_to(repo_root)}", file=sys.stderr)
+                        # If eval succeeded, automatically copy to valid_outputs
+                        if overall_success is True:
+                            try:
+                                # Extract conversation filename from conversation_file path
+                                conversation_filename = Path(conversation_file).name
+                                dest_file = _copy_to_valid_outputs(
+                                    output_dir=run_dir,
+                                    conversation_filename=conversation_filename,
+                                    repo_root=repo_root
+                                )
+                                if dest_file:
+                                    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v2"
+                                    copied_to_valid = dest_file.relative_to(valid_outputs_root)
+                            except Exception as e:
+                                logger.warning(f"Failed to copy to valid_outputs: {e}")
+                                print(f"Warning: Failed to copy to valid_outputs: {e}", file=sys.stderr)
+                        
+                        # Store eval results for final summary
+                        eval_overall_success = overall_success
+                        eval_copied_to_valid = copied_to_valid
                         # Also write to log file
                         with open(log_file, 'a') as log_f:
                             log_f.write("\n\n=== EVALUATION OUTPUT ===\n")
@@ -1165,14 +1118,9 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                             f.write(eval_result.stdout)
                         if eval_result.stderr:
                             f.write("\n\nSTDERR:\n" + eval_result.stderr)
-                        print(f"\nEval output saved to: {eval_output_file.relative_to(repo_root)}", file=sys.stderr)
-                        # Also write to log file
-                        with open(log_file, 'a') as log_f:
-                            log_f.write("\n\n=== EVALUATION OUTPUT ===\n")
-                            log_f.write(eval_result.stdout)
-                            if eval_result.stderr:
-                                log_f.write("\n\nSTDERR:\n" + eval_result.stderr)
-                            log_f.write("\n")
+                        # Eval output unclear
+                        eval_overall_success = None
+                        eval_copied_to_valid = None
                 else:
                     logger.warning(f"Eval failed: {eval_result.stderr}")
                     # Also write failure to log file
@@ -1181,8 +1129,33 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         if eval_result.stderr:
                             log_f.write(eval_result.stderr)
                         log_f.write("\n")
+                    eval_overall_success = None
+                    eval_copied_to_valid = None
             except Exception as e:
                 logger.warning(f"Could not run evaluation: {e}")
+
+        # Print final summary (+ lines)
+        if args.run_eval and eval_overall_success is not None:
+            if eval_overall_success is True:
+                print(f"\nSUCCESS", file=sys.stderr)
+                if eval_copied_to_valid:
+                    print(f"", file=sys.stderr)
+                    print(f"Copied to: {eval_copied_to_valid}", file=sys.stderr)
+            else:
+                print(f"\nFAILED", file=sys.stderr)
+        
+        # Print file paths
+        print(f"", file=sys.stderr)
+        try:
+            scenario_rel = Path(example_path).relative_to(repo_root)
+            print(f"{scenario_rel}", file=sys.stderr)
+        except ValueError:
+            print(f"{example_path}", file=sys.stderr)
+        try:
+            conv_rel = conversation_path.relative_to(repo_root)
+            print(f"{conv_rel}", file=sys.stderr)
+        except ValueError:
+            print(f"{conversation_path}", file=sys.stderr)
 
         # Exit with appropriate code
         return 0 if result.success else 1

@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_007",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_007",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking"
+        },
+        "preferences": {}
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking",
+          "nickname": "Personal Checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the Personal Checking account using get_account_balance, and tells the user the balance."
+      },
+      "objective": "Check bank account balance"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Initially just say you want to check your checking account balance without specifying which checking account. When the assistant lists multiple checking accounts, clarify that you want the 'Personal Checking' account."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "checking",
+              "nickname": "Personal Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "checking",
+              "nickname": "Work Expenses",
+              "masked_number": "****5678",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-003",
+              "account_type": "savings",
+              "nickname": "Emergency Fund",
+              "masked_number": "****9012",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_036",
+      "name": "Tom Kowalski",
+      "age": 51,
+      "hometown": "Buffalo, NY",
+      "occupation": "Public works supervisor",
+      "bio": "Tom Kowalski manages the city's winter road maintenance crew, coordinating snow plows, salt trucks, and de-icing operations. He's been doing this for 20 years and knows every street in Buffalo. He monitors weather forecasts obsessively from November through March and keeps his crew on standby whenever snow is in the forecast.",
+      "use_cases": [],
+      "sample_messages": [
+        "Storm coming in tonight. All hands on deck - activating the full crew rotation starting 8pm",
+        "Salt supply running low after that last storm. Need to order 50 tons ASAP from the usual supplier",
+        "Equipment maintenance scheduled for next week: 6 trucks need inspection before the next system rolls through"
+      ],
+      "email": "tom.kowalski@buffalony.gov",
+      "phone": "(716) 555-3928"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Need to check my checking account balance."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants checking balance. I must use tools. First list accounts, then identify checking, possibly multiple; then ask which if needed or get balance. Need plan then tool call.<think>\nI need to look up the user\u2019s accounts with list_customer_accounts to find their checking account(s). Then I can either ask them to choose if there are multiple, or directly fetch the balance for the relevant account_id with get_account_balance. First step is to list accounts, so I\u2019ll call that tool now and then decide next steps based on the result.\n</think>\n<plan>\n1. Retrieve the list of the customer\u2019s accounts to locate any checking account(s).\n2. If there is a single checking account, fetch its balance and share it.\n3. If there are multiple checking accounts, ask the user which one they want, then fetch that balance.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Personal Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Work Expenses\",\n    \"masked_number\": \"****5678\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-003\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Emergency Fund\",\n    \"masked_number\": \"****9012\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "checking",
+                "nickname": "Personal Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "checking",
+                "nickname": "Work Expenses",
+                "masked_number": "****5678",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-003",
+                "account_type": "savings",
+                "nickname": "Emergency Fund",
+                "masked_number": "****9012",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have two checking accounts from the tool. I need to know which one the user means. I\u2019ll list them with nicknames and masked numbers and ask the user to choose. Then I can later call get_account_balance with the chosen account_id.\n</think>\n<plan>\n1. Present the user with the checking accounts found (names and masked numbers).\n2. Ask which checking account they want the balance for.\n3. Once they choose, retrieve and share the specific account\u2019s balance.\n</plan>\n<action type=\"say\">\nYou have two checking accounts:\n\n1) Personal Checking (****1234)  \n2) Work Expenses (****5678)\n\nWhich one would you like the balance for? You can reply with \u201cPersonal Checking\u201d or \u201cWork Expenses\u201d (or 1 or 2).</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "You have two checking accounts:\n\n1) Personal Checking (****1234)  \n2) Work Expenses (****5678)\n\nWhich one would you like the balance for? You can reply with \u201cPersonal Checking\u201d or \u201cWork Expenses\u201d (or 1 or 2)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Personal Checking."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser chose Personal Checking. I know its account_id is ACC-001 from earlier. I should now fetch the balance for that account with get_account_balance and then report it. I\u2019ll call the tool now.\n</think>\n<plan>\n1. Retrieve the balance for the Personal Checking account (ACC-001).\n2. Present the current (and available, if provided) balance to the user.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{ \"account_id\": \"ACC-001\" }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-001"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-001\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-001\",\n  \"current_balance\": 2456.73,\n  \"available_balance\": 2398.21,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2025-11-21T14:32:08Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-001",
+              "current_balance": 2456.73,
+              "available_balance": 2398.21,
+              "currency": "USD",
+              "last_updated": "2025-11-21T14:32:08Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI have the balance details for the user\u2019s Personal Checking account from the tool. I should present current and available balances concisely. No further tools are needed; just share the info and mention timing. Then I can ask if they need anything else.\n</think>\n<plan>\n1. Share the current and available balances for Personal Checking with the user and note the last updated time.\n</plan>\n<action type=\"say\">\nHere\u2019s your Personal Checking (****1234) balance:\n\n- Current balance: $2,456.73 USD  \n- Available balance: $2,398.21 USD  \n- Last updated: 2025-11-21T14:32:08Z\n\nDo you want to see recent transactions for this account as well?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your Personal Checking (****1234) balance:\n\n- Current balance: $2,456.73 USD  \n- Available balance: $2,398.21 USD  \n- Last updated: 2025-11-21T14:32:08Z\n\nDo you want to see recent transactions for this account as well?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
