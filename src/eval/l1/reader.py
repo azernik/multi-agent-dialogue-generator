@@ -1,8 +1,8 @@
 """Reader functions for L1 evaluation.
 
 Provides functions to extract actions from conversations, find corresponding
-gold conversations in valid_outputs/v2, load tool registries, and generate
-sequential run numbers for L1 evaluation outputs.
+gold conversations in valid_outputs/v2 or data/outputs/, load tool registries,
+and generate sequential run numbers for L1 evaluation outputs.
 """
 
 from __future__ import annotations
@@ -80,16 +80,24 @@ def find_gold_conversation(conversation_path: Path) -> Optional[Path]:
             return None
 
         repo_root = Path(__file__).resolve().parents[3]
-        valid_outputs_dir = repo_root / "data" / "valid_outputs" / "v2"
-
-        if not valid_outputs_dir.exists():
-            return None
-
         pattern = f"*__{scenario_name}__{persona_id}.json"
-        matches = sorted(list(valid_outputs_dir.glob(pattern)))
 
-        if matches:
-            return matches[0]
+        valid_outputs_dir = repo_root / "data" / "valid_outputs" / "v2"
+        if valid_outputs_dir.exists():
+            matches = sorted(list(valid_outputs_dir.glob(pattern)))
+            if matches:
+                return matches[0]
+
+        outputs_dir = repo_root / "data" / "outputs"
+        if outputs_dir.exists():
+            conversation_path_resolved = Path(conversation_path).resolve()
+            for conv_dir in sorted(outputs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                if conv_dir.is_dir():
+                    matches = list(conv_dir.glob(pattern))
+                    if matches:
+                        for match in matches:
+                            if match.resolve() != conversation_path_resolved:
+                                return match
 
         return None
     except Exception:
