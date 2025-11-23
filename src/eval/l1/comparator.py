@@ -23,6 +23,10 @@ from .reader import extract_actions, load_tool_registry
 def normalize_value(value: Any) -> Any:
     if isinstance(value, str):
         return value.lower()
+    if isinstance(value, list):
+        return tuple(normalize_value(v) for v in value)
+    if isinstance(value, dict):
+        return tuple(sorted((k, normalize_value(v)) for k, v in value.items()))
     return value
 
 

@@ -379,8 +379,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                                 
                                 if test_conversation and test_conversation.exists():
                                     test_conversation_path = test_conversation
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Warning: Failed to generate new conversation for L1 comparison: {e}", file=sys.stderr)
 
             if gold_path and gold_path.exists():
                 if test_conversation_path != conversation_path and Path(test_conversation_path).exists():
@@ -395,8 +395,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         eval_l1_dir.mkdir(parents=True, exist_ok=True)
                         with open(l1_result_path, "w") as f:
                             json.dump(l1_result.to_dict(), f, indent=2, ensure_ascii=False)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"Warning: Failed to save L1 evaluation results: {e}", file=sys.stderr)
 
         output = {
             "conversation_id": syntax_result.conversation_id,
