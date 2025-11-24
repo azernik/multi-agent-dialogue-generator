@@ -1,0 +1,272 @@
+{
+  "meta": {
+    "conversation_id": "restaurant_booking.rb_003",
+    "domain_id": "restaurant_booking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "rb_003",
+    "task": {
+      "slots": {
+        "constraints": {
+          "date": "next Saturday",
+          "time_window": ">=19:30",
+          "party_size": 5,
+          "location": "Palo Alto"
+        },
+        "preferences": {
+          "cuisine": "Japanese"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "cuisine": "Japanese",
+          "location": "Palo Alto"
+        },
+        "action": "make_reservation",
+        "notes": "Success if the assistant makes a reservation via make_reservation at one of the seeded Japanese restaurants in Palo Alto for 5 people on next Saturday at or after 19:30 local time. Note that the user reveals details gradually, so the assistant must gather all required information."
+      },
+      "objective": "Find and book a restaurant."
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Don't mention the cuisine type, party size, or specific time in the first 3 turns. Reveal these details one at a time when asked. First mention just the date and location, then party size when asked again, then time preference, and finally cuisine preference."
+        },
+        {
+          "type_id": "user.comparison_seeking",
+          "instructions": "When presented with restaurant options, ask for more details about at least 2 of them individually. Ask about things like: parking availability, if they take reservations for large groups, ambiance, price range details, and popular dishes. Only make a choice after getting these details."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "restaurants": [
+            {
+              "restaurant_id": "RST-001",
+              "name": "Bella Vista Japanese",
+              "cuisine": "Japanese",
+              "address": "123 University Ave, Palo Alto, CA",
+              "rating": 4.5,
+              "price_range": "$$",
+              "hours": "Mon-Sun 17:00-22:00"
+            },
+            {
+              "restaurant_id": "RST-002",
+              "name": "Sakura Garden",
+              "cuisine": "Japanese",
+              "address": "456 California Ave, Palo Alto, CA",
+              "rating": 4.2,
+              "price_range": "$$$",
+              "hours": "Mon-Sun 18:00-23:00"
+            },
+            {
+              "restaurant_id": "RST-003",
+              "name": "Japanese Bistro",
+              "cuisine": "Japanese",
+              "address": "789 El Camino Real, Palo Alto, CA",
+              "rating": 4.0,
+              "price_range": "$",
+              "hours": "Mon-Sun 17:30-21:30"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_011",
+      "name": "David Kwan",
+      "age": 47,
+      "hometown": "San Francisco, CA",
+      "occupation": "Venture capital partner",
+      "bio": "David Kwan invests in cybersecurity and telecommunications startups across the US and Canada. He evaluates pitch decks, conducts due diligence on technical teams, and sits on three portfolio company boards. His days are packed with founder meetings, investor calls, and industry conference panels on 5G infrastructure security.",
+      "use_cases": [],
+      "sample_messages": [
+        "schedule pitch meetings with the three shortlisted startups for next week, 1 hour each",
+        "book me on a flight to new york next monday, returning friday evening",
+        "need a private room at a nice restaurant for investor dinner on tuesday, party of 8"
+      ],
+      "email": "david.kwan@skybridge.vc",
+      "phone": "(415) 555-2901"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "need a restaurant in palo alto for next saturday, want you to book it for me"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Ask a few key questions to narrow down restaurant options (time, cuisine, budget, party size, name/phone).\n2. Once preferences are clear, search for matching restaurants in Palo Alto using the search_restaurants tool.\n3. Check availability at promising options for next Saturday at the desired time window and party size.\n4. Present 2\u20133 good options (or pick one if the user prefers) and confirm which to book.\n5. Make the reservation with the chosen restaurant and share the confirmation details.\n</plan>\n<action type=\"say\">\nI can do that. I just need a few details:\n\n1) What time would you like next Saturday? (e.g., around 7 pm, or give a time window like 18:30\u201320:00)\n2) How many people will be in your party?\n3) Any cuisine or style preferences? (e.g., Italian, Japanese, New American, vegetarian-friendly, etc.)\n4) Budget range: $, $$, or $$$?\n5) What name and mobile number should I put on the reservation?\n\nOnce you share these, I\u2019ll find options in Palo Alto, check availability for next Saturday, and book one for you.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can do that. I just need a few details:\n\n1) What time would you like next Saturday? (e.g., around 7 pm, or give a time window like 18:30\u201320:00)\n2) How many people will be in your party?\n3) Any cuisine or style preferences? (e.g., Italian, Japanese, New American, vegetarian-friendly, etc.)\n4) Budget range: $, $$, or $$$?\n5) What name and mobile number should I put on the reservation?\n\nOnce you share these, I\u2019ll find options in Palo Alto, check availability for next Saturday, and book one for you."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "party of 5  \n\naim for 7:30pm or later  \n\nname david kwan, mobile (415) 555-2901  \n\nmid to upper range is fine (so $$ or $$$)"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Clarify cuisine preference and confirm \u201cnext Saturday\u201d date.\n2. Search for suitable restaurants in Palo Alto using search_restaurants.\n3. Pick several good candidates and check availability around 7:30pm+ for a party of 5.\n4. Present options or, if user prefers, choose one and make the reservation with make_reservation.\n5. Share confirmation details with the user.\n</plan>\n<action type=\"say\">\nGot it: party of 5, around 7:30 pm or later, name David Kwan, mobile (415) 555-2901, and $$\u2013$$$ in Palo Alto.\n\nTwo quick clarifications so I can search and book:\n\n1) By \u201cnext Saturday,\u201d do you mean this coming Saturday or the one after that? (If you can, please give the date, e.g., \u201c2025-12-06\u201d.)\n2) Any cuisine preferences or must-avoids? (e.g., Italian, Japanese, steakhouse, vegetarian-friendly, no spicy food, etc.)\n\nOnce I have the exact date and a bit of cuisine guidance, I\u2019ll search Palo Alto options, check availability around 7:30\u20139:00 pm for 5 people, and then either propose a few choices or, if you\u2019d like, pick a solid option and book it directly.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Got it: party of 5, around 7:30 pm or later, name David Kwan, mobile (415) 555-2901, and $$\u2013$$$ in Palo Alto.\n\nTwo quick clarifications so I can search and book:\n\n1) By \u201cnext Saturday,\u201d do you mean this coming Saturday or the one after that? (If you can, please give the date, e.g., \u201c2025-12-06\u201d.)\n2) Any cuisine preferences or must-avoids? (e.g., Italian, Japanese, steakhouse, vegetarian-friendly, no spicy food, etc.)\n\nOnce I have the exact date and a bit of cuisine guidance, I\u2019ll search Palo Alto options, check availability around 7:30\u20139:00 pm for 5 people, and then either propose a few choices or, if you\u2019d like, pick a solid option and book it directly."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "next saturday meaning this coming one  \n\nprefer japanese cuisine"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Use the search_restaurants tool to find Japanese restaurants in Palo Alto.\n2. From the results, pick a few suitable options and check availability for next Saturday between 19:30\u201321:00 for 5 people.\n3. If multiple options are available, either choose a strong one or present a brief choice to the user, depending on the results.\n4. Use make_reservation to book the selected time and restaurant under David Kwan with the provided mobile number.\n5. Confirm the reservation details (time, restaurant, and confirmation code) to the user.\n</plan>\n<action type=\"tool\" name=\"search_restaurants\">\n  {\"location\":\"Palo Alto\",\"cuisine\":\"Japanese\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "search_restaurants",
+            "args": {
+              "location": "Palo Alto",
+              "cuisine": "Japanese"
+            },
+            "raw": "search_restaurants({\"location\":\"Palo Alto\",\"cuisine\":\"Japanese\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"restaurant_id\": \"RST-001\",\n    \"name\": \"Bella Vista Japanese\",\n    \"cuisine\": \"Japanese\",\n    \"address\": \"123 University Ave, Palo Alto, CA\",\n    \"rating\": 4.5,\n    \"price_range\": \"$$\",\n    \"hours\": \"Mon-Sun 17:00-22:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-002\",\n    \"name\": \"Sakura Garden\",\n    \"cuisine\": \"Japanese\",\n    \"address\": \"456 California Ave, Palo Alto, CA\",\n    \"rating\": 4.2,\n    \"price_range\": \"$$$\",\n    \"hours\": \"Mon-Sun 18:00-23:00\"\n  },\n  {\n    \"restaurant_id\": \"RST-003\",\n    \"name\": \"Japanese Bistro\",\n    \"cuisine\": \"Japanese\",\n    \"address\": \"789 El Camino Real, Palo Alto, CA\",\n    \"rating\": 4.0,\n    \"price_range\": \"$\",\n    \"hours\": \"Mon-Sun 17:30-21:30\"\n  }\n]",
+            "parsed": [
+              {
+                "restaurant_id": "RST-001",
+                "name": "Bella Vista Japanese",
+                "cuisine": "Japanese",
+                "address": "123 University Ave, Palo Alto, CA",
+                "rating": 4.5,
+                "price_range": "$$",
+                "hours": "Mon-Sun 17:00-22:00"
+              },
+              {
+                "restaurant_id": "RST-002",
+                "name": "Sakura Garden",
+                "cuisine": "Japanese",
+                "address": "456 California Ave, Palo Alto, CA",
+                "rating": 4.2,
+                "price_range": "$$$",
+                "hours": "Mon-Sun 18:00-23:00"
+              },
+              {
+                "restaurant_id": "RST-003",
+                "name": "Japanese Bistro",
+                "cuisine": "Japanese",
+                "address": "789 El Camino Real, Palo Alto, CA",
+                "rating": 4.0,
+                "price_range": "$",
+                "hours": "Mon-Sun 17:30-21:30"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Check availability for next Saturday 19:30\u201321:00 for party of 5 at the top two mid/upper-range Japanese options.\n2. If both have availability, pick the earlier good slot at the higher-rated restaurant.\n3. Make the reservation under David Kwan with the provided phone number.\n4. Confirm details and share the confirmation code with the user.\n</plan>\n<action type=\"tool\" name=\"check_availability\">\n  {\"restaurant_id\":\"RST-001\",\"date\":\"next Saturday\",\"time_window\":\"19:30-21:00\",\"party_size\":5}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "check_availability",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "next Saturday",
+              "time_window": "19:30-21:00",
+              "party_size": 5
+            },
+            "raw": "check_availability({\"restaurant_id\":\"RST-001\",\"date\":\"next Saturday\",\"time_window\":\"19:30-21:00\",\"party_size\":5})"
+          },
+          "observation": {
+            "raw": "{\n  \"restaurant_id\": \"RST-001\",\n  \"available_times\": [\n    \"19:45\",\n    \"20:00\",\n    \"20:15\",\n    \"20:45\"\n  ]\n}",
+            "parsed": {
+              "restaurant_id": "RST-001",
+              "available_times": [
+                "19:45",
+                "20:00",
+                "20:15",
+                "20:45"
+              ]
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nI have availability for Bella Vista Japanese next Saturday between 19:45 and 20:45 for 5 people, which fits the user\u2019s 7:30pm or later preference and $$ budget. I should pick the earliest available time (19:45) and proceed to book under the user\u2019s provided details. Then I\u2019ll confirm the reservation and share the confirmation code.\n</think>\n<plan>\n1. Make a reservation at Bella Vista Japanese (RST-001) for next Saturday at 19:45 for 5 people with the provided name and phone.\n2. Return the confirmation details and summarize the booking to the user.\n</plan>\n<action type=\"tool\" name=\"make_reservation\">\n  {\"restaurant_id\":\"RST-001\",\"date\":\"next Saturday\",\"time\":\"19:45\",\"party_size\":5,\"name\":\"David Kwan\",\"phone\":\"(415) 555-2901\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "make_reservation",
+            "args": {
+              "restaurant_id": "RST-001",
+              "date": "next Saturday",
+              "time": "19:45",
+              "party_size": 5,
+              "name": "David Kwan",
+              "phone": "(415) 555-2901"
+            },
+            "raw": "make_reservation({\"restaurant_id\":\"RST-001\",\"date\":\"next Saturday\",\"time\":\"19:45\",\"party_size\":5,\"name\":\"David Kwan\",\"phone\":\"(415) 555-2901\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"confirmation_code\": \"PA-RST001-768453\"\n}",
+            "parsed": {
+              "success": true,
+              "confirmation_code": "PA-RST001-768453"
+            }
+          }
+        },
+        {
+          "step_index": 4,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Confirm the reservation details and provide the confirmation code to the user.\n</plan>\n<action type=\"say\">\nYou\u2019re all set.\n\nI\u2019ve booked:\n- Restaurant: Bella Vista Japanese  \n- Location: 123 University Ave, Palo Alto, CA  \n- Date: next Saturday (upcoming)  \n- Time: 7:45 pm  \n- Party size: 5  \n- Name on reservation: David Kwan  \n- Phone: (415) 555-2901  \n- Confirmation code: PA-RST001-768453  \n\nIf you\u2019d like, I can also check a second option (like Sakura Garden) as backup or adjust the time.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "You\u2019re all set.\n\nI\u2019ve booked:\n- Restaurant: Bella Vista Japanese  \n- Location: 123 University Ave, Palo Alto, CA  \n- Date: next Saturday (upcoming)  \n- Time: 7:45 pm  \n- Party size: 5  \n- Name on reservation: David Kwan  \n- Phone: (415) 555-2901  \n- Confirmation code: PA-RST001-768453  \n\nIf you\u2019d like, I can also check a second option (like Sakura Garden) as backup or adjust the time."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 4,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

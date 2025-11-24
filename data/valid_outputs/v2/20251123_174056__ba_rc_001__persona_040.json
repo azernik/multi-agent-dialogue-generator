@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_rc_001",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_rc_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_card": "credit_card",
+          "issue_type": "lost"
+        },
+        "preferences": {
+          "request_replacement": true
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "credit_card",
+          "nickname": "Rewards Card"
+        },
+        "action": "report_card_issue",
+        "notes": "Success if the assistant reports the lost card via report_card_issue for the Rewards Card credit card account (after identifying it via list_customer_accounts), requests a replacement card."
+      },
+      "objective": "Report a lost credit card"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "credit_card",
+              "nickname": "Rewards Card",
+              "masked_number": "****4321",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "checking",
+              "nickname": "Everyday Checking",
+              "masked_number": "****1234",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_040",
+      "name": "Rebecca Torres",
+      "age": 35,
+      "hometown": "Portland, ME",
+      "occupation": "Middle school science teacher",
+      "bio": "Rebecca Torres teaches 7th and 8th grade science at a middle school in Portland. She takes her students on nature walks, runs after-school science club, and designs hands-on experiments that get kids excited about how things work. She's always looking for new ways to make abstract concepts tangible and relevant to her students' lives.",
+      "use_cases": [],
+      "sample_messages": [
+        "Looking for tide pool field trip options near Portland - need something appropriate for 30 seventh graders",
+        "Science fair is coming up! Can you order lab supplies? Got a list of what we need for 25 projects",
+        "Trying to find guest speakers who work in STEM fields - anyone available to talk to middle schoolers about their job?"
+      ],
+      "email": "rebecca.torres@portlandschools.org",
+      "phone": "(207) 555-3814"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Need to report a lost credit card and get a replacement sent out"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed card_id. Use list_customer_accounts to show credit cards, then ask which one and details (lost vs stolen, notes, shipping). Start with plan and call tool.\n</think>\n<plan>\n1. Retrieve the list of your accounts to identify your credit cards.\n2. Ask you which specific card is lost and confirm issue details (lost/stolen, replacement, any notes).\n3. Report the issue on the selected card and request a replacement.\n4. Confirm the block and replacement details back to you.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Rewards Card\",\n    \"masked_number\": \"****4321\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Everyday Checking\",\n    \"masked_number\": \"****1234\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "credit_card",
+                "nickname": "Rewards Card",
+                "masked_number": "****4321",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "checking",
+                "nickname": "Everyday Checking",
+                "masked_number": "****1234",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nHave accounts; only one credit card ACC-001. Need confirmation it\u2019s the lost one, confirm issue_type=lost vs stolen, shipping request, any notes. Then call report_card_issue. Ask concise clarifying questions.\n</think>\n<plan>\n1. Confirm which card needs to be blocked and replaced and clarify issue details.\n2. Call the card issue reporting tool with your preferences.\n3. Share confirmation and replacement details with you.\n</plan>\n<action type=\"say\">\nI see one credit card on your profile:\n\n- Rewards Card ending in ****4321\n\nI can block it and request a replacement right away, but I need a couple of details:\n\n1) Is this the card that\u2019s lost?  \n2) Should I report it as **lost** or **stolen**?  \n3) Do you want a replacement card shipped to you? (yes/no)  \n4) Any notes I should add for the bank? (for example, \u201clast seen at restaurant yesterday\u201d)\n\nReply with your answers (you can just respond inline like: \u201cYes \u2013 lost \u2013 yes \u2013 no notes\u201d).</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I see one credit card on your profile:\n\n- Rewards Card ending in ****4321\n\nI can block it and request a replacement right away, but I need a couple of details:\n\n1) Is this the card that\u2019s lost?  \n2) Should I report it as **lost** or **stolen**?  \n3) Do you want a replacement card shipped to you? (yes/no)  \n4) Any notes I should add for the bank? (for example, \u201clast seen at restaurant yesterday\u201d)\n\nReply with your answers (you can just respond inline like: \u201cYes \u2013 lost \u2013 yes \u2013 no notes\u201d)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Yes \u2013 lost \u2013 yes \u2013 no notes"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nWe have card ACC-001, user confirmed lost, wants replacement, no notes. Need to call report_card_issue with card_id=ACC-001, issue_type=\"lost\", request_replacement=true, omit notes. Then confirm results.\n</think>\n<plan>\n1. Submit a lost-card report for your Rewards Card and request a replacement.\n2. Review the confirmation and delivery details.\n3. Share the outcome and next steps with you.\n</plan>\n<action type=\"tool\" name=\"report_card_issue\">\n{ \"card_id\": \"ACC-001\", \"issue_type\": \"lost\", \"request_replacement\": true }\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "report_card_issue",
+            "args": {
+              "card_id": "ACC-001",
+              "issue_type": "lost",
+              "request_replacement": true
+            },
+            "raw": "report_card_issue({\"card_id\":\"ACC-001\",\"issue_type\":\"lost\",\"request_replacement\":true})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"replacement_card_id\": \"ACC-001-R1\",\n  \"estimated_arrival\": \"2025-12-02T00:00:00Z\"\n}",
+            "parsed": {
+              "success": true,
+              "replacement_card_id": "ACC-001-R1",
+              "estimated_arrival": "2025-12-02T00:00:00Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nTool succeeded: card blocked and replacement set. Need to relay confirmation succinctly, include arrival date and that old card is unusable, ask if anything else needed.\n</think>\n<plan>\n1. Confirm the card has been blocked and a replacement is on the way, including estimated arrival and key notes.\n</plan>\n<action type=\"say\">\nYour lost card has been blocked, and a replacement is on the way.\n\n- Card: Rewards Card ending in ****4321  \n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: 2025-12-02 (date is in your local mail carrier\u2019s timeframe)\n\nYour old card can no longer be used. If you have this card saved with any merchants or subscriptions, update them with the new card details once it arrives.\n\nDo you also want to review recent transactions on this card to check for anything suspicious?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your lost card has been blocked, and a replacement is on the way.\n\n- Card: Rewards Card ending in ****4321  \n- Replacement card ID: ACC-001-R1  \n- Estimated arrival: 2025-12-02 (date is in your local mail carrier\u2019s timeframe)\n\nYour old card can no longer be used. If you have this card saved with any merchants or subscriptions, update them with the new card details once it arrives.\n\nDo you also want to review recent transactions on this card to check for anything suspicious?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

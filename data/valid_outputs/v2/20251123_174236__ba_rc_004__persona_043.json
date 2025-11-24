@@ -1,0 +1,203 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_rc_004",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_rc_004",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_card": "credit_card",
+          "issue_type": "lost"
+        },
+        "preferences": {
+          "request_replacement": true
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "credit_card",
+          "nickname": "Personal Card"
+        },
+        "action": "report_card_issue",
+        "notes": "Success if the assistant reports the lost card via report_card_issue for the Personal Card credit card account, requests a replacement and tells the user the card has been reported."
+      },
+      "objective": "Report a lost credit card"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "type_id": "user.gradual_information",
+          "instructions": "Initially just say you lost your credit card without specifying which one. When the assistant lists multiple credit cards, clarify that you mean the 'Personal Card'."
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-001",
+              "account_type": "credit_card",
+              "nickname": "Personal Card",
+              "masked_number": "****1111",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-002",
+              "account_type": "credit_card",
+              "nickname": "Work Card",
+              "masked_number": "****2222",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-003",
+              "account_type": "checking",
+              "nickname": "Main Checking",
+              "masked_number": "****3333",
+              "currency": "USD"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_043",
+      "name": "Dr. Miguel Santos",
+      "age": 41,
+      "hometown": "Monterey, CA",
+      "occupation": "Marine ecologist",
+      "bio": "Miguel Santos studies how climate change affects coastal ecosystems in California. He leads research dives, analyzes kelp forest health data, and publishes findings that inform marine conservation policy. He works with a team of graduate students and splits his time between fieldwork and lab analysis.",
+      "use_cases": [],
+      "sample_messages": [
+        "Dive survey scheduled for Tuesday weather permitting - boat rental confirmed, crew of 4",
+        "Data from this quarter shows significant kelp decline. Can you pull comparison data from 2020-2022?",
+        "Conference presentation in San Diego next month - need flights and hotel, arriving day before to prep"
+      ],
+      "email": "miguel.santos@example.com",
+      "phone": "(831) 555-2947"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Lost my credit card - need to report it and get a replacement issued"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed to report lost card and issue replacement via report_card_issue, but I need the specific card_id. First, clarify which credit card and confirm details like lost vs stolen, travel, and recent unauthorized charges. No tool to list cards separately from accounts, but credit cards appear in list_customer_accounts; then use that to identify the right card and call report_card_issue. Ask for clarification now. </think>\n<plan>\n1. Ask the user which specific credit card it is and gather key details (lost vs stolen, when, travel, suspicious charges).\n2. Once identified, retrieve their accounts to find the correct credit_card account ID.\n3. Call the tool to report the card issue and request a replacement.\n4. Share the confirmation and next steps with the user.</plan>\n<action type=\"say\">\nUnderstood\u2014we\u2019ll get your card blocked and a replacement sent.\n\nI need a couple details first:\n1. Is the card **lost**, **stolen**, or just **damaged**?\n2. Which credit card is it (for example, the nickname shown in your account, or the **last 4 digits**)?\n3. When did you notice it was missing?\n4. Have you seen **any suspicious or unauthorized transactions** on that card? If yes, roughly when and from which merchants?\n\nOnce you share:\n- the issue type (lost/stolen/damaged) and  \n- which card (nickname or last 4 digits),\n\nI\u2019ll report the issue on that specific card and request a replacement right away.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Understood\u2014we\u2019ll get your card blocked and a replacement sent.\n\nI need a couple details first:\n1. Is the card **lost**, **stolen**, or just **damaged**?\n2. Which credit card is it (for example, the nickname shown in your account, or the **last 4 digits**)?\n3. When did you notice it was missing?\n4. Have you seen **any suspicious or unauthorized transactions** on that card? If yes, roughly when and from which merchants?\n\nOnce you share:\n- the issue type (lost/stolen/damaged) and  \n- which card (nickname or last 4 digits),\n\nI\u2019ll report the issue on that specific card and request a replacement right away."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Card is lost, not stolen\n\nIt\u2019s my Personal Card\n\nNoticed it missing this morning, haven\u2019t seen any suspicious transactions yet"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed correct card_id, can't use placeholder. Must first list accounts, identify \"Personal Card\" credit_card, then call report_card_issue. Ask no more questions; proceed to tool. </think>\n<plan>\n1. Retrieve the user\u2019s accounts to find the \u201cPersonal Card\u201d credit card entry.\n2. Use the matching account\u2019s ID as the card_id to report it as lost and request a replacement.\n3. Confirm the block and replacement details back to the user, plus what to watch for next.</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-001\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Personal Card\",\n    \"masked_number\": \"****1111\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-002\",\n    \"account_type\": \"credit_card\",\n    \"nickname\": \"Work Card\",\n    \"masked_number\": \"****2222\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-003\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Main Checking\",\n    \"masked_number\": \"****3333\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-001",
+                "account_type": "credit_card",
+                "nickname": "Personal Card",
+                "masked_number": "****1111",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-002",
+                "account_type": "credit_card",
+                "nickname": "Work Card",
+                "masked_number": "****2222",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-003",
+                "account_type": "checking",
+                "nickname": "Main Checking",
+                "masked_number": "****3333",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have accounts and identified Personal Card as ACC-001. Need to call report_card_issue with lost and request_replacement true, then report result to user. </think>\n<plan>\n1. Report the Personal Card (ACC-001) as lost and request a replacement card.\n2. Review the tool response and summarize the outcome and next steps for the user.</plan>\n<action type=\"tool\" name=\"report_card_issue\">\n{\"card_id\":\"ACC-001\",\"issue_type\":\"lost\",\"notes\":\"Customer reported card lost, not stolen. Noticed missing this morning. No suspicious transactions reported yet.\",\"request_replacement\":true}</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "report_card_issue",
+            "args": {
+              "card_id": "ACC-001",
+              "issue_type": "lost",
+              "notes": "Customer reported card lost, not stolen. Noticed missing this morning. No suspicious transactions reported yet.",
+              "request_replacement": true
+            },
+            "raw": "report_card_issue({\"card_id\":\"ACC-001\",\"issue_type\":\"lost\",\"notes\":\"Customer reported card lost, not stolen. Noticed missing this morning. No suspicious transactions reported yet.\",\"request_replacement\":true})"
+          },
+          "observation": {
+            "raw": "{\n  \"success\": true,\n  \"replacement_card_id\": \"ACC-001-R1\",\n  \"estimated_arrival\": \"2025-12-01T17:00:00Z\"\n}",
+            "parsed": {
+              "success": true,
+              "replacement_card_id": "ACC-001-R1",
+              "estimated_arrival": "2025-12-01T17:00:00Z"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nNeed to confirm action completed and provide concise next steps and reassurance. </think>\n<plan>\n1. Confirm the card has been blocked and a replacement issued, and provide key next steps.</plan>\n<action type=\"say\">\nYour lost Personal Card has been blocked, and a replacement has been ordered.\n\nKey details:\n- Old card: blocked immediately (can\u2019t be used anymore)\n- New card ID: ACC-001-R1\n- Estimated arrival: by 2025-12-01\n\nNext steps for you:\n- Continue to watch your transactions; if you see anything unfamiliar, tell me and I can help you dispute it.\n- Update any recurring payments once the new card arrives (streaming services, subscriptions, etc.).\n\nDo you want me to quickly review your most recent Personal Card transactions with you now, just to double-check for anything suspicious?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your lost Personal Card has been blocked, and a replacement has been ordered.\n\nKey details:\n- Old card: blocked immediately (can\u2019t be used anymore)\n- New card ID: ACC-001-R1\n- Estimated arrival: by 2025-12-01\n\nNext steps for you:\n- Continue to watch your transactions; if you see anything unfamiliar, tell me and I can help you dispute it.\n- Update any recurring payments once the new card arrives (streaming services, subscriptions, etc.).\n\nDo you want me to quickly review your most recent Personal Card transactions with you now, just to double-check for anything suspicious?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
