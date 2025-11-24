@@ -766,7 +766,7 @@ def _copy_to_valid_outputs(
     """Copy successful simulation conversation file to valid_outputs directory (flat structure).
     Returns destination file path."""
     # Determine valid_outputs root
-    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v2"
+    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v3"
     
     # Flat structure: just copy the conversation file with same name
     src_file = output_dir / conversation_filename
@@ -1098,7 +1098,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                                     repo_root=repo_root
                                 )
                                 if dest_file:
-                                    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v2"
+                                    valid_outputs_root = repo_root / "data" / "valid_outputs" / "v3"
                                     copied_to_valid = dest_file.relative_to(valid_outputs_root)
                             except Exception as e:
                                 logger.warning(f"Failed to copy to valid_outputs: {e}")
