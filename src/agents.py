@@ -10,7 +10,7 @@ class BaseAgent(ABC):
         self.llm_client = llm_client
         self.prompt_recorder = None
     
-    def generate_response(self, context: ConversationContext) -> str:
+    def generate_response(self, context: ConversationContext, **api_kwargs) -> str:
         messages = self.build_prompt(context)
         if self.prompt_recorder:
             try:
@@ -26,7 +26,7 @@ class BaseAgent(ABC):
                         f"[WARN] Failed to record prompts for {self.__class__.__name__}\n"
                     )
         self._log_agent_flow(messages)
-        response = self.llm_client.chat_completion(messages)
+        response = self.llm_client.chat_completion(messages, **api_kwargs)
         self._log_agent_flow(messages, response)
         return response
     
@@ -88,13 +88,14 @@ class SystemAgent(BaseAgent):
         return body
 
 class UserAgent(BaseAgent):
-    def __init__(self, system_prompt: str, llm_client: LLMClient, user_context: Dict[str, Any]):
+    def __init__(self, system_prompt: str, llm_client: LLMClient, user_context: Dict[str, Any], temperature: float = 1.1):
         super().__init__(system_prompt, llm_client)
         self.user_context = user_context
+        self.temperature = temperature
 
     def generate_response(self, context: ConversationContext) -> str:
-        # Otherwise, generate response normally
-        return super().generate_response(context)
+        # Pass temperature to add diversity to user agent responses
+        return super().generate_response(context, temperature=self.temperature)
 
     def build_prompt(self, context: ConversationContext) -> List[Dict[str, str]]:
         messages = []

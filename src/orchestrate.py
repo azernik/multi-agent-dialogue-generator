@@ -314,48 +314,8 @@ def run_scenario(
                 eval_duration = max(3, int(sim_duration * 0.1))  # At least 3s, or 10% of sim time
                 print(f"    Eval finished ({eval_duration:.0f}s)", file=sys.stderr)
             
-            print(f"", file=sys.stderr)
-            
-            if "--run-eval" in base_args:
-                if eval_success is True:
-                    print(f"    SUCCESS", file=sys.stderr)
-                    if copied_to_valid:
-                        print(f"", file=sys.stderr)
-                        print(f"    Copied to: {copied_to_valid}", file=sys.stderr)
-                elif eval_success is False:
-                    print(f"    FAILED", file=sys.stderr)
-                    print(f"", file=sys.stderr)
-                    if eval_failed_part and eval_failed_data:
-                        # Format failure data nicely - wrap in object with the failed part as key
-                        failure_obj = {eval_failed_part: eval_failed_data}
-                        formatted_json = json.dumps(failure_obj, indent=4, ensure_ascii=False)
-                        # Indent each line with extra spaces to match example
-                        for line in formatted_json.split('\n'):
-                            print(f"    {line}", file=sys.stderr)
-                else:
-                    # Eval ran but result unclear
-                    print(f"    COMPLETED (eval result unclear)", file=sys.stderr)
-            else:
-                # No eval run, just show simulation result
-                if returncode == 0:
-                    print(f"    COMPLETED", file=sys.stderr)
-                else:
-                    print(f"    FAILED (simulation error)", file=sys.stderr)
-            
-            print(f"", file=sys.stderr)
-            repo_root = Path(__file__).resolve().parent.parent
-            if scenario_file:
-                try:
-                    scenario_rel = scenario_file.relative_to(repo_root)
-                    print(f"    {scenario_rel}", file=sys.stderr)
-                except ValueError:
-                    print(f"    {scenario_file}", file=sys.stderr)
-            if conversation_file:
-                try:
-                    conv_rel = conversation_file.relative_to(repo_root)
-                    print(f"    {conv_rel}", file=sys.stderr)
-                except ValueError:
-                    print(f"    {conversation_file}", file=sys.stderr)
+            # Note: SUCCESS/FAILED, Copied to, and file paths are now printed by simulate.py
+            # so they will appear in the piped output above
         
         # Determine success
         success = None

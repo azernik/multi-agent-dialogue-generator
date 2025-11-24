@@ -1048,6 +1048,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Initialize eval result variables
         eval_overall_success = None
         eval_copied_to_valid = None
+        eval_output_data = None
 
         # Run evaluation if requested
         if args.run_eval:
@@ -1106,6 +1107,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         # Store eval results for final summary
                         eval_overall_success = overall_success
                         eval_copied_to_valid = copied_to_valid
+                        eval_output_data = eval_output  # Store for failure reason extraction
                         # Also write to log file
                         with open(log_file, 'a') as log_f:
                             log_f.write("\n\n=== EVALUATION OUTPUT ===\n")
@@ -1121,6 +1123,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         # Eval output unclear
                         eval_overall_success = None
                         eval_copied_to_valid = None
+                        eval_output_data = None
                 else:
                     logger.warning(f"Eval failed: {eval_result.stderr}")
                     # Also write failure to log file
@@ -1131,6 +1134,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         log_f.write("\n")
                     eval_overall_success = None
                     eval_copied_to_valid = None
+                    eval_output_data = None
             except Exception as e:
                 logger.warning(f"Could not run evaluation: {e}")
 
@@ -1143,6 +1147,74 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                     print(f"Copied to: {eval_copied_to_valid}", file=sys.stderr)
             else:
                 print(f"\nFAILED", file=sys.stderr)
+                # Extract and print failure reason
+                if eval_output_data:
+                    failure_reason = None
+                    eval_failed_part = None
+                    
+                    # Check which part failed
+                    syntax = eval_output_data.get("syntax", {})
+                    success_eval = eval_output_data.get("success", {})
+                    faithfulness = eval_output_data.get("faithfulness", {})
+                    role_confusion = eval_output_data.get("role_confusion", {})
+                    
+                    # Check syntax first
+                    if syntax:
+                        summary = syntax.get("summary", {})
+                        if not (summary.get("structure", {}).get("valid", True) and 
+                                summary.get("tool", {}).get("valid", True)):
+                            eval_failed_part = "syntax"
+                            structure = summary.get("structure", {})
+                            tool = summary.get("tool", {})
+                            issues = []
+                            if not structure.get("valid", True):
+                                failure_counts = structure.get("failure_counts", {})
+                                if failure_counts:
+                                    issue_details = ", ".join(f"{k}: {v}" for k, v in failure_counts.items())
+                                    issues.append(f"structure ({issue_details})")
+                                else:
+                                    issues.append("structure")
+                            if not tool.get("valid", True):
+                                failure_counts = tool.get("failure_counts", {})
+                                if failure_counts:
+                                    issue_details = ", ".join(f"{k}: {v}" for k, v in failure_counts.items())
+                                    issues.append(f"tool ({issue_details})")
+                                else:
+                                    issues.append("tool")
+                            if issues:
+                                failure_reason = f"Syntax error: {'; '.join(issues)}"
+                    
+                    # Check success evaluation
+                    if not eval_failed_part and success_eval and "error" not in success_eval:
+                        if not success_eval.get("success", True):
+                            eval_failed_part = "success"
+                            failure_reason = success_eval.get("reason")
+                    
+                    # Check faithfulness
+                    if not eval_failed_part and faithfulness and "error" not in faithfulness:
+                        if not faithfulness.get("summary", {}).get("valid", True):
+                            eval_failed_part = "faithfulness"
+                            summary = faithfulness.get("summary", {})
+                            failure_reason = summary.get("reason") or faithfulness.get("reason")
+                            if not failure_reason:
+                                error_turns = faithfulness.get("error_turns", [])
+                                if error_turns:
+                                    failure_reason = f"Faithfulness errors in turns: {', '.join(map(str, error_turns))}"
+                                else:
+                                    failure_reason = "Faithfulness validation failed"
+                    
+                    # Check role confusion
+                    if not eval_failed_part and role_confusion and "error" not in role_confusion:
+                        if role_confusion.get("has_confusion", False):
+                            eval_failed_part = "role_confusion"
+                            failure_reason = role_confusion.get("reason")
+                    
+                    # Print failure reason if found
+                    if failure_reason:
+                        if eval_failed_part:
+                            print(f"Failed {eval_failed_part}: {failure_reason}", file=sys.stderr)
+                        else:
+                            print(f"Failed: {failure_reason}", file=sys.stderr)
         
         # Print file paths
         print(f"", file=sys.stderr)

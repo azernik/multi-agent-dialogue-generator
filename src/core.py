@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 from enum import Enum
 import openai
 import os
+import random
 
 class MessageRole(Enum):
     USER = "user"
@@ -61,6 +62,17 @@ class LLMClient:
         # Combine system messages into single instructions string
         instructions = "\n\n".join(instructions_parts) if instructions_parts else None
         
+        # Add cache-busting variation to prevent prompt caching from causing identical outputs
+        # This adds a small random variation that doesn't affect the meaning but prevents cache hits
+        cache_buster = f"\n\n[Variation: {random.random():.10f}]"
+        if instructions:
+            instructions = instructions + cache_buster
+        else:
+            # If no instructions, add to the last user message to prevent caching
+            if conversation_messages:
+                last_msg = conversation_messages[-1]
+                last_msg["content"] = last_msg.get("content", "") + cache_buster
+        
         # Prepare input: use conversation messages if available
         # Note: Responses API input can be a list of messages or a string
         input_messages = conversation_messages if conversation_messages else []
@@ -95,6 +107,11 @@ class LLMClient:
             # Check if responses API is available
             if not hasattr(self.client, 'responses'):
                 raise AttributeError("Responses API not available")
+            
+            # Debug: log temperature if present
+            if 'temperature' in api_params:
+                import logging
+                logging.getLogger(__name__).debug(f"API call with temperature={api_params['temperature']}")
             
             response = self.client.responses.create(**api_params)
             
