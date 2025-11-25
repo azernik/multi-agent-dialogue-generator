@@ -892,8 +892,8 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Load scenario and prompts
         scenario, system_prompts, prompt_versions = load_scenario_and_prompts(example_path, args)
         
-        # Print prompt versions at the start
-        print(f"Prompt versions: {json.dumps(prompt_versions, indent=2)}", file=sys.stderr)
+        # # Print prompt versions at the start
+        # print(f"Prompt versions: {json.dumps(prompt_versions, indent=2)}", file=sys.stderr)
 
         persona_context, task_override, persona_id = _prepare_persona_context(
             scenario,
