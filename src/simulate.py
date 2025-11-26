@@ -758,6 +758,31 @@ def write_conversation_log(result: ConversationResult, output_dir: Path) -> str:
             f.write(f"{prefix}: {msg.content}\n\n")
     return str(log_path)
 
+def _copy_to_eval_folder(
+    output_dir: Path,
+    success: bool,
+    repo_root: Path
+) -> Optional[Path]:
+    """Copy simulation output folder to success or fail directory based on eval result.
+    Returns destination folder path."""
+    # Determine destination based on eval result
+    outputs_root = repo_root / "data" / "outputs"
+    dest_root = outputs_root / ("success" if success else "fail")
+    
+    # Copy entire folder
+    folder_name = output_dir.name
+    dest_folder = dest_root / folder_name
+    
+    # Remove destination if it already exists
+    if dest_folder.exists():
+        shutil.rmtree(dest_folder)
+    
+    dest_folder.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(output_dir, dest_folder)
+    
+    return dest_folder
+
+
 def _copy_to_valid_outputs(
     output_dir: Path,
     conversation_filename: str,
@@ -892,8 +917,8 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Load scenario and prompts
         scenario, system_prompts, prompt_versions = load_scenario_and_prompts(example_path, args)
         
-        # Print prompt versions at the start
-        print(f"Prompt versions: {json.dumps(prompt_versions, indent=2)}", file=sys.stderr)
+        # # Print prompt versions at the start
+        # print(f"Prompt versions: {json.dumps(prompt_versions, indent=2)}", file=sys.stderr)
 
         persona_context, task_override, persona_id = _prepare_persona_context(
             scenario,
@@ -1048,6 +1073,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Initialize eval result variables
         eval_overall_success = None
         eval_copied_to_valid = None
+        eval_copied_to_v3 = None
         eval_output_data = None
 
         # Run evaluation if requested
@@ -1086,11 +1112,26 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         # Process eval results
                         overall_success = eval_output.get("SUCCESS", None)
                         copied_to_valid = None
+                        copied_to_v3 = None
                         
-                        # If eval succeeded, automatically copy to valid_outputs
+                        # Copy to success or fail folder based on eval result
+                        if overall_success is not None:
+                            try:
+                                dest_folder = _copy_to_eval_folder(
+                                    output_dir=run_dir,
+                                    success=overall_success,
+                                    repo_root=repo_root
+                                )
+                                if dest_folder:
+                                    outputs_root = repo_root / "data" / "outputs"
+                                    copied_to_valid = dest_folder.relative_to(outputs_root)
+                            except Exception as e:
+                                logger.warning(f"Failed to copy to eval folder: {e}")
+                                print(f"Warning: Failed to copy to eval folder: {e}", file=sys.stderr)
+                        
+                        # If eval succeeded, also copy conversation.json to valid_outputs/v3
                         if overall_success is True:
                             try:
-                                # Extract conversation filename from conversation_file path
                                 conversation_filename = Path(conversation_file).name
                                 dest_file = _copy_to_valid_outputs(
                                     output_dir=run_dir,
@@ -1099,7 +1140,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                                 )
                                 if dest_file:
                                     valid_outputs_root = repo_root / "data" / "valid_outputs" / "v3"
-                                    copied_to_valid = dest_file.relative_to(valid_outputs_root)
+                                    copied_to_v3 = dest_file.relative_to(valid_outputs_root)
                             except Exception as e:
                                 logger.warning(f"Failed to copy to valid_outputs: {e}")
                                 print(f"Warning: Failed to copy to valid_outputs: {e}", file=sys.stderr)
@@ -1107,6 +1148,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         # Store eval results for final summary
                         eval_overall_success = overall_success
                         eval_copied_to_valid = copied_to_valid
+                        eval_copied_to_v3 = copied_to_v3
                         eval_output_data = eval_output  # Store for failure reason extraction
                         # Also write to log file
                         with open(log_file, 'a') as log_f:
@@ -1123,6 +1165,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         # Eval output unclear
                         eval_overall_success = None
                         eval_copied_to_valid = None
+                        eval_copied_to_v3 = None
                         eval_output_data = None
                 else:
                     logger.warning(f"Eval failed: {eval_result.stderr}")
@@ -1134,6 +1177,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                         log_f.write("\n")
                     eval_overall_success = None
                     eval_copied_to_valid = None
+                    eval_copied_to_v3 = None
                     eval_output_data = None
             except Exception as e:
                 logger.warning(f"Could not run evaluation: {e}")
@@ -1142,11 +1186,17 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         if args.run_eval and eval_overall_success is not None:
             if eval_overall_success is True:
                 print(f"\nSUCCESS", file=sys.stderr)
+                if eval_copied_to_valid or eval_copied_to_v3:
+                    print(f"", file=sys.stderr)
+                    if eval_copied_to_valid:
+                        print(f"Copied to: {eval_copied_to_valid}", file=sys.stderr)
+                    if eval_copied_to_v3:
+                        print(f"Also saved to: data/valid_outputs/v3/{eval_copied_to_v3}", file=sys.stderr)
+            else:
+                print(f"\nFAILED", file=sys.stderr)
                 if eval_copied_to_valid:
                     print(f"", file=sys.stderr)
                     print(f"Copied to: {eval_copied_to_valid}", file=sys.stderr)
-            else:
-                print(f"\nFAILED", file=sys.stderr)
                 # Extract and print failure reason
                 if eval_output_data:
                     failure_reason = None
