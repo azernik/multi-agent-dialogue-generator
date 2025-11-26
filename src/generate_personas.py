@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import random
+import re
 from pathlib import Path
 from typing import Dict, List, Any
 import sys
@@ -74,55 +75,21 @@ Create a structured persona with these fields:
 Return ONLY a JSON object with these exact fields. Make the persona feel real, specific, and conversational.
 
 Example output format:
-{
-  {
-  "personas": [
-    {
-      "id": "persona_001",
-      "name": "Elena Harding",
-      "age": 48,
-      "hometown": "Darwin, Northern Territory",
-      "occupation": "Community relations officer",
-      "bio": "Elena Harding coordinates community outreach for the Northern Territory government, helping residents navigate services and making sure local voices reach national decision makers. She keeps a disciplined calendar, attends neighborhood events most evenings, and prides herself on giving people clear next steps.",
-      "use_cases": [
-        "restaurant_booking.dine_in_dinner",
-        "calendar.schedule_cross_functional_team_meeting",
-        "calendar.reschedule_meeting"
-      ],
-      "writing_style": "Australian casual, some lowercase starts, fragments okay, action-oriented",
-      "sample_messages": [
-        "need a table downtown thursday around 7 for me + two visiting reps",
-        "Second option works, go with that one",
-        "meeting room booking for next week sorted?"
-      ],
-      "email": "elena.harding@nt.gov.au",
-      "phone": "+61-8-5550-2147"
-    },
-    {
-      "id": "persona_002",
-      "name": "Maya Chen",
-      "age": 34,
-      "hometown": "Eugene, OR",
-      "occupation": "Nutrition researcher",
-      "bio": "Maya Chen studies how everyday habits like water intake influence children's eating choices. She splits her time between lab work, preschool visits, and writing approachable summaries for parents and educators. Off the clock she hosts weekend brunches and keeps a shared calendar with her research collaborators.",
-      "use_cases": [
-        "calendar.schedule_cross_functional_team_meeting",
-        "calendar.schedule_recurring_one_on_one_meeting",
-        "restaurant_booking.dine_in_brunch",
-        "online_shopping.order_gift"
-      ],
-      "sample_messages": [
-        "hey there! brunch for 4 on sunday? someplace quiet so we can catch up",
-        "can we bump my sync w/ sara to wed? preschool visits ran long",
-        "thanks! sending this over to the project crew now"
-      ],
-      "writing_style": "casual and friendly, lowercase starts, abbreviations like 'w/' and 'ppl', warm conversational tone",
-      "email": "maya.chen@uoregon.edu",
-      "phone": "+1-541-555-0186"
-    }
-    ]
-}
-}"""
+{{
+  "name": "Elena Harding",
+  "age": 48,
+  "hometown": "Darwin, Northern Territory",
+  "occupation": "Community relations officer",
+  "bio": "Elena Harding coordinates community outreach for the Northern Territory government, helping residents navigate services and making sure local voices reach national decision makers. She keeps a disciplined calendar, attends neighborhood events most evenings, and prides herself on giving people clear next steps.",
+  "writing_style": "Australian casual, some lowercase starts, fragments okay, action-oriented",
+  "sample_messages": [
+    "need a table downtown thursday around 7 for me + two visiting reps",
+    "Second option works, go with that one",
+    "meeting room booking for next week sorted?"
+  ],
+  "email": "elena.harding@nt.gov.au",
+  "phone": "+61-8-5550-2147"
+}}"""
 
 
 def load_personahub_entries(input_file: Path) -> List[Dict[str, Any]]:
@@ -157,30 +124,60 @@ def generate_persona_from_personahub(
         {"role": "user", "content": prompt}
     ]
     
-    response = llm_client.chat_completion(messages, temperature=0.8, max_tokens=800)
-    response_text = response.choices[0].message.content.strip()
+    response_text = llm_client.chat_completion(messages, temperature=0.8, max_completion_tokens=800)
+    response_text = response_text.strip()
     
-    # Parse JSON response
-    # Remove markdown code blocks if present
-    if response_text.startswith('```'):
-        lines = response_text.split('\n')
-        response_text = '\n'.join(lines[1:-1])
-        if response_text.startswith('json'):
-            response_text = response_text[4:].strip()
+    # Strip out thinking tags if present (from gpt-5.1 responses API)
+    if '<think>' in response_text:
+        # Extract content after </think> tag
+        think_end = response_text.find('</think>')
+        if think_end != -1:
+            response_text = response_text[think_end + 8:].strip()
     
-    persona_data = json.loads(response_text)
+    # Parse JSON response - handle markdown code blocks
+    if '```' in response_text:
+        # Extract content between code fences
+        json_match = re.search(r'```(?:json)?\s*(.*?)```', response_text, re.DOTALL)
+        if json_match:
+            response_text = json_match.group(1).strip()
     
-    # Add required fields
-    persona_data['id'] = persona_id
+    # Find JSON object in the response (look for outermost {})
+    json_start = response_text.find('{')
+    json_end = response_text.rfind('}')
+    if json_start != -1 and json_end != -1:
+        response_text = response_text[json_start:json_end+1]
+    
+    try:
+        persona_data = json.loads(response_text)
+    except json.JSONDecodeError as e:
+        # Print response for debugging
+        print(f"\n\nJSON parse error at position {e.pos}: {e.msg}")
+        print(f"Full response:\n{response_text}\n")
+        raise
     
     # Randomly assign 2-4 use cases if available
     if available_use_cases:
         num_use_cases = random.randint(2, min(4, len(available_use_cases)))
-        persona_data['use_cases'] = random.sample(available_use_cases, num_use_cases)
+        use_cases = random.sample(available_use_cases, num_use_cases)
     else:
-        persona_data['use_cases'] = []  # To be filled in later
+        use_cases = []  # To be filled in later
     
-    return persona_data
+    # Reconstruct persona with ID first to maintain proper field order
+    ordered_persona = {
+        'id': persona_id,
+        'name': persona_data.get('name'),
+        'age': persona_data.get('age'),
+        'hometown': persona_data.get('hometown'),
+        'occupation': persona_data.get('occupation'),
+        'bio': persona_data.get('bio'),
+        'use_cases': use_cases,
+        'writing_style': persona_data.get('writing_style'),
+        'sample_messages': persona_data.get('sample_messages'),
+        'email': persona_data.get('email'),
+        'phone': persona_data.get('phone')
+    }
+    
+    return ordered_persona
 
 
 def main():
@@ -262,6 +259,8 @@ def main():
             print(f"✓ {persona['name']} (use cases: {len(persona.get('use_cases', []))})")
         except Exception as e:
             print(f"✗ Error: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
     # Handle output
