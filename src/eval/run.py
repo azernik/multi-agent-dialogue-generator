@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Iterator, List, Optional
 
@@ -9,6 +14,7 @@ from eval.syntax import evaluate_conversation, load_conversation_artifact
 from eval.success import evaluate_success
 from eval.faithfulness import evaluate_faithfulness
 from eval.role_confusion import evaluate_role_confusion
+from eval.l1 import compare_conversations, find_gold_conversation, get_next_run_number
 
 
 def _iter_conversation_files(targets: Iterable[str], recursive: bool) -> Iterator[Path]:
@@ -93,7 +99,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         dest="role_confusion_api_key",
         help="API key for role confusion judge (default: reuse success API key).",
     )
+    parser.add_argument(
+        "--run-l1",
+        action="store_true",
+        help="Run L1 evaluation (compares against gold conversation in valid_outputs/v2).",
+    )
     args = parser.parse_args(argv)
+
+    api_key = args.api_key
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+
+    if not args.syntax_only and not api_key:
+        parser.error("API key unavailable. Set OPENAI_API_KEY environment variable or use --api-key and retry.")
 
     conversation_paths = list(_iter_conversation_files(args.targets, args.recursive))
     if not conversation_paths:
@@ -179,6 +197,206 @@ def main(argv: Optional[List[str]] = None) -> int:
         if role_confusion_payload and "error" not in role_confusion_payload:
             if role_confusion_payload.get("has_confusion", False):
                 overall_success = False
+
+        l1_result_path = None
+        if overall_success and args.run_l1:
+            gold_path = find_gold_conversation(conversation_path)
+            gold_created = False
+            test_conversation_path = conversation_path
+            
+            if not gold_path:
+                gold_created = True
+                try:
+                    with open(conversation_path, "r") as f:
+                        conversation_data = json.load(f)
+                    config = conversation_data.get("config", {}) or {}
+                    scenario_name = config.get("scenario_name")
+                    persona = config.get("persona", {}) or {}
+                    persona_id = persona.get("id") if isinstance(persona, dict) else persona
+
+                    if scenario_name and persona_id:
+                        repo_root = Path(__file__).resolve().parents[2]
+                        domains_dir = repo_root / "data" / "domains"
+                        
+                        scenario_file = None
+                        for domain_dir in domains_dir.iterdir():
+                            if not domain_dir.is_dir():
+                                continue
+                            for use_case_dir in domain_dir.iterdir():
+                                if not use_case_dir.is_dir():
+                                    continue
+                                candidate = use_case_dir / f"{scenario_name}.json"
+                                if candidate.exists():
+                                    scenario_file = candidate
+                                    break
+                                for file in use_case_dir.glob(f"{scenario_name}__*.json"):
+                                    if file.name != "tools.json":
+                                        scenario_file = file
+                                        break
+                                if scenario_file:
+                                    break
+                            if scenario_file:
+                                break
+
+                        if scenario_file and scenario_file.exists():
+                            repo_root_str = str(repo_root)
+                            simulate_script = repo_root / "src" / "simulate.py"
+                            
+                            env = os.environ.copy()
+                            if api_key:
+                                env["OPENAI_API_KEY"] = api_key
+                            
+                            simulate_cmd = [
+                                sys.executable,
+                                str(simulate_script),
+                                str(scenario_file),
+                                "--model", args.model,
+                            ]
+                            if persona_id:
+                                simulate_cmd.extend(["--persona-id", persona_id])
+                            
+                            result1 = subprocess.run(
+                                simulate_cmd,
+                                cwd=repo_root_str,
+                                env=env,
+                                capture_output=True,
+                                text=True
+                            )
+                            
+                            if result1.returncode == 0:
+                                outputs_dir = repo_root / "data" / "outputs"
+                                gold_conversation = None
+                                pattern = f"*__{scenario_name}__{persona_id}.json"
+                                for conv_dir in sorted(outputs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                                    if conv_dir.is_dir():
+                                        matches = list(conv_dir.glob(pattern))
+                                        if matches:
+                                            gold_conversation = matches[0]
+                                            break
+                                
+                                if gold_conversation and gold_conversation.exists():
+                                    valid_outputs_dir = repo_root / "data" / "valid_outputs" / "v2"
+                                    valid_outputs_dir.mkdir(parents=True, exist_ok=True)
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                    gold_filename = f"{timestamp}__{scenario_name}__{persona_id}.json"
+                                    gold_path = valid_outputs_dir / gold_filename
+                                    shutil.copy2(gold_conversation, gold_path)
+                                    
+                                    result2 = subprocess.run(
+                                        simulate_cmd,
+                                        cwd=repo_root_str,
+                                        env=env,
+                                        capture_output=True,
+                                        text=True
+                                    )
+                                    
+                                    if result2.returncode == 0:
+                                        test_conversation = None
+                                        for conv_dir in sorted(outputs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                                            if conv_dir.is_dir():
+                                                matches = list(conv_dir.glob(pattern))
+                                                if matches:
+                                                    for f in matches:
+                                                        if f != gold_conversation:
+                                                            test_conversation = f
+                                                            break
+                                                if test_conversation:
+                                                    break
+                                        
+                                        if test_conversation and test_conversation.exists():
+                                            test_conversation_path = test_conversation
+                except Exception:
+                    gold_path = None
+            
+            if gold_path and gold_path.exists() and not gold_created:
+                try:
+                    with open(conversation_path, "r") as f:
+                        conversation_data = json.load(f)
+                    config = conversation_data.get("config", {}) or {}
+                    scenario_name = config.get("scenario_name")
+                    persona = config.get("persona", {}) or {}
+                    persona_id = persona.get("id") if isinstance(persona, dict) else persona
+
+                    if scenario_name and persona_id:
+                        repo_root = Path(__file__).resolve().parents[2]
+                        domains_dir = repo_root / "data" / "domains"
+                        
+                        scenario_file = None
+                        for domain_dir in domains_dir.iterdir():
+                            if not domain_dir.is_dir():
+                                continue
+                            for use_case_dir in domain_dir.iterdir():
+                                if not use_case_dir.is_dir():
+                                    continue
+                                candidate = use_case_dir / f"{scenario_name}.json"
+                                if candidate.exists():
+                                    scenario_file = candidate
+                                    break
+                                for file in use_case_dir.glob(f"{scenario_name}__*.json"):
+                                    if file.name != "tools.json":
+                                        scenario_file = file
+                                        break
+                                if scenario_file:
+                                    break
+                            if scenario_file:
+                                break
+
+                        if scenario_file and scenario_file.exists():
+                            repo_root_str = str(repo_root)
+                            simulate_script = repo_root / "src" / "simulate.py"
+                            
+                            env = os.environ.copy()
+                            if api_key:
+                                env["OPENAI_API_KEY"] = api_key
+                            
+                            simulate_cmd = [
+                                sys.executable,
+                                str(simulate_script),
+                                str(scenario_file),
+                                "--model", args.model,
+                            ]
+                            if persona_id:
+                                simulate_cmd.extend(["--persona-id", persona_id])
+                            
+                            result = subprocess.run(
+                                simulate_cmd,
+                                cwd=repo_root_str,
+                                env=env,
+                                capture_output=True,
+                                text=True
+                            )
+                            
+                            if result.returncode == 0:
+                                outputs_dir = repo_root / "data" / "outputs"
+                                test_conversation = None
+                                pattern = f"*__{scenario_name}__{persona_id}.json"
+                                for conv_dir in sorted(outputs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+                                    if conv_dir.is_dir():
+                                        matches = list(conv_dir.glob(pattern))
+                                        if matches:
+                                            test_conversation = matches[0]
+                                            break
+                                
+                                if test_conversation and test_conversation.exists():
+                                    test_conversation_path = test_conversation
+                except Exception as e:
+                    print(f"Warning: Failed to generate new conversation for L1 comparison: {e}", file=sys.stderr)
+
+            if gold_path and gold_path.exists():
+                if test_conversation_path != conversation_path and Path(test_conversation_path).exists():
+                    try:
+                        l1_result = compare_conversations(gold_path, test_conversation_path)
+                        repo_root = Path(__file__).resolve().parents[2]
+                        eval_l1_dir = repo_root / "data" / "evals" / "l1"
+                        l1_conv_id = l1_result.conversation_id or syntax_result.conversation_id
+                        run_number = get_next_run_number(l1_conv_id, eval_l1_dir)
+                        l1_filename = f"{l1_conv_id}_l1_{run_number}.json"
+                        l1_result_path = eval_l1_dir / l1_filename
+                        eval_l1_dir.mkdir(parents=True, exist_ok=True)
+                        with open(l1_result_path, "w") as f:
+                            json.dump(l1_result.to_dict(), f, indent=2, ensure_ascii=False)
+                    except Exception as e:
+                        print(f"Warning: Failed to save L1 evaluation results: {e}", file=sys.stderr)
 
         output = {
             "conversation_id": syntax_result.conversation_id,
