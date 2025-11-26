@@ -27,6 +27,7 @@ from core import LLMClient
 
 
 # All available use cases for random assignment
+# These match exactly with the domain folders and scenario generators
 AVAILABLE_USE_CASES = [
     # Banking
     "banking.check_account_balance",
@@ -35,24 +36,21 @@ AVAILABLE_USE_CASES = [
     
     # Calendar
     "calendar.reschedule_meeting",
-    "calendar.schedule_community_workshop",
-    "calendar.schedule_cross_functional_team_meeting",
-    "calendar.schedule_outdoor_event",
-    "calendar.schedule_recurring_one_on_one_meeting",
+    "calendar.outdoor_event",
+    "calendar.recurring_one_on_one",
+    "calendar.schedule_meeting",
+    
     # Online Shopping
-    "online_shopping.order_gardening_supplies",
-    "online_shopping.order_gift",
+    "online_shopping.cancel_order",
+    "online_shopping.track.order",
     "online_shopping.return_order",
+    
     # Restaurant Booking
-    "restaurant_booking.dine_in_brunch",
-    "restaurant_booking.dine_in_dinner",
-    "restaurant_booking.plan_group_dinner",
-    "restaurant_booking.plan_special_occasion",
+    "restaurant_booking.dine_in",
+    
     # Travel
     "travel.book_flight",
-    "travel.book_hotel",
-    "travel.change_flight",
-    "travel.check_flight_status",
+    "travel.book_hotel"
 ]
 
 

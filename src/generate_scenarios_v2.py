@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate scenario files for personas based on their use_cases.
-Uses domain-specific generators for accurate scenario structure.
+Uses LLM with domain-specific format examples for accurate scenario structure.
 
 Usage:
     python src/generate_scenarios_v2.py --start-persona 56 --count 5
@@ -10,110 +10,108 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, List, Any, Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
-
-# Import domain-specific generators
-from scenario_generators import banking, calendar_assistant, online_shopping, restaurant_booking, travel
+from core import LLMClient
 
 
-# Mapping from use_case strings to (domain, use_case_folder, prefix, generator_function)
+# Mapping from use_case strings to (domain, use_case_folder, prefix, example_file)
+# Must match AVAILABLE_USE_CASES in generate_personas.py
 USE_CASE_REGISTRY = {
-    # Banking
+    # Banking (3 use cases)
     "banking.check_account_balance": (
         "banking", "check_account_balance", "ba",
-        banking.generate_check_account_balance
+        "ba_001__persona_005.json"
     ),
     "banking.dispute_charge": (
         "banking", "dispute_charge", "ba",
-        banking.generate_dispute_charge
+        "ba_001__persona_010.json"
     ),
     "banking.report_card_lost_or_stolen": (
         "banking", "report_card_lost_or_stolen", "ba_rc",
-        banking.generate_report_card_lost_or_stolen
+        "ba_rc_001__persona_040.json"
     ),
     
-    # Calendar Assistant
+    # Calendar Assistant (4 use cases)
+    "calendar.outdoor_event": (
+        "calendar_assistant", "outdoor_event", "ca_oe",
+        "ca_oe_001__persona_005.json"
+    ),
+    "calendar.recurring_one_on_one": (
+        "calendar_assistant", "recurring_one_on_one", "ca_ro",
+        "ca_ro_001__persona_004.json"
+    ),
     "calendar.reschedule_meeting": (
         "calendar_assistant", "reschedule_meeting", "ca_rm",
-        calendar_assistant.generate_reschedule_meeting
+        "ca_rm_001__persona_004.json"
     ),
-    "calendar.schedule_community_workshop": (
+    "calendar.schedule_meeting": (
         "calendar_assistant", "schedule_meeting", "ca_sm",
-        calendar_assistant.generate_schedule_meeting
-    ),
-    "calendar.schedule_cross_functional_team_meeting": (
-        "calendar_assistant", "schedule_meeting", "ca_sm",
-        calendar_assistant.generate_schedule_meeting
-    ),
-    "calendar.schedule_outdoor_event": (
-        "calendar_assistant", "outdoor_event", "ca_oe",
-        calendar_assistant.generate_outdoor_event
-    ),
-    "calendar.schedule_recurring_one_on_one_meeting": (
-        "calendar_assistant", "recurring_one_on_one", "ca_ro",
-        calendar_assistant.generate_recurring_one_on_one
+        "ca_sm_001__persona_002.json"
     ),
     
-    # Online Shopping
-    "online_shopping.order_gardening_supplies": (
-        "online_shopping", "track_order", "os_to",
-        online_shopping.generate_track_order
-    ),
-    "online_shopping.order_gift": (
-        "online_shopping", "track_order", "os_to",
-        online_shopping.generate_track_order
+    # Online Shopping (3 use cases)
+    "online_shopping.cancel_order": (
+        "online_shopping", "cancel_order", "os_co",
+        "os_co_001__persona_001.json"
     ),
     "online_shopping.return_order": (
         "online_shopping", "return_order", "os_ro",
-        online_shopping.generate_return_order
+        "os_ro_001__persona_025.json"
     ),
-    "online_shopping.cancel_order": (
-        "online_shopping", "cancel_order", "os_co",
-        online_shopping.generate_cancel_order
-    ),
-    
-    # Restaurant Booking
-    "restaurant_booking.dine_in_brunch": (
-        "restaurant_booking", "dine_in", "rb",
-        restaurant_booking.generate_dine_in
-    ),
-    "restaurant_booking.dine_in_dinner": (
-        "restaurant_booking", "dine_in", "rb",
-        restaurant_booking.generate_dine_in
-    ),
-    "restaurant_booking.plan_group_dinner": (
-        "restaurant_booking", "dine_in", "rb",
-        restaurant_booking.generate_dine_in
-    ),
-    "restaurant_booking.plan_special_occasion": (
-        "restaurant_booking", "dine_in", "rb",
-        restaurant_booking.generate_dine_in
+    "online_shopping.track_order": (
+        "online_shopping", "track_order", "os_to",
+        "os_to_001__persona_005.json"
     ),
     
-    # Travel
+    # Restaurant Booking (1 use case)
+    "restaurant_booking.dine_in": (
+        "restaurant_booking", "dine_in", "rb",
+        "rb_001__persona_002.json"
+    ),
+    
+    # Travel (2 use cases)
     "travel.book_flight": (
         "travel", "book_flight", "tr_bf",
-        travel.generate_book_flight
+        "tr_bf_001__persona_010.json"
     ),
     "travel.book_hotel": (
         "travel", "book_hotel", "tr_bh",
-        travel.generate_book_hotel
-    ),
-    "travel.change_flight": (
-        "travel", "book_flight", "tr_bf",
-        travel.generate_book_flight
-    ),
-    "travel.check_flight_status": (
-        "travel", "book_flight", "tr_bf",
-        travel.generate_book_flight
+        "tr_bh_001__persona_005.json"
     ),
 }
+
+
+SCENARIO_GENERATION_PROMPT = """You are generating a realistic task scenario for a multi-agent dialogue simulation.
+
+PERSONA INFORMATION:
+{persona_info}
+
+TASK: Generate a scenario for the use case "{use_case}" in the "{domain}" domain.
+
+IMPORTANT: Follow the EXACT format and structure of this example scenario below. 
+Keep the same field names, nested structure, and data types. 
+Generate realistic data that matches the persona's background, location, and occupation.
+
+EXAMPLE SCENARIO TO FOLLOW:
+{example_scenario}
+
+INSTRUCTIONS:
+1. Use the scenario_id: {scenario_id}
+2. Use the persona_id: {persona_id}
+3. Keep the same structure as the example
+4. Generate realistic constraints, preferences, and seed data
+5. Make sure dates are in the future (2025-12 or later)
+6. Use persona's hometown, email, occupation for realistic context
+7. Generate 2-4 options in seed data (restaurants, flights, hotels, etc.)
+
+Return ONLY valid JSON matching the exact structure of the example."""
 
 
 def load_personas(catalog_path: Path) -> List[Dict[str, Any]]:
@@ -121,6 +119,21 @@ def load_personas(catalog_path: Path) -> List[Dict[str, Any]]:
     with open(catalog_path, 'r') as f:
         catalog = json.load(f)
     return catalog.get('personas', [])
+
+
+def load_example_scenario(domains_path: Path, domain: str, use_case_folder: str, example_file: str) -> Optional[Dict[str, Any]]:
+    """Load an example scenario file to use as template."""
+    example_path = domains_path / domain / use_case_folder / example_file
+    
+    if not example_path.exists():
+        return None
+    
+    try:
+        with open(example_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load example {example_path}: {e}")
+        return None
 
 
 def get_next_scenario_number(domain_folder: Path, prefix: str) -> int:
@@ -144,24 +157,82 @@ def generate_scenario(
     persona: Dict[str, Any],
     use_case: str,
     scenario_number: int,
-    generator_func: Callable
+    example_scenario: Dict[str, Any],
+    llm_client: LLMClient
 ) -> Optional[Dict[str, Any]]:
-    """Generate a scenario using the domain-specific generator."""
+    """Generate a scenario using LLM with example scenario as template."""
     if use_case not in USE_CASE_REGISTRY:
         return None
     
     domain, use_case_folder, prefix, _ = USE_CASE_REGISTRY[use_case]
     scenario_id = f"{prefix}_{scenario_number:03d}"
     
-    # Add temporary hint for generators that need it
-    persona_copy = persona.copy()
-    persona_copy['_temp_use_case'] = use_case
+    # Prepare persona info
+    persona_info = f"""
+ID: {persona['id']}
+Name: {persona['name']}
+Age: {persona['age']}
+Occupation: {persona['occupation']}
+Hometown: {persona['hometown']}
+Bio: {persona['bio']}
+Writing Style: {persona.get('writing_style', 'casual')}
+Email: {persona.get('email', 'user@example.com')}
+Phone: {persona.get('phone', '+1-555-0000')}
+"""
+    
+    # Build prompt
+    prompt = SCENARIO_GENERATION_PROMPT.format(
+        persona_info=persona_info,
+        use_case=use_case,
+        domain=domain,
+        example_scenario=json.dumps(example_scenario, indent=2),
+        scenario_id=scenario_id,
+        persona_id=persona['id']
+    )
+    
+    # Call LLM
+    messages = [
+        {"role": "system", "content": "You are a scenario generation assistant. Output only valid JSON that matches the example format exactly."},
+        {"role": "user", "content": prompt}
+    ]
     
     try:
-        scenario = generator_func(persona_copy, scenario_id)
-        return scenario
+        response_text = llm_client.chat_completion(messages, temperature=0.7, max_completion_tokens=2000)
+        response_text = response_text.strip()
+        
+        # Strip out thinking tags if present
+        if '<think>' in response_text:
+            think_end = response_text.find('</think>')
+            if think_end != -1:
+                response_text = response_text[think_end + 8:].strip()
+        
+        # Parse JSON response - handle markdown code blocks
+        if '```' in response_text:
+            json_match = re.search(r'```(?:json)?\s*(.*?)```', response_text, re.DOTALL)
+            if json_match:
+                response_text = json_match.group(1).strip()
+        
+        # Find JSON object
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}')
+        if json_start != -1 and json_end != -1:
+            response_text = response_text[json_start:json_end+1]
+        
+        scenario_data = json.loads(response_text)
+        
+        # Ensure correct IDs
+        if 'metadata' in scenario_data:
+            scenario_data['metadata']['scenario_id'] = scenario_id
+        scenario_data['persona'] = persona['id']
+        
+        return scenario_data
+        
+    except json.JSONDecodeError as e:
+        print(f"\n    JSON parse error: {e}")
+        print(f"    Response preview: {response_text[:300]}")
+        return None
     except Exception as e:
-        print(f"\n    Error in generator: {e}")
+        print(f"\n    Error: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -169,7 +240,7 @@ def generate_scenario(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate scenarios for personas using domain-specific templates"
+        description="Generate scenarios for personas using LLM with domain-specific examples"
     )
     parser.add_argument(
         '--personas',
@@ -197,6 +268,15 @@ def main():
         help='Specific persona IDs to process (e.g., persona_056 persona_057)'
     )
     parser.add_argument(
+        '--model',
+        default='gpt-5.1',
+        help='LLM model to use (default: gpt-5.1)'
+    )
+    parser.add_argument(
+        '--api-key',
+        help='OpenAI API key (default: OPENAI_API_KEY env var)'
+    )
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='Print what would be generated without actually creating files'
@@ -208,6 +288,14 @@ def main():
     )
     
     args = parser.parse_args()
+    
+    # Initialize LLM client
+    api_key = args.api_key or os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        print("Error: OpenAI API key required. Set OPENAI_API_KEY or use --api-key")
+        return 1
+    
+    llm_client = LLMClient(model=args.model, api_key=api_key)
     
     # Load personas
     print(f"Loading personas from {args.personas}...")
@@ -253,8 +341,14 @@ def main():
                 print(f"  ⚠ Unknown use case: {use_case}")
                 continue
             
-            domain, use_case_folder, prefix, generator_func = USE_CASE_REGISTRY[use_case]
+            domain, use_case_folder, prefix, example_file = USE_CASE_REGISTRY[use_case]
             domain_path = domains_path / domain / use_case_folder
+            
+            # Load example scenario
+            example_scenario = load_example_scenario(domains_path, domain, use_case_folder, example_file)
+            if not example_scenario:
+                print(f"  ⚠ No example scenario found for {use_case}")
+                continue
             
             # Get next scenario number
             scenario_num = get_next_scenario_number(domain_path, prefix)
@@ -280,7 +374,8 @@ def main():
                     persona,
                     use_case,
                     scenario_num,
-                    generator_func
+                    example_scenario,
+                    llm_client
                 )
                 
                 if scenario:
