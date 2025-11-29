@@ -15,6 +15,9 @@ import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))

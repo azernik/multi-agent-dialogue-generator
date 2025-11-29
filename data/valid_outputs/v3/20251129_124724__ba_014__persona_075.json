@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "conversation_id": "banking.ba_014",
+    "domain_id": "banking",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "ba_014",
+    "task": {
+      "slots": {
+        "constraints": {
+          "target_account": "checking",
+          "context_note": "User is Dr. Maya Ellison, a wildlife biologist based in Corvallis, Oregon, who is in the field a lot and wants a quick balance check before ordering materials for a beaver dam analogue project."
+        },
+        "preferences": {
+          "currency_display": "USD",
+          "include_available_balance": true,
+          "tone": "friendly_and_clear"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "account_type": "checking"
+        },
+        "action": "get_account_balance",
+        "notes": "Success if the assistant retrieves the balance for the primary checking account using get_account_balance and clearly tells Dr. Ellison both the current and available balances, since she may have pending charges from field expenses."
+      },
+      "objective": "Check primary checking account balance before making fieldwork-related purchases"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "injected_behaviors": [],
+      "context": {
+        "seed": {
+          "accounts": [
+            {
+              "account_id": "ACC-075-CHK",
+              "account_type": "checking",
+              "nickname": "Corvallis Field Checking",
+              "masked_number": "****2043",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-075-SAV",
+              "account_type": "savings",
+              "nickname": "Salmon & Beaver Projects Fund",
+              "masked_number": "****8872",
+              "currency": "USD"
+            },
+            {
+              "account_id": "ACC-075-BIZ",
+              "account_type": "checking",
+              "nickname": "Grant Reimbursements",
+              "masked_number": "****9310",
+              "currency": "USD"
+            }
+          ],
+          "balances": [
+            {
+              "account_id": "ACC-075-CHK",
+              "current_balance": 1832.47,
+              "available_balance": 1649.97,
+              "currency": "USD",
+              "last_updated": "2026-01-15T18:42:33Z"
+            },
+            {
+              "account_id": "ACC-075-SAV",
+              "current_balance": 12850.0,
+              "available_balance": 12850.0,
+              "currency": "USD",
+              "last_updated": "2026-01-15T18:42:33Z"
+            },
+            {
+              "account_id": "ACC-075-BIZ",
+              "current_balance": 4620.13,
+              "available_balance": 4620.13,
+              "currency": "USD",
+              "last_updated": "2026-01-15T18:42:33Z"
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "id": "persona_075",
+      "name": "Dr. Maya Ellison",
+      "age": 39,
+      "hometown": "Corvallis, Oregon, USA",
+      "occupation": "Wildlife Biologist & Beaver Restoration Specialist",
+      "bio": "Maya Ellison is a wildlife biologist based in the Pacific Northwest who focuses on beaver reintroduction and the design of beaver dam analogues to heal degraded river systems and support salmon recovery. She splits her time between wading cold streams with a survey rod, sketching restoration designs over coffee, and talking with landowners about how to live alongside beavers. Off the river, she loves trail running in the rain and sketching wetlands in a battered field notebook that smells faintly of mud and flagging tape.",
+      "use_cases": [
+        "banking.check_account_balance",
+        "calendar.recurring_one_on_one"
+      ],
+      "writing_style": "Friendly, conversational, clear explanations with occasional technical terms, uses complete sentences and light humor",
+      "sample_messages": [
+        "Hey, could you send over the latest flow measurements for the South Fork reach? I want to double-check we\u2019re sizing those BDAs correctly before we haul materials out there.",
+        "Just got back from the site visit\u2014good news: the new structures are already pushing water onto the floodplain, and I spotted juvenile coho using the side channels. Let\u2019s go over photos and notes tomorrow afternoon?",
+        "Quick check-in: are you still okay with us installing a small test cluster of beaver dam analogues on your lower pasture this fall? We\u2019ll walk you through the design first and make sure we\u2019re not impacting your irrigation intake."
+      ],
+      "email": "maya.ellison@pnwriverrestoration.org",
+      "phone": "+1-541-555-2374"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hey! I just want to check the balance on my primary checking account before I order some field materials."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants primary checking balance. I must use tools. Need accounts, then identify primary checking, then get balance. Prior tool call malformed; now I correct: only one list_customer_accounts. Then pick appropriate account (maybe nickname or first checking). If multiple, ask user. Balance then report. Minimal verbosity. \n</think>\n<plan>\n1. Retrieve the list of the user's accounts.\n2. Identify the primary checking account (or ask the user to choose if ambiguous).\n3. Fetch the balance for that account.\n4. Present the current and available balance to the user.\n</plan>\n<action type=\"tool\" name=\"list_customer_accounts\">\n{}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "list_customer_accounts",
+            "args": {},
+            "raw": "list_customer_accounts({})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"account_id\": \"ACC-075-CHK\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Corvallis Field Checking\",\n    \"masked_number\": \"****2043\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-075-SAV\",\n    \"account_type\": \"savings\",\n    \"nickname\": \"Salmon & Beaver Projects Fund\",\n    \"masked_number\": \"****8872\",\n    \"currency\": \"USD\"\n  },\n  {\n    \"account_id\": \"ACC-075-BIZ\",\n    \"account_type\": \"checking\",\n    \"nickname\": \"Grant Reimbursements\",\n    \"masked_number\": \"****9310\",\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "account_id": "ACC-075-CHK",
+                "account_type": "checking",
+                "nickname": "Corvallis Field Checking",
+                "masked_number": "****2043",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-075-SAV",
+                "account_type": "savings",
+                "nickname": "Salmon & Beaver Projects Fund",
+                "masked_number": "****8872",
+                "currency": "USD"
+              },
+              {
+                "account_id": "ACC-075-BIZ",
+                "account_type": "checking",
+                "nickname": "Grant Reimbursements",
+                "masked_number": "****9310",
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have two checking accounts; user said \"primary checking\" so need clarification which one. Ask user which nickname/last4 is primary. Minimal wording. \n</think>\n<plan>\n1. Ask the user which checking account they consider their primary.\n2. Once they choose, fetch the balance for that specific account.\n3. Share the balance so they can decide about ordering materials.\n</plan>\n<action type=\"say\">\nI see two checking accounts on your profile:\n\n1) Corvallis Field Checking \u2014 ****2043  \n2) Grant Reimbursements \u2014 ****9310  \n\nWhich one is your primary checking account for ordering these field materials?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I see two checking accounts on your profile:\n\n1) Corvallis Field Checking \u2014 ****2043  \n2) Grant Reimbursements \u2014 ****9310  \n\nWhich one is your primary checking account for ordering these field materials?"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "That\u2019d be the Corvallis Field Checking, the ****2043 one."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser chose Corvallis Field Checking ****2043; I know its account_id from earlier list. Next I should get its balance with get_account_balance and report. \n</think>\n<plan>\n1. Retrieve the current and available balance for Corvallis Field Checking (****2043).\n2. Present the balance to the user.\n</plan>\n<action type=\"tool\" name=\"get_account_balance\">\n{\"account_id\":\"ACC-075-CHK\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "get_account_balance",
+            "args": {
+              "account_id": "ACC-075-CHK"
+            },
+            "raw": "get_account_balance({\"account_id\":\"ACC-075-CHK\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"account_id\": \"ACC-075-CHK\",\n  \"current_balance\": 1832.47,\n  \"available_balance\": 1649.97,\n  \"currency\": \"USD\",\n  \"last_updated\": \"2026-01-15T18:42:33Z\"\n}",
+            "parsed": {
+              "account_id": "ACC-075-CHK",
+              "current_balance": 1832.47,
+              "available_balance": 1649.97,
+              "currency": "USD",
+              "last_updated": "2026-01-15T18:42:33Z"
+            }
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nNeed to present balance concisely, include both current and available and timestamp. \n</think>\n<plan>\n1. Tell the user the current and available balance on Corvallis Field Checking so they can decide about ordering materials.\n</plan>\n<action type=\"say\">\nHere\u2019s the balance on Corvallis Field Checking (****2043):\n\n- Current balance: $1,832.47 USD  \n- Available balance: $1,649.97 USD  \n- Last updated: 2026-01-15T18:42:33Z\n\nIf you tell me roughly how much the field materials will cost, I can sanity-check that against your available funds.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s the balance on Corvallis Field Checking (****2043):\n\n- Current balance: $1,832.47 USD  \n- Available balance: $1,649.97 USD  \n- Last updated: 2026-01-15T18:42:33Z\n\nIf you tell me roughly how much the field materials will cost, I can sanity-check that against your available funds."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
