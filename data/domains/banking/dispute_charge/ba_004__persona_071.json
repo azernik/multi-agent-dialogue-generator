@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "dispute_charge",
+    "scenario_id": "ba_004"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_account": "credit_card",
+        "merchant_query": "Qantas Airways",
+        "amount": 1875.4,
+        "transaction_date": "February 6th"
+      },
+      "preferences": {
+        "dispute_reason": "flight booking cancelled but not refunded"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "merchant_query": "Qantas Airways",
+        "amount": 1875.4,
+        "transaction_date": "2026-02-05"
+      },
+      "action": "submit_dispute",
+      "notes": "Success if the assistant submits a dispute via submit_dispute for the Qantas Airways transaction of AUD 1,875.40 on February 5th (after resolving the user's initial one-day date error and identifying the correct posted transaction via list_recent_transactions)."
+    },
+    "objective": "Dispute a charge for a cancelled flight that was not refunded"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.uncertain_date",
+        "instructions": "You are Margaret Llewellyn, Administrator of the Northern Territory, currently reviewing your credit card activity after a busy period of official travel. Politely but firmly state that you wish to dispute a Qantas Airways charge for approximately AUD 1,875.40, which relates to a Darwin–Canberra return flight you cancelled. Initially state the transaction date as February 6th. When the assistant cannot find a matching transaction on that date but reports a very similar Qantas charge on February 5th, acknowledge that you likely misremembered the date due to your travel schedule and confirm February 5th as the correct date. Maintain a formal, measured, and courteous tone, occasionally referencing that the card is used for official travel connected to your role."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results_suggest_alternative",
+        "instructions": "When the assistant searches for a Qantas Airways transaction around AUD 1,875.40 on February 6th, return no direct matches for February 6th but indicate there is a matching posted transaction on February 5th with the same merchant and amount. Ensure that the February 5th transaction is clearly identifiable so the assistant can confirm it with the user and proceed to submit_dispute."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-NT-001",
+            "account_type": "credit_card",
+            "nickname": "Official Travel Card",
+            "masked_number": "****7394",
+            "currency": "AUD"
+          }
+        ],
+        "transactions": [
+          {
+            "transaction_id": "TXN-NT-001",
+            "account_id": "ACC-NT-001",
+            "posted_date": "2026-02-05",
+            "amount": -1875.4,
+            "currency": "AUD",
+            "description": "Qantas Airways DARWIN AUS",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-NT-002",
+            "account_id": "ACC-NT-001",
+            "posted_date": "2026-02-03",
+            "amount": -64.5,
+            "currency": "AUD",
+            "description": "Char Restaurant DARWIN NT",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-NT-003",
+            "account_id": "ACC-NT-001",
+            "posted_date": "2026-01-29",
+            "amount": -412.75,
+            "currency": "AUD",
+            "description": "Vibe Hotel DARWIN WATERFRONT",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-NT-004",
+            "account_id": "ACC-NT-001",
+            "posted_date": "2025-12-18",
+            "amount": -329.0,
+            "currency": "AUD",
+            "description": "Virgin Australia BRISBANE AUS",
+            "status": "posted"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_071"
+}

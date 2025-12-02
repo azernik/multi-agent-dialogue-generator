@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "dispute_charge",
+    "scenario_id": "ba_002"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_account": "credit_card",
+        "merchant_query": "Gabon Air",
+        "amount": 684.5,
+        "transaction_date": "January 15th"
+      },
+      "preferences": {
+        "dispute_reason": "flight booking cancelled but still charged"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "merchant_query": "Gabon Air",
+        "amount": 684.5,
+        "transaction_date": "2026-01-14"
+      },
+      "action": "submit_dispute",
+      "notes": "Success if the assistant submits a dispute via submit_dispute for the Gabon Air transaction of £684.50 on 2026-01-14 (after finding it via list_recent_transactions, accounting for the user's initial date confusion between the booking date and the card posting date)."
+    },
+    "objective": "Dispute a fraudulent or incorrect charge"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.uncertain_date",
+        "instructions": "Mention you were booking flights from Norwich to Libreville for a field season in Gabon and say the transaction date was January 15th. When the assistant can't find a match on that date but reports a Gabon Air charge for the same amount on January 14th, realise that must be the posting date and confirm it's the correct transaction to dispute. You may casually reference being a conservation ecologist at Oxford and having to sort this out between data checks and baking sourdough for your lab."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results_suggest_alternative",
+        "instructions": "When searching for transactions on January 15th with merchant Gabon Air, return no results but indicate there is a matching transaction for the same amount with Gabon Air on January 14th."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-UK-001",
+            "account_type": "credit_card",
+            "nickname": "Oxford Visa",
+            "masked_number": "****7742",
+            "currency": "GBP"
+          }
+        ],
+        "transactions": [
+          {
+            "transaction_id": "TXN-UK-001",
+            "account_id": "ACC-UK-001",
+            "posted_date": "2026-01-14",
+            "amount": -684.5,
+            "currency": "GBP",
+            "description": "Gabon Air",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-UK-002",
+            "account_id": "ACC-UK-001",
+            "posted_date": "2026-01-10",
+            "amount": -42.8,
+            "currency": "GBP",
+            "description": "Gatwick Express",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-UK-003",
+            "account_id": "ACC-UK-001",
+            "posted_date": "2025-12-22",
+            "amount": -118.35,
+            "currency": "GBP",
+            "description": "Novotel London Gatwick",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-UK-004",
+            "account_id": "ACC-UK-001",
+            "posted_date": "2025-12-18",
+            "amount": -27.6,
+            "currency": "GBP",
+            "description": "Pret A Manger Oxford",
+            "status": "posted"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_066"
+}

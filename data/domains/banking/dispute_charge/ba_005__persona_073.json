@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "dispute_charge",
+    "scenario_id": "ba_005"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_account": "credit_card",
+        "merchant_query": "DigitalOcean",
+        "amount": 89.0,
+        "transaction_date": "January 4th"
+      },
+      "preferences": {
+        "dispute_reason": "subscription canceled but still charged"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "merchant_query": "DigitalOcean",
+        "amount": 89.0,
+        "transaction_date": "2026-01-03"
+      },
+      "action": "submit_dispute",
+      "notes": "Success if the assistant submits a dispute via submit_dispute for the DigitalOcean transaction of ₹89.00 on 2026-01-03 (after finding it via list_recent_transactions, accounting for the user's initial date uncertainty and currency being INR)."
+    },
+    "objective": "Dispute a fraudulent or incorrect charge"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.uncertain_date",
+        "instructions": "Initially state the transaction date as January 4th. When the assistant reports no match for that date but finds a transaction on January 3rd, realize that was the correct date. Mention that you remember seeing the charge in your email invoice from the previous night, which might have caused the confusion."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results_suggest_alternative",
+        "instructions": "When searching for transactions on 2026-01-04 with merchant DigitalOcean, return no results but indicate there is a matching transaction on 2026-01-03 for the same amount and merchant."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-IN-001",
+            "account_type": "credit_card",
+            "nickname": "Pune Dev Rewards",
+            "masked_number": "****5523",
+            "currency": "INR"
+          }
+        ],
+        "transactions": [
+          {
+            "transaction_id": "TXN-IN-101",
+            "account_id": "ACC-IN-001",
+            "posted_date": "2026-01-03",
+            "amount": -89.0,
+            "currency": "INR",
+            "description": "DigitalOcean Mumbai DC - Monthly",
+            "status": "posted",
+            "meta": {
+              "merchant_category": "cloud_services",
+              "location": "Mumbai MH IN",
+              "notes": "Recurring billing for Droplet used in homelab monitoring stack"
+            }
+          },
+          {
+            "transaction_id": "TXN-IN-102",
+            "account_id": "ACC-IN-001",
+            "posted_date": "2025-12-29",
+            "amount": -14500.0,
+            "currency": "INR",
+            "description": "Amazon.in - Laptop RAM Upgrade",
+            "status": "posted",
+            "meta": {
+              "merchant_category": "electronics",
+              "location": "Bengaluru KA IN",
+              "notes": "32GB DDR4 kit for old ThinkPad used in homelab"
+            }
+          },
+          {
+            "transaction_id": "TXN-IN-103",
+            "account_id": "ACC-IN-001",
+            "posted_date": "2026-01-01",
+            "amount": -650.0,
+            "currency": "INR",
+            "description": "Irani Cafe Kalyani Nagar",
+            "status": "posted",
+            "meta": {
+              "merchant_category": "restaurant",
+              "location": "Pune MH IN",
+              "notes": "Breakfast with ex-colleague to discuss kernel tracing tools"
+            }
+          },
+          {
+            "transaction_id": "TXN-IN-104",
+            "account_id": "ACC-IN-001",
+            "posted_date": "2026-01-02",
+            "amount": -12499.0,
+            "currency": "INR",
+            "description": "IndiGo 6E-5123 PUNE-BLR",
+            "status": "posted",
+            "meta": {
+              "merchant_category": "air_travel",
+              "location": "Pune MH IN",
+              "notes": "Flight to Bengaluru for systems performance meetup"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_073"
+}
