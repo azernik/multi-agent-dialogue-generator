@@ -73,13 +73,17 @@ USE_CASE_REGISTRY = {
         "os_to_001__persona_005.json"
     ),
     
-    # Restaurant Booking (1 use case)
+    # Restaurant Booking (2 use cases)
     "restaurant_booking.dine_in": (
         "restaurant_booking", "dine_in", "rb",
         "rb_001__persona_002.json"
     ),
+    "restaurant_booking.cancel_reservation": (
+        "restaurant_booking", "cancel_reservation", "rb_cr",
+        "rb_cr_001__persona_001.json"  
+    ),
     
-    # Travel (2 use cases)
+    # Travel (5 use cases)
     "travel.book_flight": (
         "travel", "book_flight", "tr_bf",
         "tr_bf_001__persona_010.json"
@@ -87,6 +91,18 @@ USE_CASE_REGISTRY = {
     "travel.book_hotel": (
         "travel", "book_hotel", "tr_bh",
         "tr_bh_001__persona_005.json"
+    ),
+    "travel.cancel_booking": (
+        "travel", "cancel_booking", "tr_cb",
+        "tr_cb_001__persona_001.json" 
+    ),
+    "travel.change_flight": (
+        "travel", "change_flight", "tr_cf",
+        "tr_cf_001__persona_001.json" 
+    ),
+    "travel.check_flight_status": (
+        "travel", "check_flight_status", "tr_fs",
+        "tr_fs_001__persona_001.json"  
     ),
 }
 

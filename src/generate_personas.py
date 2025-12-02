@@ -45,15 +45,19 @@ AVAILABLE_USE_CASES = [
     
     # Online Shopping
     "online_shopping.cancel_order",
-    "online_shopping.track.order",
+    "online_shopping.track_order",
     "online_shopping.return_order",
     
     # Restaurant Booking
     "restaurant_booking.dine_in",
+    "restaurant_booking.cancel_reservation",
     
     # Travel
     "travel.book_flight",
-    "travel.book_hotel"
+    "travel.book_hotel",
+    "travel.cancel_booking",
+    "travel.change_flight",
+    "travel.check_flight_status"
 ]
 
 
