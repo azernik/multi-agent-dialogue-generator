@@ -25,16 +25,11 @@ class ConversationContext:
 class LLMClient:
     def __init__(self, model: str, api_key: str = None, **kwargs):
         self.model = model
-        # Handle both old and new OpenAI client formats
-        try:
-            self.client = openai.OpenAI(
-                api_key=api_key or os.getenv('OPENAI_API_KEY'),
-                **kwargs
-            )
-        except AttributeError:
-            # Fallback to old format
-            openai.api_key = api_key or os.getenv('OPENAI_API_KEY')
-            self.client = openai
+        # Create OpenAI client
+        self.client = openai.OpenAI(
+            api_key=api_key or os.getenv('OPENAI_API_KEY'),
+            **kwargs
+        )
         
     def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Make API call and return raw response content

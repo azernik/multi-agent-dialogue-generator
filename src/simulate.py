@@ -95,7 +95,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
     return parser.parse_args()
 
-def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
+def _resolve_outputs_root(example_path: str, cli_outputs_root: Optional[str]) -> Path:
     """Resolve outputs root directory with CLI > env > default precedence."""
     # 1) CLI flag
     if cli_outputs_root:

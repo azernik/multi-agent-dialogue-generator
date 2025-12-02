@@ -258,7 +258,7 @@ class ExampleScenario:
             persona_id=persona_id
         )
 
-def _resolve_behavior_catalog_path(scenario_dir: Path) -> Path | None:
+def _resolve_behavior_catalog_path(scenario_dir: Path) -> Optional[Path]:
     """Find data/catalogs/behavior_types.json by walking up from the scenario file's directory."""
     # Try repo-root/data/catalogs/behavior_types.json
     repo_root = Path(__file__).resolve().parent.parent  # src/ -> repo root

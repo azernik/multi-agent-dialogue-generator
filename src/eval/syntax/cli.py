@@ -37,7 +37,7 @@ def _print_result(result_dict: dict, as_jsonl: bool):
         sys.stdout.write("\n")
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate conversation syntax compliance.")
     parser.add_argument(
         "targets",
