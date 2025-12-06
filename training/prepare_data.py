@@ -10,7 +10,7 @@ repo_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(repo_root / "src"))
 
 from core import Message, MessageRole, convert_messages_to_hf_format, build_hf_prompt
-from scenario import resolve_scenario_id, ExampleScenario, load_system_prompts
+from scenario import resolve_scenario_id, ExampleScenario, load_system_prompts, extract_scenario_id_from_filename
 
 def load_conversation(file_path: Path) -> Dict[str, Any]:
     with open(file_path, 'r') as f:
@@ -135,25 +135,23 @@ def main():
             scenario_name = conv_data.get('config', {}).get('scenario_name')
             # Fallback to filename parsing if config missing
             if not scenario_name:
-                # filename format: 20251206_...__scenario_id__persona.json
-                base_name = json_file.name.replace('.json', '')
-                parts = base_name.split('__')
+                # Extract scenario ID from filename (handles both with and without persona suffix)
+                # Examples: 'os_ro_001__persona_025.json' -> 'os_ro_001'
+                #          '20251206_...__os_ro_001__persona_025.json' -> 'os_ro_001'
+                #          'os_ro_001.json' -> 'os_ro_001'
+                extracted = extract_scenario_id_from_filename(json_file.name)
+                # If filename had timestamp prefix (multiple '__'), take the last part
+                scenario_name = extracted.split('__')[-1] if extracted else None
                 
-                if len(parts) >= 3:
-                    # timestamp__scenario__persona -> scenario__persona
-                    scenario_name = f"{parts[-2]}__{parts[-1]}"
-                elif len(parts) == 2:
-                    # scenario__persona
-                    scenario_name = base_name
-                else:
-                    print(f"Skipping {json_file.name}: Could not deduce scenario name from parts {parts}")
+                if not scenario_name:
+                    print(f"Skipping {json_file.name}: Could not extract scenario ID from filename")
                     fail_count += 1
                     continue
             
             # Find the scenario file to load tools
             try:
                 scenario_path = resolve_scenario_id(scenario_name)
-                scenario = ExampleScenario.from_file(scenario_path)
+                scenario = ExampleScenario.load(scenario_path)
                 tools = scenario.tools
             except Exception as e:
                 print(f"Warning: Could not resolve scenario '{scenario_name}' for {json_file.name}: {e}")
