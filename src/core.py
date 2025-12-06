@@ -4,6 +4,7 @@ from enum import Enum
 import openai
 import os
 import random
+import sys
 
 class MessageRole(Enum):
     USER = "user"
@@ -21,6 +22,275 @@ class ConversationContext:
     messages: List[Message]
     agent_config: Dict[str, Any]
     turn_number: int
+
+
+def convert_messages_to_hf_format(messages: List[Message]) -> str:
+    """
+    Convert conversation messages to HuggingFace model input format.
+    
+    Includes everything in the simulated context:
+    - User messages wrapped in <user> tags
+    - Assistant messages as full structured output (think/plan/action)
+    - Tool results wrapped in <obs> tags
+    
+    Args:
+        messages: List of Message objects from conversation history
+        
+    Returns:
+        String representation of dialogue history in HF format
+    """
+    blocks = []
+    
+    for msg in messages:
+        if msg.role == MessageRole.USER:
+            blocks.append(f"<user> {msg.content} </user>")
+        elif msg.role == MessageRole.ASSISTANT:
+            # Check if message already has structured format (<action> tag)
+            # If not, wrap plain text in structured format
+            content = msg.content.strip()
+            if "<action" in content:
+                # Already in structured format, include as-is
+                blocks.append(content)
+            else:
+                # Plain text (e.g., system greeting) - wrap in action tag only
+                blocks.append(f"<action type=\"say\">{content}</action>")
+        elif msg.role == MessageRole.TOOL:
+            blocks.append(f"<obs> {msg.content} </obs>")
+    
+    return "\n\n".join(blocks)
+
+
+def build_hf_prompt(
+    system_prompt: str,
+    tools: Dict[str, Any],
+    dialogue_history: str
+) -> str:
+    """
+    Build complete HuggingFace prompt from components.
+    
+    Args:
+        system_prompt: System instruction prompt text
+        tools: Dictionary of tool definitions
+        dialogue_history: Conversation history in HF format (from convert_messages_to_hf_format)
+        
+    Returns:
+        Complete prompt string ready for model input
+    """
+    import json
+    
+    # Build system content with tools
+    system_content = f"{system_prompt}\n\nAvailable Tools:\n{json.dumps(tools, indent=2)}"
+    
+    # Build full prompt (simple version - no explicit generation instruction)
+    prompt = (
+        f"<system>\n{system_content}\n</system>\n\n"
+        f"{dialogue_history}\n\n"
+    )
+    return prompt
+
+
+class HuggingFaceLLMClient:
+    """LLM client for HuggingFace models (with optional LoRA support)."""
+    
+    def __init__(
+        self,
+        model_name: str,
+        base_model: Optional[str] = None,
+        load_in_4bit: bool = True,
+        **kwargs
+    ):
+        """
+        Initialize HuggingFace model client.
+        
+        Args:
+            model_name: HuggingFace model identifier or path (if using LoRA, this is the LoRA adapter)
+            base_model: Base model name if using LoRA (e.g., "Qwen/Qwen2.5-7B-Instruct")
+            load_in_4bit: Whether to use 4-bit quantization
+            **kwargs: Additional arguments passed to model/tokenizer loading
+        """
+        try:
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            from peft import PeftModel
+            import torch
+            # Check if bitsandbytes is available (required for 4-bit quantization)
+            try:
+                import bitsandbytes
+                from transformers import BitsAndBytesConfig
+                self._has_bitsandbytes = True
+            except ImportError:
+                self._has_bitsandbytes = False
+        except ImportError as e:
+            raise ImportError(
+                "HuggingFace dependencies not installed. "
+                "Install with: pip install transformers torch peft accelerate"
+            ) from e
+        
+        self.model_name = model_name
+        self.base_model = base_model
+        self.device = kwargs.get('device', 'auto')
+        
+        print(f"[HF] Loading tokenizer from: {base_model if base_model else model_name}", file=sys.stderr, flush=True)
+        # Load tokenizer
+        tokenizer_path = base_model if base_model else model_name
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path,
+            trust_remote_code=kwargs.get('trust_remote_code', True)
+        )
+        
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        
+        print(f"[HF] Tokenizer loaded. Vocab size: {len(self.tokenizer)}", file=sys.stderr, flush=True)
+        
+        # Load model
+        if load_in_4bit:
+            if not self._has_bitsandbytes:
+                raise ImportError(
+                    "4-bit quantization requires bitsandbytes (CUDA only). "
+                    "Install with: pip install bitsandbytes, or use --no-4bit flag"
+                )
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+            quantization_config = bnb_config
+        else:
+            quantization_config = None
+        
+        if base_model:
+            # Load base model + LoRA adapter
+            print(f"[HF] Loading base model: {base_model}", file=sys.stderr, flush=True)
+            model = AutoModelForCausalLM.from_pretrained(
+                base_model,
+                quantization_config=quantization_config,
+                device_map=self.device,
+                trust_remote_code=kwargs.get('trust_remote_code', True),
+            )
+            # Resize embeddings to match tokenizer before loading LoRA
+            model.resize_token_embeddings(len(self.tokenizer))
+            print(f"[HF] Loading LoRA adapter: {model_name}", file=sys.stderr, flush=True)
+            # Load LoRA adapter
+            self.model = PeftModel.from_pretrained(
+                model,
+                model_name,
+                device_map=self.device,
+            )
+        else:
+            # Load model directly
+            print(f"[HF] Loading model: {model_name}", file=sys.stderr, flush=True)
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                quantization_config=quantization_config,
+                device_map=self.device,
+                trust_remote_code=kwargs.get('trust_remote_code', True),
+            )
+            self.model = model
+        
+        self.model.eval()
+        print(f"[HF] Model loaded successfully. Device: {next(self.model.parameters()).device}", file=sys.stderr, flush=True)
+    
+    def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """
+        Generate response using HuggingFace model.
+        
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+            **kwargs: Generation parameters (temperature, max_new_tokens, etc.)
+        
+        Returns:
+            Generated response text
+        """
+        import torch
+        
+        # Extract system prompt and tools from messages
+        system_parts = []
+        conversation_messages = []
+        
+        for msg in messages:
+            if msg.get("role") == "system":
+                system_parts.append(msg.get("content", ""))
+            else:
+                conversation_messages.append(msg)
+        
+        # Combine system messages
+        system_prompt = "\n\n".join(system_parts) if system_parts else ""
+        
+        # Extract tools from system prompt (look for "Available Tools:" section)
+        tools = {}
+        if "Available Tools:" in system_prompt:
+            import json
+            import re
+            # Extract tools JSON from system prompt
+            tools_match = re.search(r'Available Tools:\s*\n(.*?)(?=\n\n|\Z)', system_prompt, re.DOTALL)
+            if tools_match:
+                try:
+                    tools = json.loads(tools_match.group(1))
+                except json.JSONDecodeError:
+                    pass
+        
+        # Remove tools section from system prompt (we'll add it back in build_hf_prompt)
+        if "Available Tools:" in system_prompt:
+            system_prompt = system_prompt.split("Available Tools:")[0].strip()
+        
+        # Convert conversation messages to Message objects, then to HF format
+        message_objects = []
+        for msg in conversation_messages:
+            role_str = msg.get("role", "")
+            if role_str == "user":
+                role = MessageRole.USER
+            elif role_str == "assistant":
+                role = MessageRole.ASSISTANT
+            elif role_str == "tool":
+                role = MessageRole.TOOL
+            else:
+                continue  # Skip unknown roles
+            message_objects.append(Message(role, msg.get("content", "")))
+        
+        # Convert to HF format
+        dialogue_history = convert_messages_to_hf_format(message_objects)
+        
+        # Build full prompt
+        prompt = build_hf_prompt(system_prompt, tools, dialogue_history)
+        
+        # Generation parameters
+        max_new_tokens = kwargs.get('max_new_tokens', 512)
+        temperature = kwargs.get('temperature', 0.0)
+        
+        # Tokenize and generate
+        print(f"[HF] Tokenizing prompt...", file=sys.stderr, flush=True)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        input_ids = inputs["input_ids"]
+        prompt_len = input_ids.shape[1]
+        print(f"[HF] Prompt length: {prompt_len} tokens. Generating (max_new_tokens={max_new_tokens})...", file=sys.stderr, flush=True)
+        
+        import time
+        start_time = time.time()
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=temperature > 0,
+                temperature=temperature if temperature > 0 else None,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+        gen_time = time.time() - start_time
+        
+        # Decode only the generated portion
+        gen_ids = output_ids[0, prompt_len:]
+        response = self.tokenizer.decode(gen_ids, skip_special_tokens=False)
+        gen_len = len(gen_ids)
+        print(f"[HF] Generated {gen_len} tokens in {gen_time:.2f}s ({gen_len/gen_time:.1f} tok/s). Response preview: {response[:100]}...", file=sys.stderr, flush=True)
+        
+        # Strip everything before <think> if present (similar to LLMClient)
+        marker = '<think>'
+        idx = response.find(marker)
+        if idx != -1:
+            return response[idx:]
+        
+        return response
+
 
 class LLMClient:
     def __init__(self, model: str, api_key: str = None, **kwargs):

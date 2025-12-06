@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Tuple, Dict, List, Optional, Any
 from dotenv import load_dotenv
 
-from core import LLMClient, ConversationContext
+from core import LLMClient, HuggingFaceLLMClient, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario, load_system_prompts, resolve_scenario_id, resolve_scenario_target, resolve_scenario_pattern
 from runner import ConversationRunner, ConversationResult
@@ -93,6 +93,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--eval-model', default='gpt-5.1', help='Model to use for evaluation (default: gpt-5.1)')
     parser.add_argument('--skip-faithfulness', action='store_true', help='Skip faithfulness evaluation when running --run-eval')
     parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
+    parser.add_argument('--hf-model', help='HuggingFace model name/path (enables HF mode, e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
+    parser.add_argument('--hf-base-model', help='Base model name if using LoRA (e.g., Qwen/Qwen2.5-7B-Instruct)')
+    parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization for HF models')
     return parser.parse_args()
 
 def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
@@ -911,13 +914,32 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Reduced verbosity - initialization messages only logged to file, not console
         
         # Initialize LLM client
-        api_key = args.api_key or os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            logger.error("OpenAI API key required")
-            print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
-            sys.exit(1)
-            
-        llm_client = LLMClient(model=args.model, api_key=api_key)
+        if args.hf_model:
+            # HuggingFace model mode
+            try:
+                llm_client = HuggingFaceLLMClient(
+                    model_name=args.hf_model,
+                    base_model=args.hf_base_model,
+                    load_in_4bit=not args.no_4bit
+                )
+                # Use HF model name for metadata
+                model_name_for_metadata = args.hf_model
+            except ImportError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                logger.error(f"Failed to load HuggingFace model: {e}")
+                print(f"Error: Failed to load HuggingFace model: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            # OpenAI API mode (default)
+            api_key = args.api_key or os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                logger.error("OpenAI API key required")
+                print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
+                sys.exit(1)
+            llm_client = LLMClient(model=args.model, api_key=api_key)
+            model_name_for_metadata = args.model
         
         prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
             "system_agent": None,
@@ -975,7 +997,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             scenario=scenario,
             example_path=example_path,
             output_dir=run_dir,
-            model=args.model,
+            model=model_name_for_metadata,
             prompt_versions=prompt_versions,
             timestamp=timestamp,
             scenario_id=scenario_id,
