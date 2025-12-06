@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, StoppingCriteria, StoppingCriteriaList
 from peft import PeftModel
 
 # Add src to python path
@@ -14,6 +14,25 @@ repo_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(repo_root / "src"))
 
 from eval.syntax.parser import parse_action_blocks, ParsedAction
+
+class EndTokenStoppingCriteria(StoppingCriteria):
+    def __init__(self, tokenizer, stop_strings):
+        self.tokenizer = tokenizer
+        self.stop_strings = stop_strings
+        
+    def __call__(self, input_ids, scores, **kwargs):
+        # Efficiently check if the end of the sequence matches any stop string
+        # Decode only the newly generated part (heuristic: check last 20 tokens)
+        window_size = 20
+        if input_ids.shape[1] < window_size:
+            text = self.tokenizer.decode(input_ids[0])
+        else:
+            text = self.tokenizer.decode(input_ids[0][-window_size:])
+            
+        for stop_str in self.stop_strings:
+            if stop_str in text:
+                return True
+        return False
 
 def load_jsonl(path):
     with open(path, 'r') as f:
@@ -71,6 +90,7 @@ def main():
     parser.add_argument("--base_model", type=str, required=True)
     parser.add_argument("--adapter_path", type=str, default=None)
     parser.add_argument("--output_file", type=str, default="eval_results.json")
+    parser.add_argument("--predictions_file", type=str, default="eval_predictions.jsonl")
     parser.add_argument("--max_samples", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -119,11 +139,17 @@ def main():
             
         # Generate Prediction
         inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        
+        stopping_criteria = StoppingCriteriaList([
+            EndTokenStoppingCriteria(tokenizer, ["</action>", "<user>", "<|endoftext|>"])
+        ])
+        
         with torch.no_grad():
             output_ids = model.generate(
                 **inputs, 
                 max_new_tokens=512, 
-                do_sample=False # Greedy for deterministic eval
+                do_sample=False, # Greedy for deterministic eval
+                stopping_criteria=stopping_criteria
             )
         
         # Decode only new tokens
@@ -147,6 +173,9 @@ def main():
         metrics = compare_actions(gold_parsed, pred_parsed)
         
         results.append({
+            "prompt": prompt,
+            "gold_text": gold_completion,
+            "pred_text": pred_text,
             "metrics": metrics,
             "gold_type": gold_parsed.action_type,
             "pred_type": pred_parsed.action_type if pred_parsed.action else None
@@ -170,6 +199,13 @@ def main():
     
     with open(args.output_file, 'w') as f:
         json.dump(agg, f, indent=2)
+        
+    if args.predictions_file:
+        print(f"Saving predictions to {args.predictions_file}")
+        with open(args.predictions_file, 'w') as f:
+            for r in results:
+                # We save everything including metrics
+                f.write(json.dumps(r) + "\n")
 
 if __name__ == "__main__":
     main()
