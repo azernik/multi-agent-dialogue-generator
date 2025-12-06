@@ -96,6 +96,7 @@ class HuggingFaceLLMClient:
         self,
         model_name: str,
         base_model: Optional[str] = None,
+        tokenizer_name: Optional[str] = None,
         load_in_4bit: bool = True,
         **kwargs
     ):
@@ -105,6 +106,8 @@ class HuggingFaceLLMClient:
         Args:
             model_name: HuggingFace model identifier or path (if using LoRA, this is the LoRA adapter)
             base_model: Base model name if using LoRA (e.g., "Qwen/Qwen2.5-7B-Instruct")
+            tokenizer_name: Optional tokenizer source (defaults to model_name). 
+                          Useful when adapter was trained with a different tokenizer (e.g., RL model uses SFT tokenizer)
             load_in_4bit: Whether to use 4-bit quantization
             **kwargs: Additional arguments passed to model/tokenizer loading
         """
@@ -129,9 +132,10 @@ class HuggingFaceLLMClient:
         self.base_model = base_model
         self.device = kwargs.get('device', 'auto')
         
-        print(f"[HF] Loading tokenizer from: {base_model if base_model else model_name}", file=sys.stderr, flush=True)
-        # Load tokenizer
-        tokenizer_path = base_model if base_model else model_name
+        # Load tokenizer: use tokenizer_name if provided, otherwise model_name
+        # This allows RL models to use SFT model's tokenizer (which has expanded vocab)
+        tokenizer_path = tokenizer_name if tokenizer_name else model_name
+        print(f"[HF] Loading tokenizer from: {tokenizer_path}", file=sys.stderr, flush=True)
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path,
             trust_remote_code=kwargs.get('trust_remote_code', True)
@@ -217,9 +221,11 @@ class HuggingFaceLLMClient:
         # Combine system messages
         system_prompt = "\n\n".join(system_parts) if system_parts else ""
         
-        # Extract tools from system prompt (look for "Available Tools:" section)
-        tools = {}
-        if "Available Tools:" in system_prompt:
+        # Get tools from kwargs (passed by SystemAgent) or fallback to extraction
+        tools = kwargs.get('tools', {})
+        
+        # If tools not provided directly, try to extract from system prompt (legacy/fallback)
+        if not tools and "Available Tools:" in system_prompt:
             import json
             import re
             # Extract tools JSON from system prompt
@@ -253,6 +259,7 @@ class HuggingFaceLLMClient:
         
         # Build full prompt
         prompt = build_hf_prompt(system_prompt, tools, dialogue_history)
+        # print(f"[HF] Input prompt (last 500 chars):\n...{prompt[-500:]}", file=sys.stderr, flush=True)
         
         # Generation parameters
         max_new_tokens = kwargs.get('max_new_tokens', 512)
@@ -281,14 +288,27 @@ class HuggingFaceLLMClient:
         gen_ids = output_ids[0, prompt_len:]
         response = self.tokenizer.decode(gen_ids, skip_special_tokens=False)
         gen_len = len(gen_ids)
-        print(f"[HF] Generated {gen_len} tokens in {gen_time:.2f}s ({gen_len/gen_time:.1f} tok/s). Response preview: {response[:100]}...", file=sys.stderr, flush=True)
+        print(f"[HF] Generated {gen_len} tokens in {gen_time:.2f}s ({gen_len/gen_time:.1f} tok/s).", file=sys.stderr, flush=True)
+        # print(f"[HF] Raw response:\n{response}\n[HF] End raw response", file=sys.stderr, flush=True)
         
-        # Strip everything before <think> if present (similar to LLMClient)
-        marker = '<think>'
-        idx = response.find(marker)
-        if idx != -1:
-            return response[idx:]
+        # Truncate at first <user> tag to prevent hallucinations
+        user_tag_idx = response.find("<user>")
+        if user_tag_idx != -1:
+             print(f"[HF] Truncating response at <user> tag (index {user_tag_idx})", file=sys.stderr, flush=True)
+             response = response[:user_tag_idx].strip()
         
+        # Truncate after first </action> tag to prevent multiple turn hallucinations
+        action_end_marker = "</action>"
+        action_end_idx = response.find(action_end_marker)
+        if action_end_idx != -1:
+             # Include the marker itself
+             truncate_at = action_end_idx + len(action_end_marker)
+             # Only truncate if there is content after it
+             if truncate_at < len(response):
+                 print(f"[HF] Truncating response after first action (length {truncate_at})", file=sys.stderr, flush=True)
+                 response = response[:truncate_at].strip()
+        
+        print(f"[HF] Final Response:\n{response}", file=sys.stderr, flush=True)
         return response
 
 
@@ -383,7 +403,9 @@ class LLMClient:
                 import logging
                 logging.getLogger(__name__).debug(f"API call with temperature={api_params['temperature']}")
             
+            print(f"[OpenAI] Sending request to {self.model}...", file=sys.stderr, flush=True)
             response = self.client.responses.create(**api_params)
+            print(f"[OpenAI] Received response ({len(response.output_text)} chars)", file=sys.stderr, flush=True)
             
             # Extract response content - Use output_text convenience property
             # Then strip everything before the first <think> tag

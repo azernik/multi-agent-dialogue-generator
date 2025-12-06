@@ -58,6 +58,11 @@ class SystemAgent(BaseAgent):
         super().__init__(system_prompt, llm_client)
         self.tools = tools
     
+    def generate_response(self, context: ConversationContext, **api_kwargs) -> str:
+        # Pass available tools to LLM client (needed for HF model formatting)
+        tools = context.agent_config.get('tools', {})
+        return super().generate_response(context, tools=tools, **api_kwargs)
+
     def build_prompt(self, context: ConversationContext) -> List[Dict[str, str]]:
         messages = []
         system_content = f"{self.system_prompt}\n\nAvailable Tools:\n{json.dumps(context.agent_config.get('tools', {}), indent=2)}"

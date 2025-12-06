@@ -95,6 +95,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
     parser.add_argument('--hf-model', help='HuggingFace model name/path (enables HF mode, e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
     parser.add_argument('--hf-base-model', help='Base model name if using LoRA (e.g., Qwen/Qwen2.5-7B-Instruct)')
+    parser.add_argument('--hf-tokenizer', help='Tokenizer source (defaults to --hf-model). Use SFT model tokenizer for RL models (e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
     parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization for HF models')
     return parser.parse_args()
 
@@ -292,30 +293,31 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
 
 def create_agents(scenario: ExampleScenario, 
                  system_prompts: Dict[str, str], 
-                 llm_client: LLMClient,
+                 system_llm_client: LLMClient,
+                 aux_llm_client: LLMClient,
                  flow_logger=None) -> Tuple[SystemAgent, UserAgent, ToolAgent]:
     """Create the three agents with appropriate configurations"""
     try:
-        # Create SystemAgent with raw tools JSON
+        # Create SystemAgent with designated system client (HF or OpenAI)
         system_agent = SystemAgent(
             system_prompts['system_agent'],
-            llm_client,
+            system_llm_client,
             scenario.tools
         )
         system_agent.flow_logger = flow_logger
         
-        # Create UserAgent with new user_agent JSON
+        # Create UserAgent with auxiliary client (always OpenAI/default)
         user_agent = UserAgent(
             system_prompts['user_agent'],
-            llm_client,
+            aux_llm_client,
             scenario.user_agent
         )
         user_agent.flow_logger = flow_logger
         
-        # Create ToolAgent with raw tools JSON
+        # Create ToolAgent with auxiliary client (always OpenAI/default)
         tool_agent = ToolAgent(
             system_prompts['tool_agent'],
-            llm_client,
+            aux_llm_client,
             scenario.tools
         )
         tool_agent.flow_logger = flow_logger
@@ -913,13 +915,22 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         logger = logging.getLogger(__name__)
         # Reduced verbosity - initialization messages only logged to file, not console
         
-        # Initialize LLM client
+        # Initialize Auxiliary LLM client (OpenAI) - Always required for User/Tool agents
+        api_key = args.api_key or os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            logger.error("OpenAI API key required")
+            print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
+            sys.exit(1)
+        aux_llm_client = LLMClient(model=args.model, api_key=api_key)
+        
+        # Initialize System LLM client (HF or OpenAI)
         if args.hf_model:
             # HuggingFace model mode
             try:
-                llm_client = HuggingFaceLLMClient(
+                system_llm_client = HuggingFaceLLMClient(
                     model_name=args.hf_model,
                     base_model=args.hf_base_model,
+                    tokenizer_name=args.hf_tokenizer,
                     load_in_4bit=not args.no_4bit
                 )
                 # Use HF model name for metadata
@@ -933,12 +944,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                 sys.exit(1)
         else:
             # OpenAI API mode (default)
-            api_key = args.api_key or os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                logger.error("OpenAI API key required")
-                print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
-                sys.exit(1)
-            llm_client = LLMClient(model=args.model, api_key=api_key)
+            system_llm_client = aux_llm_client
             model_name_for_metadata = args.model
         
         prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
@@ -950,7 +956,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Create agents; only open flow logger in debug mode
         if args.debug_transcripts:
             with open(agent_flow_file, 'w') as flow_logger:
-                system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
+                system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, system_llm_client, aux_llm_client, flow_logger)
                 attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
                 runner = ConversationRunner(
                     scenario,
@@ -964,7 +970,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                 )
                 result = runner.run_conversation()
         else:
-            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, None)
+            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, system_llm_client, aux_llm_client, None)
             attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
             runner = ConversationRunner(
                 scenario,
