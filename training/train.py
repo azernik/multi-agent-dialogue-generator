@@ -112,6 +112,12 @@ def main():
     print("Tokenizing dataset...")
     dataset = dataset.map(_map_fn, remove_columns=dataset.column_names)
     
+    # Split dataset
+    print("Splitting dataset (90/10)...")
+    dataset_split = dataset.train_test_split(test_size=0.1, seed=args.seed)
+    train_dataset = dataset_split['train']
+    eval_dataset = dataset_split['test']
+    
     # Load Model (4-bit for efficiency)
     print(f"Loading model: {args.base_model}")
     bnb_config = BitsAndBytesConfig(
@@ -148,20 +154,24 @@ def main():
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         fp16=False,
         bf16=True, # Qwen usually prefers bf16
         logging_steps=10,
+        evaluation_strategy="epoch",
         save_strategy="epoch",
         report_to="none",
-        optim="paged_adamw_32bit"
+        optim="paged_adamw_32bit",
+        load_best_model_at_end=True
     )
     
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataset,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     )
     
