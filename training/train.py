@@ -29,13 +29,14 @@ def load_jsonl(path: str) -> List[Dict]:
 def tokenize_and_mask(example: Dict[str, str], tokenizer, max_len: int) -> Dict[str, List[int]]:
     """
     Tokenize prompt+completion and mask the prompt labels so loss is only calculated on completion.
+    Pads everything to max_len to ensure batching works.
     """
     prompt = example['prompt']
     completion = example['completion']
     
     full_text = prompt + completion
     
-    # Tokenize full text
+    # Tokenize full text (truncation only)
     tokenized_full = tokenizer(
         full_text, 
         max_length=max_len, 
@@ -54,23 +55,30 @@ def tokenize_and_mask(example: Dict[str, str], tokenizer, max_len: int) -> Dict[
     )
     
     input_ids = tokenized_full['input_ids']
+    attention_mask = tokenized_full['attention_mask']
     labels = list(input_ids) # Copy
     
     # Mask the prompt part
     prompt_len = len(tokenized_prompt['input_ids'])
-    
-    # Handle case where full text was truncated
     if prompt_len > len(input_ids):
-        # This shouldn't happen if max_len is sufficient, but if prompt is huge, 
-        # we might be training on nothing.
         prompt_len = len(input_ids)
         
     for i in range(prompt_len):
         labels[i] = IGNORE_INDEX
         
+    # Manual Padding to max_len
+    pad_len = max_len - len(input_ids)
+    if pad_len > 0:
+        # Pad inputs with pad_token_id
+        input_ids = input_ids + [tokenizer.pad_token_id] * pad_len
+        # Pad mask with 0
+        attention_mask = attention_mask + [0] * pad_len
+        # Pad labels with IGNORE_INDEX
+        labels = labels + [IGNORE_INDEX] * pad_len
+        
     return {
         "input_ids": input_ids,
-        "attention_mask": tokenized_full['attention_mask'],
+        "attention_mask": attention_mask,
         "labels": labels
     }
 
@@ -160,7 +168,7 @@ def main():
         fp16=False,
         bf16=True, # Qwen usually prefers bf16
         logging_steps=10,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         report_to="none",
         optim="paged_adamw_32bit",
