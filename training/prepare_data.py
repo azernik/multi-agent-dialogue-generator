@@ -136,12 +136,17 @@ def main():
             # Fallback to filename parsing if config missing
             if not scenario_name:
                 # filename format: 20251206_...__scenario_id__persona.json
-                # or just scenario_id__persona.json
-                parts = json_file.name.split('__')
-                if len(parts) >= 2:
-                    scenario_name = parts[-2] # Assumes ...__scenario__persona.json
+                base_name = json_file.name.replace('.json', '')
+                parts = base_name.split('__')
+                
+                if len(parts) >= 3:
+                    # timestamp__scenario__persona -> scenario__persona
+                    scenario_name = f"{parts[-2]}__{parts[-1]}"
+                elif len(parts) == 2:
+                    # scenario__persona
+                    scenario_name = base_name
                 else:
-                    print(f"Skipping {json_file.name}: Could not deduce scenario name")
+                    print(f"Skipping {json_file.name}: Could not deduce scenario name from parts {parts}")
                     fail_count += 1
                     continue
             
