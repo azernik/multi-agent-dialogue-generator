@@ -524,6 +524,10 @@ Examples:
         action="store_false",
         help="Disable clean output formatting"
     )
+    parser.add_argument(
+        "--results-file",
+        help="Path to a JSONL file to append results to incrementally (e.g., data/outputs/l2_results.jsonl)"
+    )
     
     # Parse known args (orchestrate-specific) and pass through remaining args to simulate.py
     args, simulate_args = parser.parse_known_args()
@@ -619,7 +623,23 @@ Examples:
                 total_scenarios=total_scenarios,
                 clean_output=args.clean_output
             )
+            
+            # Enrich result with timestamp and run metadata
+            result["timestamp"] = datetime.now().isoformat()
+            if args.model:
+                result["model"] = args.model
+            
             results.append(result)
+            
+            # Incrementally append to results file if specified
+            if args.results_file:
+                try:
+                    res_path = Path(args.results_file)
+                    res_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(res_path, 'a') as f:
+                        f.write(json.dumps(result) + "\n")
+                except Exception as e:
+                    print(f"Warning: Failed to write result to {args.results_file}: {e}", file=sys.stderr)
             
             # Print immediate feedback (only if not clean output mode)
             if not args.dry_run and not args.clean_output:
