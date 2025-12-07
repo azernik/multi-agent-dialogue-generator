@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import logging
@@ -799,6 +800,29 @@ def _infer_domain_id(example_path: str) -> Optional[str]:
         pass
     return None
 
+def _fix_missing_action_closing_tag(output_raw: str) -> str:
+    """Fix missing </action> closing tag in output_raw.
+    
+    If output_raw contains an opening <action> tag but no closing </action> tag,
+    append </action> to the end.
+    """
+    if not output_raw or not isinstance(output_raw, str):
+        return output_raw
+    
+    # Check if there's an opening <action> tag
+    has_opening_action = bool(re.search(r'<action\s+[^>]*>', output_raw))
+    
+    if has_opening_action:
+        # Check if there's a closing </action> tag
+        has_closing_action = '</action>' in output_raw
+        
+        if not has_closing_action:
+            print(f"ADDING CLOSING </action> TAG")
+            # Append the closing tag
+            return output_raw + '</action>'
+    
+    return output_raw
+
 def write_single_conversation_file(
     result: ConversationResult,
     scenario: ExampleScenario,
@@ -840,6 +864,12 @@ def write_single_conversation_file(
         user_text = t.get('user', '')
         assistant_obj = t.get('assistant', {}) or {}
         steps = assistant_obj.get('steps', []) or []
+        
+        # Fix missing </action> closing tags in steps
+        for step in steps:
+            if 'output_raw' in step and step['output_raw']:
+                step['output_raw'] = _fix_missing_action_closing_tag(step['output_raw'])
+        
         # User message
         messages.append({
             'turn_id': turn_id,

@@ -265,6 +265,24 @@ class HuggingFaceLLMClient:
         max_new_tokens = kwargs.get('max_new_tokens', 512)
         temperature = kwargs.get('temperature', 0.0)
         
+        # Define stopping criteria class dynamically to avoid top-level import
+        from transformers import StoppingCriteria, StoppingCriteriaList
+        
+        class StringStoppingCriteria(StoppingCriteria):
+            def __init__(self, tokenizer, stop_strings):
+                self.tokenizer = tokenizer
+                self.stop_strings = stop_strings
+                
+            def __call__(self, input_ids, scores, **kwargs):
+                # Check last 20 tokens (heuristic)
+                # Decode only the tail to check for stop strings
+                text = self.tokenizer.decode(input_ids[0][-20:])
+                return any(s in text for s in self.stop_strings)
+
+        # Stop at </action> (end of turn) or <user> (start of user turn hallucination)
+        stop_strings = ["</action>", "<user>"]
+        stopping_criteria = StoppingCriteriaList([StringStoppingCriteria(self.tokenizer, stop_strings)])
+        
         # Tokenize and generate
         print(f"[HF] Tokenizing prompt...", file=sys.stderr, flush=True)
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
@@ -281,6 +299,7 @@ class HuggingFaceLLMClient:
                 do_sample=temperature > 0,
                 temperature=temperature if temperature > 0 else None,
                 pad_token_id=self.tokenizer.eos_token_id,
+                stopping_criteria=stopping_criteria,
             )
         gen_time = time.time() - start_time
         

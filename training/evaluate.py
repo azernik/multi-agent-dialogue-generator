@@ -130,6 +130,7 @@ def main():
     for sample in tqdm(data):
         prompt = sample['prompt']
         gold_completion = sample['completion']
+        metadata = sample.get('metadata', {})
         
         # Parse Gold
         gold_parsed = parse_action_blocks(gold_completion)
@@ -178,7 +179,8 @@ def main():
             "pred_text": pred_text,
             "metrics": metrics,
             "gold_type": gold_parsed.action_type,
-            "pred_type": pred_parsed.action_type if pred_parsed.action else None
+            "pred_type": pred_parsed.action_type if pred_parsed.action else None,
+            "metadata": metadata
         })
         
     # Aggregate Metrics

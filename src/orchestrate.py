@@ -32,8 +32,9 @@ import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import contextlib
 
-from scenario import resolve_scenario_target, resolve_scenario_pattern
+from scenario import resolve_scenario_target, resolve_scenario_pattern, ExampleScenario
 
 
 def find_scenario_files(target_path: Path, use_case: Optional[str] = None) -> List[Path]:
@@ -120,6 +121,62 @@ def check_eval_success(output_dir: Path) -> Optional[bool]:
         return None
 
 
+def extract_scenario_metadata(scenario_file: Path) -> Dict[str, Any]:
+    """Extract metadata for analysis (domain, impossible, behaviors, tool count)."""
+    try:
+        # Use ExampleScenario.load to correctly resolve toolsets and inheritance
+        # Suppress stderr to avoid "Loaded X tools" debug spam
+        with open(os.devnull, 'w') as devnull:
+            with contextlib.redirect_stderr(devnull):
+                scenario = ExampleScenario.load(str(scenario_file))
+        
+        # 1. Impossible
+        # Check canonical task location first
+        is_impossible = scenario.task.get('impossible', False)
+        # Fallback not needed as ExampleScenario normalizes task? 
+        # Actually ExampleScenario.task stores the 'task' dict.
+        # But prepare_data.py had a fallback to config['impossible'].
+        # Let's check if ExampleScenario loads that?
+        # ExampleScenario.load: task = scenario_data.get('task', {}) or {}
+        # So if 'impossible' was at root, it might be lost unless we read raw json.
+        
+        # Let's also read raw json for the 'root' impossible key fallback if needed
+        # But for v2, it should be in task.
+        
+        # 2. Injected Behaviors
+        user_behaviors = []
+        for b in scenario.user_agent.get('injected_behaviors', []):
+            if isinstance(b, dict) and 'type_id' in b:
+                user_behaviors.append(b['type_id'])
+                
+        tool_behaviors = []
+        for b in scenario.tool_agent.get('injected_behaviors', []):
+            if isinstance(b, dict) and 'type_id' in b:
+                tool_behaviors.append(b['type_id'])
+                
+        # 3. Domain (infer from path if not explicit)
+        # We don't have 'meta' in ExampleScenario usually? 
+        # We can extract from filename using extract_scenario_id_from_filename and splitting
+        from scenario import extract_scenario_id_from_filename
+        scenario_id = extract_scenario_id_from_filename(scenario_file.name)
+        domain = scenario_id.split('.')[0] if '.' in scenario_id else None
+        if not domain and 'domains' in scenario_file.parts:
+            # Infer from path: domains/<domain>/...
+            idx = scenario_file.parts.index('domains')
+            if idx + 1 < len(scenario_file.parts):
+                domain = scenario_file.parts[idx+1]
+                
+        return {
+            "domain": domain,
+            "impossible": is_impossible,
+            "num_tools": len(scenario.tools),
+            "user_injected_behaviors": user_behaviors,
+            "tool_injected_behaviors": tool_behaviors
+        }
+    except Exception as e:
+        # Fallback if loading fails
+        return {"error": str(e)}
+
 def run_scenario(
     scenario_file: Path,
     persona_id: Optional[str],
@@ -131,6 +188,9 @@ def run_scenario(
 ) -> Dict[str, Any]:
     """Run a single scenario and return result summary."""
     from scenario import extract_scenario_id_from_filename, extract_persona_from_filename
+    
+    # Extract metadata before running (so we have it even if run fails)
+    meta_tags = extract_scenario_metadata(scenario_file)
     
     scenario_id = extract_scenario_id_from_filename(scenario_file.name)
     # Use persona from filename if not explicitly provided
@@ -336,7 +396,8 @@ def run_scenario(
             "returncode": returncode,
             "sim_duration": sim_duration,
             "conversation_file": str(conversation_file) if conversation_file else None,
-            "output_dir": str(output_dir) if output_dir else None
+            "output_dir": str(output_dir) if output_dir else None,
+            "meta_tags": meta_tags
         }
     except Exception as e:
         if 'process' in locals():
@@ -351,7 +412,8 @@ def run_scenario(
             "persona": persona_id,
             "status": "error",
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "meta_tags": meta_tags
         }
 
 
