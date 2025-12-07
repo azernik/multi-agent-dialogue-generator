@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import contextlib
+from dotenv import load_dotenv
 
 # Add src to path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent))
@@ -275,6 +276,10 @@ def run_scenario(
 
 
 def main():
+    """Main CLI entry point"""
+    # Load environment variables
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(
         description="Orchestrate running multiple scenarios in a use case or domain directory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
