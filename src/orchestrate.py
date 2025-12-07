@@ -532,28 +532,40 @@ Examples:
     # Parse known args (orchestrate-specific) and pass through remaining args to simulate.py
     args, simulate_args = parser.parse_known_args()
     
+    # Determine target_path for summary if it wasn't set by directory mode
+    # If using ID list mode, target_path is ambiguous, so we use a representation of the args
+    target_path = None
+    
     # Resolve scenarios based on targets or directory mode
     try:
         scenarios = []
         
         if args.targets:
             # ID, path, or pattern mode: resolve each target
+            target_path_list = []
             for target in args.targets:
+                target_path_list.append(str(target))
                 if '/' in target or target.endswith('.json'):
                     # Treat as path
-                    target_path = Path(target).resolve()
-                    if target_path.is_file() and target_path.suffix == '.json':
+                    t_path = Path(target).resolve()
+                    if t_path.is_file() and t_path.suffix == '.json':
                         # Single scenario file
-                        scenarios.append(target_path)
+                        scenarios.append(t_path)
                     else:
                         # Directory path - find scenarios recursively
-                        scenarios.extend(find_scenario_files(target_path, args.use_case))
+                        scenarios.extend(find_scenario_files(t_path, args.use_case))
                 elif '*' in target:
                     # Treat as glob pattern
                     scenarios.extend(resolve_scenario_pattern(target))
                 else:
                     # Treat as scenario ID - use shared utility
                     scenarios.append(resolve_scenario_target(target))
+            
+            # Set target_path string for summary
+            if len(target_path_list) == 1:
+                target_path = target_path_list[0]
+            else:
+                target_path = f"Multiple targets: {', '.join(target_path_list[:3])}..." if len(target_path_list) > 3 else f"Multiple targets: {', '.join(target_path_list)}"
         else:
             # Directory mode: require at least one target (backward compatibility)
             parser.error("Must provide at least one target (scenario ID or directory path)")
