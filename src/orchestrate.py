@@ -34,6 +34,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import contextlib
 
+# Add src to path to allow imports
+sys.path.append(str(Path(__file__).resolve().parent))
+from simulate import run_simulation, parse_arguments as parse_simulate_args
+from core import HuggingFaceLLMClient
 from scenario import resolve_scenario_target, resolve_scenario_pattern, ExampleScenario
 
 
@@ -180,7 +184,8 @@ def extract_scenario_metadata(scenario_file: Path) -> Dict[str, Any]:
 def run_scenario(
     scenario_file: Path,
     persona_id: Optional[str],
-    base_args: List[str],
+    sim_args: argparse.Namespace,
+    system_llm_client: Optional[HuggingFaceLLMClient] = None,
     dry_run: bool = False,
     scenario_index: int = 0,
     total_scenarios: int = 0,
@@ -207,20 +212,16 @@ def run_scenario(
     else:
         print(f"\n{'[DRY RUN] ' if dry_run else ''}Running scenario: {scenario_id} (persona: {persona_str})", file=sys.stderr)
     
-    cmd = [
-        sys.executable,
-        str(Path(__file__).parent / "simulate.py"),
-        str(scenario_file),
-    ] + base_args
-    
+    # Update args with current persona
+    # Create a shallow copy of args to avoid modifying global state (if mutable)
+    # Namespace is mutable, so we copy.
+    import copy
+    current_args = copy.copy(sim_args)
     if persona_id:
-        cmd.extend(["--persona-id", persona_id])
-    
-    # Don't add --verbose flag - we want turn indicators which only show when verbose=False
-    # The turn indicators are filtered and displayed by orchestrate's read_output function
+        current_args.persona_id = persona_id
     
     if dry_run:
-        print(f"  Command: {' '.join(cmd)}", file=sys.stderr)
+        print(f"  [Dry Run] Would run simulation for {scenario_file}", file=sys.stderr)
         return {
             "scenario": scenario_id,
             "persona": persona_id,
@@ -231,180 +232,36 @@ def run_scenario(
     try:
         sim_start_time = datetime.now()
         
-        # Capture output without forwarding (for clean output mode)
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1
-        )
-        
-        # Collect all output and stream in real-time
-        stderr_lines = []
-        stdout_lines = []
-        
-        def read_output(pipe, lines_list, stream_to_stderr=False):
-            for line in iter(pipe.readline, ''):
-                if line:
-                    lines_list.append(line)
-                    # Stream all output in real-time (with indentation for clean output)
-                    if stream_to_stderr and clean_output:
-                        # Skip "Conversation file:" line - we'll print it after
-                        stripped = line.strip()
-                        if not stripped.startswith('Conversation file:'):
-                            print(f"    {line.rstrip()}", file=sys.stderr, flush=True)
-            pipe.close()
-        
-        stderr_thread = threading.Thread(target=read_output, args=(process.stderr, stderr_lines, True))
-        stdout_thread = threading.Thread(target=read_output, args=(process.stdout, stdout_lines, False))
-        
-        stderr_thread.start()
-        stdout_thread.start()
-        
-        # Print initial status
         if clean_output:
             print(f"    Simulating conversation...", file=sys.stderr, flush=True)
-        
-        # Wait for process to complete with timeout
-        timeout_occurred = threading.Event()
-        
-        def timeout_handler():
-            timeout_occurred.set()
-            process.kill()
-        
-        timeout_timer = threading.Timer(600, timeout_handler)  # 10 minute timeout
-        timeout_timer.start()
-        
-        returncode = process.wait()
-        timeout_timer.cancel()
-        
-        # Wait for threads to finish reading
-        stderr_thread.join(timeout=5)
-        stdout_thread.join(timeout=5)
+            
+        # Run simulation in-process
+        # This logs to stderr directly
+        sim_result = run_simulation(str(scenario_file), current_args, system_llm_client)
         
         sim_end_time = datetime.now()
         sim_duration = (sim_end_time - sim_start_time).total_seconds()
         
-        if timeout_occurred.is_set():
-            if clean_output:
-                print(f"    Simulating conversation...", file=sys.stderr)
-                print(f"    TIMEOUT", file=sys.stderr)
-            return {
-                "scenario": scenario_id,
-                "persona": persona_id,
-                "status": "timeout",
-                "success": False,
-                "sim_duration": sim_duration
-            }
-        
-        stderr_text = ''.join(stderr_lines)
-        stdout_text = ''.join(stdout_lines)
-        
-        # Parse output for key information
-        conversation_file = None
-        output_dir = None
-        eval_success = None
-        eval_failed_part = None
-        eval_failed_data = None
-        copied_to_valid = None
-        
-        # Extract conversation file path
-        match = re.search(r'Conversation file: (.+)', stderr_text)
-        if match:
-            repo_root = Path(__file__).resolve().parent.parent
-            conversation_file = repo_root / match.group(1).strip()
-            output_dir = conversation_file.parent
-        
-        # Extract eval results if eval was run
-        if "--run-eval" in base_args and output_dir:
-            eval_file = output_dir / "eval.json"
-            if eval_file.exists():
-                try:
-                    with open(eval_file, 'r') as f:
-                        eval_data = json.load(f)
-                    
-                    eval_success = eval_data.get("SUCCESS")
-                    
-                    if eval_success is False:
-                        # Find which part failed
-                        syntax = eval_data.get("syntax", {})
-                        success_eval = eval_data.get("success", {})
-                        faithfulness = eval_data.get("faithfulness", {})
-                        role_confusion = eval_data.get("role_confusion", {})
-                        
-                        if syntax:
-                            summary = syntax.get("summary", {})
-                            if not (summary.get("structure", {}).get("valid", True) and 
-                                    summary.get("tool", {}).get("valid", True)):
-                                eval_failed_part = "syntax"
-                                eval_failed_data = syntax
-                        
-                        if not eval_failed_part and success_eval and "error" not in success_eval:
-                            if not success_eval.get("success", True):
-                                eval_failed_part = "success"
-                                eval_failed_data = success_eval
-                        
-                        if not eval_failed_part and faithfulness and "error" not in faithfulness:
-                            if not faithfulness.get("summary", {}).get("valid", True):
-                                eval_failed_part = "faithfulness"
-                                eval_failed_data = faithfulness
-                        
-                        if not eval_failed_part and role_confusion and "error" not in role_confusion:
-                            if role_confusion.get("has_confusion", False):
-                                eval_failed_part = "role_confusion"
-                                eval_failed_data = role_confusion
-                
-                except Exception:
-                    pass
-        
-        # Extract "Copied to valid_outputs" message
-        copy_match = re.search(r'Copied to valid_outputs: (.+)', stderr_text)
-        if copy_match:
-            copied_to_valid = copy_match.group(1).strip()
-        
-        # Format clean output
         if clean_output:
             print(f"    Simulation finished ({sim_duration:.0f}s)", file=sys.stderr)
-            
-            if "--run-eval" in base_args:
-                print(f"    Running eval...", file=sys.stderr)
-                # Eval runs synchronously in simulate.py, so it's included in sim_duration
-                # Estimate eval takes ~5-10% of total time, but show it separately
-                eval_duration = max(3, int(sim_duration * 0.1))  # At least 3s, or 10% of sim time
-                print(f"    Eval finished ({eval_duration:.0f}s)", file=sys.stderr)
-            
-            # Note: SUCCESS/FAILED, Copied to, and file paths are now printed by simulate.py
-            # so they will appear in the piped output above
+            # Eval logging is handled inside run_simulation (it logs "Running eval..." etc to stderr)
         
-        # Determine success
-        success = None
-        if returncode == 0:
-            if eval_success is not None:
-                success = eval_success
-            else:
-                success = True
-        else:
-            success = False
-        
+        # Map sim_result to orchestrate result format
         return {
             "scenario": scenario_id,
             "persona": persona_id,
-            "status": "completed",
-            "success": success,
-            "eval_success": eval_success,
-            "returncode": returncode,
+            "status": "completed" if sim_result["exit_code"] == 0 else "error",
+            "success": sim_result["success"],
+            "eval_success": sim_result.get("eval_success"),
+            "returncode": sim_result["exit_code"],
             "sim_duration": sim_duration,
-            "conversation_file": str(conversation_file) if conversation_file else None,
-            "output_dir": str(output_dir) if output_dir else None,
-            "meta_tags": meta_tags
+            "conversation_file": sim_result.get("conversation_file"),
+            "output_dir": sim_result.get("output_dir"),
+            "meta_tags": meta_tags,
+            "error": sim_result.get("error")
         }
+
     except Exception as e:
-        if 'process' in locals():
-            try:
-                process.kill()
-            except:
-                pass
         if clean_output:
             print(f"    ERROR: {e}", file=sys.stderr)
         return {
@@ -605,6 +462,30 @@ Examples:
     results = []
     start_time = datetime.now()
     
+    # Parse simulate arguments once
+    # We pass a dummy target because positional args are required
+    # and then we ignore it in favor of run_scenario inputs
+    sim_args = parse_simulate_args(base_args + ["DUMMY_TARGET"])
+    
+    # Pre-load HuggingFace model if requested (and parallel is 1)
+    system_llm_client = None
+    if sim_args.hf_model:
+        if args.parallel > 1:
+            print(f"Warning: Parallel execution with HuggingFace model is not supported (model is large). Switching to sequential.", file=sys.stderr)
+            args.parallel = 1
+            
+        print(f"[Orchestrator] Pre-loading HuggingFace model: {sim_args.hf_model}", file=sys.stderr)
+        try:
+            system_llm_client = HuggingFaceLLMClient(
+                model_name=sim_args.hf_model,
+                base_model=sim_args.hf_base_model,
+                tokenizer_name=sim_args.hf_tokenizer,
+                load_in_4bit=not sim_args.no_4bit
+            )
+        except Exception as e:
+            print(f"Error loading model: {e}", file=sys.stderr)
+            sys.exit(1)
+
     # Calculate total scenarios (accounting for personas)
     total_scenarios = 0
     for scenario_file in scenarios:
@@ -629,7 +510,8 @@ Examples:
             result = run_scenario(
                 scenario_file, 
                 persona_id, 
-                base_args, 
+                sim_args,
+                system_llm_client, 
                 args.dry_run,
                 scenario_index=scenario_index,
                 total_scenarios=total_scenarios,

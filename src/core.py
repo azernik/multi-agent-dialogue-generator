@@ -265,12 +265,42 @@ class HuggingFaceLLMClient:
         max_new_tokens = kwargs.get('max_new_tokens', 512)
         temperature = kwargs.get('temperature', 0.0)
         
-        # Tokenize and generate
+        # Tokenize
         print(f"[HF] Tokenizing prompt...", file=sys.stderr, flush=True)
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         input_ids = inputs["input_ids"]
         prompt_len = input_ids.shape[1]
         print(f"[HF] Prompt length: {prompt_len} tokens. Generating (max_new_tokens={max_new_tokens})...", file=sys.stderr, flush=True)
+        
+        # Define stopping criteria correctly (checking only new tokens)
+        from transformers import StoppingCriteria, StoppingCriteriaList
+        
+        class StringStoppingCriteria(StoppingCriteria):
+            def __init__(self, tokenizer, stop_strings, prompt_length):
+                self.tokenizer = tokenizer
+                self.stop_strings = stop_strings
+                self.prompt_length = prompt_length
+                
+            def __call__(self, input_ids, scores, **kwargs):
+                # Decode only the NEWLY generated tokens
+                # input_ids contains [prompt + new_tokens]
+                new_tokens = input_ids[0][self.prompt_length:]
+                
+                # Optimization: Only decode if we have enough tokens to potentially match
+                if len(new_tokens) == 0:
+                    return False
+                    
+                # Decode all new tokens to ensure we catch split words
+                # (For very long generations, we might optimize to decode only tail, 
+                # but with max 512 tokens, decoding the whole new sequence is fast enough)
+                text = self.tokenizer.decode(new_tokens, skip_special_tokens=False)
+                
+                return any(s in text for s in self.stop_strings)
+
+        stop_strings = ["</action>", "<user>"]
+        stopping_criteria = StoppingCriteriaList([
+            StringStoppingCriteria(self.tokenizer, stop_strings, prompt_len)
+        ])
         
         import time
         start_time = time.time()
@@ -281,6 +311,7 @@ class HuggingFaceLLMClient:
                 do_sample=temperature > 0,
                 temperature=temperature if temperature > 0 else None,
                 pad_token_id=self.tokenizer.eos_token_id,
+                stopping_criteria=stopping_criteria,
             )
         gen_time = time.time() - start_time
         

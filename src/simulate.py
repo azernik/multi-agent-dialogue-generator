@@ -70,7 +70,7 @@ def _prepare_persona_context(
 
     return persona_context, task_override, persona_id
 
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments(args_list: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
     parser.add_argument('targets', nargs='+', help='Scenario file paths or scenario IDs (e.g., ca_oe_005__persona_001)')
@@ -99,7 +99,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--hf-base-model', help='Base model name if using LoRA (e.g., Qwen/Qwen2.5-7B-Instruct)')
     parser.add_argument('--hf-tokenizer', help='Tokenizer source (defaults to --hf-model). Use SFT model tokenizer for RL models (e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
     parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization for HF models')
-    return parser.parse_args()
+    return parser.parse_args(args_list)
 
 def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
     """Resolve outputs root directory with CLI > env > default precedence."""
@@ -193,6 +193,10 @@ def setup_logging(
     agent_flow_file = run_dir / "agent_flow.log"
     
     # Configure logging
+    root = logging.getLogger()
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+        
     logging.basicConfig(
         level=logging.INFO,
         format='%(levelname)s:  %(message)s',
@@ -288,10 +292,10 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
         
     except FileNotFoundError as e:
         print(f"Error: Could not find required files: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Could not find required files: {e}")
     except Exception as e:
         print(f"Error loading scenario: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Error loading scenario: {e}")
 
 def create_agents(scenario: ExampleScenario, 
                  system_prompts: Dict[str, str], 
@@ -328,7 +332,7 @@ def create_agents(scenario: ExampleScenario,
         
     except Exception as e:
         print(f"Error creating agents: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Error creating agents: {e}")
 
 
 def attach_prompt_recorders(
@@ -915,12 +919,32 @@ def write_single_conversation_file(
         json.dump(conversation_obj, f, indent=2)
     return str(conversation_file)
 
-def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
+def run_simulation(example_path: str, args: argparse.Namespace, system_llm_client: Optional[LLMClient] = None) -> Dict[str, Any]:
     """Run a single simulation for the given scenario path.
     
+    Args:
+        example_path: Path to scenario JSON
+        args: Parsed arguments
+        system_llm_client: Optional pre-loaded LLM client to reuse
+    
     Returns:
-        Exit code (0 for success, 1 for failure)
+        Dictionary containing run results:
+        {
+            "exit_code": int,
+            "success": bool,
+            "conversation_file": str,
+            "output_dir": str,
+            "eval_results": dict (optional),
+            "error": str (optional)
+        }
     """
+    result_info = {
+        "exit_code": 1,
+        "success": False,
+        "conversation_file": None,
+        "output_dir": None
+    }
+    
     try:
         # Resolve outputs root
         outputs_root = _resolve_outputs_root(example_path, args.outputs_root)
@@ -951,13 +975,18 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         if not api_key:
             logger.error("OpenAI API key required")
             print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
-            sys.exit(1)
+            result_info["error"] = "OpenAI API key required"
+            return result_info
+            
         # Use --user-model if specified, otherwise use --model
         user_model = args.user_model or args.model
         aux_llm_client = LLMClient(model=user_model, api_key=api_key)
         
-        # Initialize System LLM client (HF or OpenAI)
-        if args.hf_model:
+        # Initialize System LLM client (HF or OpenAI) if not provided
+        if system_llm_client:
+            # Use provided client
+            pass
+        elif args.hf_model:
             # HuggingFace model mode
             try:
                 system_llm_client = HuggingFaceLLMClient(
@@ -966,18 +995,23 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                     tokenizer_name=args.hf_tokenizer,
                     load_in_4bit=not args.no_4bit
                 )
-                # Use HF model name for metadata
-                model_name_for_metadata = args.hf_model
             except ImportError as e:
                 print(f"Error: {e}", file=sys.stderr)
-                sys.exit(1)
+                result_info["error"] = str(e)
+                return result_info
             except Exception as e:
                 logger.error(f"Failed to load HuggingFace model: {e}")
                 print(f"Error: Failed to load HuggingFace model: {e}", file=sys.stderr)
-                sys.exit(1)
+                result_info["error"] = str(e)
+                return result_info
         else:
             # OpenAI API mode (default)
             system_llm_client = aux_llm_client
+            
+        # Determine model name for metadata
+        if args.hf_model:
+            model_name_for_metadata = args.hf_model
+        else:
             model_name_for_metadata = args.model
         
         prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
@@ -1291,11 +1325,21 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             print(f"{conversation_path}", file=sys.stderr)
 
         # Exit with appropriate code
-        return 0 if result.success else 1
+        result_info["exit_code"] = 0 if result.success else 1
+        result_info["success"] = result.success
+        result_info["conversation_file"] = str(conversation_file)
+        result_info["output_dir"] = str(run_dir)
+        if args.run_eval:
+             result_info["eval_results"] = eval_output_data
+             result_info["eval_success"] = eval_overall_success
+             result_info["copied_to_valid"] = str(eval_copied_to_valid) if eval_copied_to_valid else None
+             
+        return result_info
         
     except Exception as e:
         print(f"Unexpected error running simulation: {e}", file=sys.stderr)
-        return 1
+        result_info["error"] = str(e)
+        return result_info
 
 
 def main():
@@ -1320,8 +1364,8 @@ def main():
         # Run simulation for each scenario
         exit_codes = []
         for scenario_path in scenario_paths:
-            exit_code = _run_single_simulation(str(scenario_path), args)
-            exit_codes.append(exit_code)
+            sim_result = run_simulation(str(scenario_path), args)
+            exit_codes.append(sim_result["exit_code"])
         
         # Exit with error if any simulation failed
         sys.exit(1 if any(code != 0 for code in exit_codes) else 0)
