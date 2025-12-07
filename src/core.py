@@ -411,6 +411,11 @@ class LLMClient:
             api_params["reasoning"] = {"effort": "none"}
             api_params["text"] = {"verbosity": "low"}
         
+        # Remove 'temperature' from api_params if model is gpt-5-mini
+        if self.model == "gpt-5-mini":
+            if "temperature" in api_params:
+                del api_params["temperature"]
+        
         try:
             # Use Responses API
             # Check if responses API is available

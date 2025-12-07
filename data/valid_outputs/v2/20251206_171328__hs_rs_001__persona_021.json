@@ -1,0 +1,239 @@
+{
+  "meta": {
+    "conversation_id": "home_services.hs_rs_001",
+    "domain_id": "home_services",
+    "toolset_id": null,
+    "model": "gpt-5-mini",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "hs_rs_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "service_type": "hvac",
+          "original_date": "2025-12-05",
+          "new_preferred_date": "2025-12-06"
+        },
+        "preferences": {
+          "new_preferred_time_window": "afternoon"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "service_type": "hvac",
+          "original_date": "2025-12-05"
+        },
+        "action": "update_service",
+        "notes": "Success if the assistant reschedules the HVAC service from the original date to a new date and notifies the user of the updated appointment details."
+      },
+      "objective": "Reschedule my HVAC service appointment"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "existing_service": {
+            "service_id": "SRV-HVAC-001",
+            "confirmation_code": "HVAC-ABC123",
+            "service_type": "hvac",
+            "service_description": "Annual HVAC maintenance",
+            "provider_id": "HVAC-004",
+            "provider_name": "Atlanta Climate Control",
+            "scheduled_datetime": "2025-12-05T10:00:00Z",
+            "status": "scheduled",
+            "location": "123 Medical Center Drive, Atlanta, GA 30303",
+            "contact_info": {
+              "name": "Dr. Lisa Park",
+              "phone": "(404) 555-6283",
+              "email": "lisa.park@peachtreechildrens.org"
+            },
+            "estimated_cost": 95.0,
+            "currency": "USD",
+            "cancellation_policy": {
+              "cancellation_deadline": "2025-12-04T10:00:00Z",
+              "cancellation_fee": 25.0,
+              "refund_policy": "Full refund if cancelled 24+ hours before service"
+            },
+            "reschedule_policy": {
+              "reschedule_deadline": "2025-12-04T10:00:00Z",
+              "reschedule_fee": 0.0
+            }
+          },
+          "available_slots": [
+            {
+              "provider_id": "HVAC-004",
+              "date": "2025-12-06",
+              "time_windows": [
+                {
+                  "start": "13:00",
+                  "end": "16:00"
+                },
+                {
+                  "start": "14:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "HVAC-004",
+              "date": "2025-12-07",
+              "time_windows": [
+                {
+                  "start": "09:00",
+                  "end": "12:00"
+                },
+                {
+                  "start": "13:00",
+                  "end": "16:00"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "injected_behaviors": []
+    },
+    "persona": {
+      "id": "persona_021",
+      "name": "Dr. Lisa Park",
+      "age": 41,
+      "hometown": "Atlanta, GA",
+      "occupation": "Pediatrician",
+      "bio": "Lisa Park is a pediatrician at a children's hospital in Atlanta, treating kids with chronic illnesses including sickle cell disease and diabetes. She sees patients four days a week, attends case conferences, and coordinates with specialists to manage complex cases. She's also involved in community health outreach programs.",
+      "use_cases": [],
+      "sample_messages": [
+        "Need to coordinate with hematology on the Jackson case. Can you set up a call with Dr. Patel sometime next week?",
+        "License renewal coming up - please find CME courses in pediatric pain management, preferably online/asynchronous",
+        "Fundraiser committee dinner next Thursday at 7. Need reservation for 10, somewhere quiet enough to actually talk"
+      ],
+      "email": "lisa.park@peachtreechildrens.org",
+      "phone": "(404) 555-6283"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "I need to reschedule my HVAC service appointment."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nI know the user wants to reschedule an HVAC service appointment, but I don't have the service_id (or confirmation code) or the new date/time they want. The update_service tool requires service_id plus new_date and new_time_window when rescheduling. I should ask for the missing details and offer to look up available slots if they don't have a preferred time.\n</think>\n<plan>\n1. Ask the user for the appointment identifier (service_id or confirmation_code) or alternative lookup info (phone or email) so I can find the booking.\n2. Ask what new date and time window they'd like (or if they'd like me to check the provider's next available slots).\n3. After they provide that, call the update_service tool to reschedule and report back the result.\n</plan>\n<action type=\"say\">I can help with that. Please provide the service_id or confirmation_code for the HVAC appointment. If you don't have that, give the phone number or email on the booking so I can find it. Also tell me the new date (YYYY-MM-DD) and preferred time window (e.g., \"morning\", \"09:00-12:00\"), or say \"check availability\" if you'd like me to look up the provider's next open slots.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. Please provide the service_id or confirmation_code for the HVAC appointment. If you don't have that, give the phone number or email on the booking so I can find it. Also tell me the new date (YYYY-MM-DD) and preferred time window (e.g., \"morning\", \"09:00-12:00\"), or say \"check availability\" if you'd like me to look up the provider's next open slots."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "My appointment is under lisa.park@peachtreechildrens.org. Please reschedule it to 2025-12-06 in the afternoon."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nI have the user's booking contact (lisa.park@peachtreechildrens.org) and the requested new date/time (2025-12-06, afternoon). To reschedule I need the service_id for the HVAC appointment. I'll search for services using the provided email and filter for HVAC so I can retrieve the relevant service(s). After I get the service details I will call update_service to reschedule to 2025-12-06 in the afternoon.\n</think>\n<plan>\n1. Search for the user's HVAC service(s) using the provided email.\n2. Identify the correct service_id and confirm the current scheduled time with the user if multiple matches.\n3. Call update_service to reschedule the chosen service_id to 2025-12-06, time window \"afternoon\".\n4. Report the reschedule confirmation or any issues back to the user.\n</plan>\n<action type=\"tool\" name=\"find_service\">\n{\"email\":\"lisa.park@peachtreechildrens.org\",\"service_type\":\"hvac\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_service",
+            "args": {
+              "email": "lisa.park@peachtreechildrens.org",
+              "service_type": "hvac"
+            },
+            "raw": "find_service({\"email\":\"lisa.park@peachtreechildrens.org\",\"service_type\":\"hvac\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"service_id\": \"SRV-HVAC-001\",\n    \"confirmation_code\": \"HVAC-ABC123\",\n    \"service_type\": \"hvac\",\n    \"provider_name\": \"Atlanta Climate Control\",\n    \"scheduled_datetime\": \"2025-12-05T10:00:00Z\",\n    \"status\": \"scheduled\",\n    \"location\": \"123 Medical Center Drive, Atlanta, GA 30303\",\n    \"estimated_cost\": 95.0,\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "service_id": "SRV-HVAC-001",
+                "confirmation_code": "HVAC-ABC123",
+                "service_type": "hvac",
+                "provider_name": "Atlanta Climate Control",
+                "scheduled_datetime": "2025-12-05T10:00:00Z",
+                "status": "scheduled",
+                "location": "123 Medical Center Drive, Atlanta, GA 30303",
+                "estimated_cost": 95.0,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nI found one HVAC appointment for lisa.park@peachtreechildrens.org: service_id SRV-HVAC-001 (scheduled 2025-12-05T10:00:00Z) with status \"scheduled\". The user asked to move it to 2025-12-06 in the afternoon. The update_service tool requires the service_id and new_date/new_time_window for a reschedule, so I'll call update_service with those values to attempt the reschedule. If the provider can't accommodate that window, the tool response will show the issue and I'll report options.\n</think>\n<action type=\"tool\" name=\"update_service\">\n{\"service_id\":\"SRV-HVAC-001\",\"action\":\"reschedule\",\"new_date\":\"2025-12-06\",\"new_time_window\":\"afternoon\",\"reason\":\"Customer requested reschedule to afternoon of 2025-12-06\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "update_service",
+            "args": {
+              "service_id": "SRV-HVAC-001",
+              "action": "reschedule",
+              "new_date": "2025-12-06",
+              "new_time_window": "afternoon",
+              "reason": "Customer requested reschedule to afternoon of 2025-12-06"
+            },
+            "raw": "update_service({\"service_id\":\"SRV-HVAC-001\",\"action\":\"reschedule\",\"new_date\":\"2025-12-06\",\"new_time_window\":\"afternoon\",\"reason\":\"Customer requested reschedule to afternoon of 2025-12-06\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"service_id\": \"SRV-HVAC-001\",\n  \"confirmation_code\": \"HVAC-ABC123\",\n  \"action\": \"rescheduled\",\n  \"updated_scheduled_datetime\": \"2025-12-06T13:00:00Z\",\n  \"status\": \"confirmed\",\n  \"reschedule_fee\": 25.0,\n  \"cancellation_fee\": 0.0,\n  \"refund_amount\": 0.0,\n  \"refund_timeline\": \"N/A\",\n  \"currency\": \"USD\",\n  \"message\": \"Reschedule completed to 2025-12-06 (afternoon window: 13:00-16:00). Request received after provider's reschedule deadline (2025-12-04T10:00:00Z); a $25.00 fee has been applied. If you wish to change the time window, contact the provider.\",\n  \"provider_contact_info\": {\n    \"name\": \"Atlanta Climate Control\",\n    \"phone\": \"(404) 555-0147\"\n  }\n}",
+            "parsed": {
+              "service_id": "SRV-HVAC-001",
+              "confirmation_code": "HVAC-ABC123",
+              "action": "rescheduled",
+              "updated_scheduled_datetime": "2025-12-06T13:00:00Z",
+              "status": "confirmed",
+              "reschedule_fee": 25.0,
+              "cancellation_fee": 0.0,
+              "refund_amount": 0.0,
+              "refund_timeline": "N/A",
+              "currency": "USD",
+              "message": "Reschedule completed to 2025-12-06 (afternoon window: 13:00-16:00). Request received after provider's reschedule deadline (2025-12-04T10:00:00Z); a $25.00 fee has been applied. If you wish to change the time window, contact the provider.",
+              "provider_contact_info": {
+                "name": "Atlanta Climate Control",
+                "phone": "(404) 555-0147"
+              }
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nI located the HVAC appointment for lisa.park@peachtreechildrens.org (service_id SRV-HVAC-001) and called update_service. The tool returned a successful reschedule to 2025-12-06T13:00:00Z (afternoon window 13:00-16:00), status confirmed, and noted a $25 reschedule fee because the request missed the provider's reschedule deadline. Next I'll inform you of the new booking details, the fee, and provide the provider contact so you can decide if you want any further changes.\n</think>\n<action type=\"say\">Your HVAC appointment has been rescheduled.\n\n- Service ID: SRV-HVAC-001\n- Confirmation code: HVAC-ABC123\n- New scheduled time: 2025-12-06 (afternoon window 13:00\u201316:00), scheduled at 2025-12-06T13:00:00Z\n- Status: confirmed\n- Reschedule fee: $25.00 (applied because the request was after the provider's reschedule deadline)\n- Provider: Atlanta Climate Control \u2014 (404) 555-0147\n\nWould you like me to (a) send a confirmation email, (b) try to change the time window, (c) cancel the appointment, or (d) anything else?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your HVAC appointment has been rescheduled.\n\n- Service ID: SRV-HVAC-001\n- Confirmation code: HVAC-ABC123\n- New scheduled time: 2025-12-06 (afternoon window 13:00\u201316:00), scheduled at 2025-12-06T13:00:00Z\n- Status: confirmed\n- Reschedule fee: $25.00 (applied because the request was after the provider's reschedule deadline)\n- Provider: Atlanta Climate Control \u2014 (404) 555-0147\n\nWould you like me to (a) send a confirmation email, (b) try to change the time window, (c) cancel the appointment, or (d) anything else?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

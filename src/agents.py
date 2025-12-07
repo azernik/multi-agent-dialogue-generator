@@ -100,7 +100,8 @@ class UserAgent(BaseAgent):
 
     def generate_response(self, context: ConversationContext) -> str:
         # Pass temperature to add diversity to user agent responses
-        return super().generate_response(context, temperature=self.temperature)
+        # return super().generate_response(context, temperature=self.temperature)
+        return super().generate_response(context)
 
     def build_prompt(self, context: ConversationContext) -> List[Dict[str, str]]:
         messages = []

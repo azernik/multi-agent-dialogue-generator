@@ -237,15 +237,41 @@ def main():
     impossible_items = [x for x in scan_results if x["metadata"]["impossible"]]
     standard_items = [x for x in scan_results if not x["metadata"]["impossible"]]
     
+    # 1. Held-out Domain: Home Services (hs_*)
+    # Move all hs_* items from impossible/standard lists into a dedicated test list
+    # Or just handle them first.
+    
+    held_out_items = []
+    
+    def is_held_out(item):
+        domain = item["metadata"].get("domain", "")
+        scenario = item["scenario_name"]
+        return domain == "home_services" or (scenario and scenario.startswith("hs_"))
+        
+    # Extract held-out items from impossible list
+    held_out_impossible = [x for x in impossible_items if is_held_out(x)]
+    impossible_items = [x for x in impossible_items if not is_held_out(x)]
+    
+    # Extract held-out items from standard list
+    held_out_standard = [x for x in standard_items if is_held_out(x)]
+    standard_items = [x for x in standard_items if not is_held_out(x)]
+    
+    held_out_items = held_out_impossible + held_out_standard
+    
     # Sort deterministically by filename
     impossible_items.sort(key=lambda x: x["path"].name)
     standard_items.sort(key=lambda x: x["path"].name)
+    held_out_items.sort(key=lambda x: x["path"].name)
     
     # Assign Splits
     train_items = []
     test_items = []
     
-    # Split Impossible: 60% Train, 40% Test
+    # Add ALL held-out items to Test
+    test_items.extend(held_out_items)
+    # Note: held_out items are NOT added to train_items at all
+    
+    # Split Impossible (remaining): 60% Train, 40% Test
     # If list is small, ensure reasonable distribution.
     # Logic: First 60% -> Train, Rest -> Test
     split_idx_imp = int(len(impossible_items) * 0.6)
@@ -264,6 +290,11 @@ def main():
     
     stats["impossible_train"] = len(impossible_items[:split_idx_imp])
     stats["impossible_test"] = len(impossible_items[split_idx_imp:])
+    
+    # Count impossible in held-out
+    held_out_impossible_count = sum(1 for x in held_out_items if x["metadata"]["impossible"])
+    
+    stats["impossible_test"] += held_out_impossible_count
     
     # Split Standard: 90% Train, 10% Test
     split_idx_std = int(len(standard_items) * 0.9)

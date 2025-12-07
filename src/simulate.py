@@ -74,7 +74,8 @@ def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
     parser.add_argument('targets', nargs='+', help='Scenario file paths or scenario IDs (e.g., ca_oe_005__persona_001)')
-    parser.add_argument('--model', default='gpt-5.1', help='LLM model to use')
+    parser.add_argument('--model', default='gpt-5.1', help='LLM model to use for system agent (assistant)')
+    parser.add_argument('--user-model', help='LLM model to use for user agent (defaults to --model if not specified)')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
@@ -951,7 +952,9 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             logger.error("OpenAI API key required")
             print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
             sys.exit(1)
-        aux_llm_client = LLMClient(model=args.model, api_key=api_key)
+        # Use --user-model if specified, otherwise use --model
+        user_model = args.user_model or args.model
+        aux_llm_client = LLMClient(model=user_model, api_key=api_key)
         
         # Initialize System LLM client (HF or OpenAI)
         if args.hf_model:

@@ -1,0 +1,264 @@
+{
+  "meta": {
+    "conversation_id": "home_services.hs_rs_003",
+    "domain_id": "home_services",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "hs_rs_003",
+    "task": {
+      "slots": {
+        "constraints": {
+          "service_type": "plumbing",
+          "original_date": "2025-12-09",
+          "new_preferred_date": "2025-12-11"
+        },
+        "preferences": {
+          "new_preferred_time_window": "afternoon"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "service_type": "plumbing",
+          "original_date": "2025-12-09"
+        },
+        "action": "update_service",
+        "notes": "Success if the assistant finds the plumbing service using find_service, then reschedules it to a new date and notifies the user of the updated appointment details."
+      },
+      "objective": "Reschedule my plumbing service appointment"
+    },
+    "user_agent_config": {
+      "injected_behaviors": [
+        {
+          "instructions": "The user knows the approximate service date and service type, but doesn't know the exact service_id or confirmation_code.",
+          "type_id": "user.partial_information"
+        }
+      ]
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "services": [
+            {
+              "service_id": "SRV-PLB-001",
+              "confirmation_code": "PLB-DEF456",
+              "service_type": "plumbing",
+              "service_description": "Fix leaky bathroom faucet",
+              "provider_id": "PLB-007",
+              "provider_name": "Oakland Plumbing Solutions",
+              "scheduled_datetime": "2025-12-09T14:00:00Z",
+              "status": "scheduled",
+              "location": "567 College Avenue, Oakland, CA 94618",
+              "contact_info": {
+                "name": "Tasha Williams",
+                "phone": "(510) 555-2947",
+                "email": "tasha.williams@berkeley.edu"
+              },
+              "estimated_cost": 150.0,
+              "currency": "USD",
+              "cancellation_policy": {
+                "cancellation_deadline": "2025-12-08T14:00:00Z",
+                "cancellation_fee": 25.0,
+                "refund_policy": "Full refund if cancelled 24+ hours before service"
+              },
+              "reschedule_policy": {
+                "reschedule_deadline": "2025-12-08T14:00:00Z",
+                "reschedule_fee": 0.0
+              }
+            },
+            {
+              "service_id": "SRV-PLB-002",
+              "confirmation_code": "PLB-GHI789",
+              "service_type": "plumbing",
+              "service_description": "Drain cleaning",
+              "provider_id": "PLB-008",
+              "provider_name": "Bay Area Plumbing",
+              "scheduled_datetime": "2025-11-15T10:00:00Z",
+              "status": "completed",
+              "location": "567 College Avenue, Oakland, CA 94618",
+              "contact_info": {
+                "name": "Tasha Williams",
+                "phone": "(510) 555-2947",
+                "email": "tasha.williams@berkeley.edu"
+              },
+              "estimated_cost": 120.0,
+              "currency": "USD"
+            }
+          ],
+          "available_slots": [
+            {
+              "provider_id": "PLB-007",
+              "date": "2025-12-11",
+              "time_windows": [
+                {
+                  "start": "13:00",
+                  "end": "16:00"
+                },
+                {
+                  "start": "14:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "PLB-007",
+              "date": "2025-12-12",
+              "time_windows": [
+                {
+                  "start": "10:00",
+                  "end": "13:00"
+                },
+                {
+                  "start": "13:00",
+                  "end": "16:00"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "injected_behaviors": []
+    },
+    "persona": {
+      "id": "persona_025",
+      "name": "Tasha Williams",
+      "age": 23,
+      "hometown": "Oakland, CA",
+      "occupation": "Social work graduate student",
+      "bio": "Tasha Williams is getting her MSW at UC Berkeley while interning at a community center in Oakland. She facilitates support groups, helps clients access resources, and is writing her thesis on housing inequality. She juggles her internship hours, classes, and a part-time job at a coffee shop.",
+      "use_cases": [],
+      "sample_messages": [
+        "hunting for trauma-informed care workshops in the bay - something under $100 if possible? student budget is TIGHT",
+        "thesis committee meetings before march ends or i'm screwed. can you check when prof martinez + dr. wong are both free?",
+        "desperate for quiet study space this saturday, like 10-4. library is always packed. any ideas?"
+      ],
+      "email": "tasha.williams@berkeley.edu",
+      "phone": "(510) 555-2947"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "need to move a plumbing appointment i already booked. can you help me reschedule it?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n<think>\nUser wants to reschedule an existing plumbing appointment. I should locate their service using find_service; I need some identifier like phone, email, confirmation code, or date range. Then I may need to show them options or ask for new date/time, then call update_service with reschedule. First step is to collect the needed info from user: how to look up the appointment and what new date/time window they prefer. Keep it concise.\n</think>\n<plan>\n1. Ask for details to find the existing appointment (confirmation code or contact info and rough date).\n2. Ask for preferred new date and time window for the appointment.\n3. Once provided, locate the service using find_service.\n4. Reschedule it with update_service.\n5. Confirm the updated appointment details to the user.\n</plan>\n<action type=\"say\">\nI can help with that.\n\nTo reschedule your plumbing appointment, I need a couple of details:\n\n1) How should I look up your booking?  \n   - Ideally your confirmation code, **or**  \n   - The phone number or email used for the booking, plus about when it was scheduled (date).\n\n2) What new time would you like?  \n   - **New date** (YYYY-MM-DD)  \n   - **Preferred time window** (e.g., \u201c09:00-12:00\u201d, \u201cafternoon\u201d, or \u201cafter 5pm\u201d)\n\nPlease reply with:\n- Either: `confirmation code: ...`  \n  or: `phone/email: ..., scheduled date was around ...`  \n- And: `new date: ...` and `new time window: ...`</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that.\n\nTo reschedule your plumbing appointment, I need a couple of details:\n\n1) How should I look up your booking?  \n   - Ideally your confirmation code, **or**  \n   - The phone number or email used for the booking, plus about when it was scheduled (date).\n\n2) What new time would you like?  \n   - **New date** (YYYY-MM-DD)  \n   - **Preferred time window** (e.g., \u201c09:00-12:00\u201d, \u201cafternoon\u201d, or \u201cafter 5pm\u201d)\n\nPlease reply with:\n- Either: `confirmation code: ...`  \n  or: `phone/email: ..., scheduled date was around ...`  \n- And: `new date: ...` and `new time window: ...`"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "yeah, i don\u2019t have the confirmation code on me.\n\nphone/email: you probably have it under either tasha.williams@berkeley.edu or (510) 555-2947, and the date was 2025-12-09\n\nnew date: 2025-12-11  \nnew time window: afternoon"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Search for the user\u2019s existing plumbing service using the provided phone/email and date.\n2. If multiple results, pick the plumbing appointment on or near 2025-12-09 and confirm internally.\n3. Call update_service to reschedule it to 2025-12-11 in the afternoon.\n4. Report the updated booking details back to the user.\n</plan>\n<action type=\"tool\" name=\"find_service\">\n{\"phone\":\"(510) 555-2947\",\"email\":\"tasha.williams@berkeley.edu\",\"date_range\":{\"start_date\":\"2025-12-09\",\"end_date\":\"2025-12-09\"},\"service_type\":\"plumbing\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_service",
+            "args": {
+              "phone": "(510) 555-2947",
+              "email": "tasha.williams@berkeley.edu",
+              "date_range": {
+                "start_date": "2025-12-09",
+                "end_date": "2025-12-09"
+              },
+              "service_type": "plumbing"
+            },
+            "raw": "find_service({\"phone\":\"(510) 555-2947\",\"email\":\"tasha.williams@berkeley.edu\",\"date_range\":{\"start_date\":\"2025-12-09\",\"end_date\":\"2025-12-09\"},\"service_type\":\"plumbing\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"service_id\": \"SRV-PLB-001\",\n    \"confirmation_code\": \"PLB-DEF456\",\n    \"service_type\": \"plumbing\",\n    \"provider_name\": \"Oakland Plumbing Solutions\",\n    \"scheduled_datetime\": \"2025-12-09T14:00:00Z\",\n    \"status\": \"scheduled\",\n    \"location\": \"567 College Avenue, Oakland, CA 94618\",\n    \"estimated_cost\": 150.0,\n    \"currency\": \"USD\"\n  }\n]",
+            "parsed": [
+              {
+                "service_id": "SRV-PLB-001",
+                "confirmation_code": "PLB-DEF456",
+                "service_type": "plumbing",
+                "provider_name": "Oakland Plumbing Solutions",
+                "scheduled_datetime": "2025-12-09T14:00:00Z",
+                "status": "scheduled",
+                "location": "567 College Avenue, Oakland, CA 94618",
+                "estimated_cost": 150.0,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Reschedule the identified plumbing service (SRV-PLB-001) to the new date and afternoon time window using update_service.\n2. Present the updated appointment details and any fees/policy info to the user.\n</plan>\n<action type=\"tool\" name=\"update_service\">\n{\"service_id\":\"SRV-PLB-001\",\"action\":\"reschedule\",\"new_date\":\"2025-12-11\",\"new_time_window\":\"afternoon\",\"reason\":\"Customer requested to move plumbing appointment from 2025-12-09 to 2025-12-11 afternoon.\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "update_service",
+            "args": {
+              "service_id": "SRV-PLB-001",
+              "action": "reschedule",
+              "new_date": "2025-12-11",
+              "new_time_window": "afternoon",
+              "reason": "Customer requested to move plumbing appointment from 2025-12-09 to 2025-12-11 afternoon."
+            },
+            "raw": "update_service({\"service_id\":\"SRV-PLB-001\",\"action\":\"reschedule\",\"new_date\":\"2025-12-11\",\"new_time_window\":\"afternoon\",\"reason\":\"Customer requested to move plumbing appointment from 2025-12-09 to 2025-12-11 afternoon.\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"service_id\": \"SRV-PLB-001\",\n  \"confirmation_code\": \"PLB-DEF456\",\n  \"action\": \"rescheduled\",\n  \"updated_scheduled_datetime\": \"2025-12-11T14:00:00Z\",\n  \"status\": \"scheduled\",\n  \"reschedule_fee\": 0.0,\n  \"cancellation_fee\": 0.0,\n  \"refund_amount\": 0.0,\n  \"refund_timeline\": \"\",\n  \"currency\": \"USD\"\n}",
+            "parsed": {
+              "service_id": "SRV-PLB-001",
+              "confirmation_code": "PLB-DEF456",
+              "action": "rescheduled",
+              "updated_scheduled_datetime": "2025-12-11T14:00:00Z",
+              "status": "scheduled",
+              "reschedule_fee": 0.0,
+              "cancellation_fee": 0.0,
+              "refund_amount": 0.0,
+              "refund_timeline": "",
+              "currency": "USD"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\n</think>\n<plan>\n1. Confirm to the user that the appointment has been successfully rescheduled and provide the key details.\n</plan>\n<action type=\"say\">\nYour plumbing appointment has been rescheduled.\n\nHere are the updated details:\n- Service: Plumbing  \n- Provider: Oakland Plumbing Solutions  \n- New date: 2025-12-11  \n- Time window: Afternoon (scheduled for about 2:00 PM)  \n- Status: Scheduled  \n- Confirmation code: PLB-DEF456  \n- Reschedule fee: $0\n\nIf you\u2019d like, I can also help you add this to your calendar or make any further changes.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your plumbing appointment has been rescheduled.\n\nHere are the updated details:\n- Service: Plumbing  \n- Provider: Oakland Plumbing Solutions  \n- New date: 2025-12-11  \n- Time window: Afternoon (scheduled for about 2:00 PM)  \n- Status: Scheduled  \n- Confirmation code: PLB-DEF456  \n- Reschedule fee: $0\n\nIf you\u2019d like, I can also help you add this to your calendar or make any further changes."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
