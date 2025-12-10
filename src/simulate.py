@@ -101,7 +101,7 @@ def parse_arguments(args_list: Optional[List[str]] = None) -> argparse.Namespace
     parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization for HF models')
     return parser.parse_args(args_list)
 
-def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
+def _resolve_outputs_root(example_path: str, cli_outputs_root: Optional[str]) -> Path:
     """Resolve outputs root directory with CLI > env > default precedence."""
     # 1) CLI flag
     if cli_outputs_root:

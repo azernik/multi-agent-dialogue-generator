@@ -193,6 +193,49 @@ PYTHONPATH=src python -m eval.syntax.cli conversation.json
 - **Faithfulness**: Checks if assistant claims match tool call results
 - **Role Confusion**: Detects if user agent acts like system agent
 
+### L1 Evaluation
+
+L1 evaluation compares conversations against gold standard conversations from `data/valid_outputs/v2/`, calculating metrics for action accuracy, tool selection, parameter matching, and action recall.
+
+**Usage:**
+```bash
+# Run standard evals + L1 evaluation
+PYTHONPATH=src python -m eval.run conversation.json --run-l1
+
+# Multiple conversations with L1
+PYTHONPATH=src python -m eval.run conv1.json conv2.json --run-l1
+
+# Recursive with L1
+PYTHONPATH=src python -m eval.run --recursive data/outputs/ --run-l1
+```
+
+**How it works:**
+1. Standard evals run first (syntax, success, faithfulness, role confusion)
+2. If conversation is valid (`SUCCESS == True`) and `--run-l1` is used:
+   - Looks for gold conversation in `data/valid_outputs/v2/` matching `*__{scenario_name}__{persona_id}.json`
+   - Runs L1 comparison and saves results to `data/evals/l1/{conversation_id}_l1_{run_number}.json`
+
+**Scenarios:**
+- **Scenario 1 (Gold exists)**: If gold conversation found in v2, generates a new conversation and compares it to the existing gold
+- **Scenario 2 (No gold)**: If no gold found, generates two conversations: saves the first as gold in v2, then compares the second to the newly saved gold
+- **Scenario 3 (Multiple runs)**: Each subsequent run with the same gold generates a new conversation and increments the run number (001, 002, 003...)
+
+**Metrics calculated:**
+- **Action Accuracy**: Percentage of steps where action type matches (tool vs say)
+- **Tool Selection F1**: F1 score for correct tool name selection
+- **Parameter F1**: F1 score for parameter values (calculated with and without optional parameters)
+- **Action Recall**: Percentage of gold actions present in test conversation (set-based, order-insensitive)
+
+**Output:**
+- L1 results saved to `data/evals/l1/{conversation_id}_l1_{run_number}.json`
+- Contains conversation-level and turn-level metrics
+- Run numbers increment automatically (001, 002, 003...)
+
+**Requirements:**
+- Conversation must pass all standard evals (`SUCCESS == True`)
+- `--run-l1` flag must be used
+- Gold conversation must exist in v2 (or will be created on first run)
+
 ---
 
 ## Data Directory Structure
