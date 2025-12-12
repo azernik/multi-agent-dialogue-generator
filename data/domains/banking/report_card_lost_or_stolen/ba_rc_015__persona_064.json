@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "report_card_lost_or_stolen",
+    "scenario_id": "ba_rc_015"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_card": "debit_card",
+        "issue_type": "stolen",
+        "last_known_use_date": "2026-02-18",
+        "travel_context": "Work trip from Alice Springs to remote Central Australian communities"
+      },
+      "preferences": {
+        "request_replacement": true,
+        "expedite_replacement": true,
+        "travel_notice_on_other_cards": true,
+        "contact_method": "email",
+        "contact_details": "melissa.cartwright@health.nt.gov.au"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "account_type": "debit_card",
+        "nickname": "Everyday Desert Account"
+      },
+      "action": "report_card_issue",
+      "notes": "Success if the assistant identifies the Everyday Desert Account debit card via list_customer_accounts, reports it as stolen with immediate block via report_card_issue, requests an expedited replacement card to Melissa's Alice Springs residential address, and confirms that her other cards remain active (optionally adding a travel notice for upcoming NT field travel)."
+    },
+    "objective": "Report a stolen debit card and request an expedited replacement while ensuring other cards remain usable during remote field travel."
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "injected_behaviors": [],
+    "context": {
+      "seed": {
+        "customer_profile": {
+          "full_name": "Dr. Melissa Cartwright",
+          "email": "melissa.cartwright@health.nt.gov.au",
+          "mobile": "+61-8-8950-4723",
+          "home_address": {
+            "line1": "14 Desert Oaks Circuit",
+            "city": "Alice Springs",
+            "state": "NT",
+            "postcode": "0870",
+            "country": "Australia"
+          }
+        },
+        "upcoming_travel": [
+          {
+            "trip_id": "TRIP-NT-2026-03",
+            "purpose": "Trachoma field supervision and community meetings",
+            "region": "Central Australia, NT",
+            "start_date": "2026-03-10",
+            "end_date": "2026-03-24",
+            "notes": "Visits to remote Aboriginal communities; limited mobile coverage, prefers email notifications when possible."
+          },
+          {
+            "trip_id": "TRIP-CONF-2026-05",
+            "purpose": "Public health conference presentation on trachoma elimination",
+            "region": "Sydney, NSW",
+            "start_date": "2026-05-05",
+            "end_date": "2026-05-09",
+            "notes": "Will be travelling from Alice Springs to Sydney; expects higher card spend on accommodation and meals."
+          }
+        ],
+        "accounts": [
+          {
+            "account_id": "ACC-NT-001",
+            "account_type": "debit_card",
+            "nickname": "Everyday Desert Account",
+            "masked_number": "****5274",
+            "currency": "AUD",
+            "status": "active"
+          },
+          {
+            "account_id": "ACC-NT-002",
+            "account_type": "credit_card",
+            "nickname": "Work Travel Visa",
+            "masked_number": "****9931",
+            "currency": "AUD",
+            "status": "active"
+          },
+          {
+            "account_id": "ACC-NT-003",
+            "account_type": "savings",
+            "nickname": "Emergency Fund",
+            "masked_number": "****1840",
+            "currency": "AUD",
+            "status": "active"
+          }
+        ],
+        "recent_transactions": [
+          {
+            "transaction_id": "TX-5274-20260218-01",
+            "account_id": "ACC-NT-001",
+            "date": "2026-02-18",
+            "merchant": "Alice Springs Fuel & Snack",
+            "location": "Alice Springs NT",
+            "amount": 78.4,
+            "currency": "AUD",
+            "channel": "POS",
+            "notes": "Last transaction Melissa recognises before noticing card missing on a field packing day."
+          },
+          {
+            "transaction_id": "TX-5274-20260219-02",
+            "account_id": "ACC-NT-001",
+            "date": "2026-02-19",
+            "merchant": "Online Electronics AU",
+            "location": "Sydney NSW",
+            "amount": 1299.0,
+            "currency": "AUD",
+            "channel": "Online",
+            "notes": "Potentially fraudulent; Melissa is unsure and wants the card blocked immediately."
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_064"
+}
