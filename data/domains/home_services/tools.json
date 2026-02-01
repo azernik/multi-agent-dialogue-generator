@@ -1,0 +1,641 @@
+{
+  "id": "toolset.home_services.v1",
+  "tools": {
+    "search_providers": {
+      "description": "Search for service providers by service type, location, and availability. Returns list of providers with basic details including ratings, availability summary, and base service fees.",
+      "parameters": {
+        "service_type": {
+          "type": "string",
+          "description": "Type of service needed: plumbing, electrical, or HVAC",
+          "required": true,
+          "enum": ["plumbing", "electrical", "HVAC"]
+        },
+        "location": {
+          "type": "string",
+          "description": "Service location: full address, city name, or ZIP code",
+          "required": true
+        },
+        "urgency": {
+          "type": "string",
+          "description": "Urgency level: emergency (same day), same_day, or routine",
+          "required": false,
+          "enum": ["emergency", "same_day", "routine"],
+          "default": "routine"
+        },
+        "preferred_date": {
+          "type": "string",
+          "description": "Preferred service date (YYYY-MM-DD). Optional.",
+          "required": false
+        },
+        "min_rating": {
+          "type": "number",
+          "description": "Minimum provider rating (1-5). Optional filter.",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching providers",
+        "items": {
+          "type": "object",
+          "properties": {
+            "provider_id": { "type": "string", "description": "Unique provider identifier" },
+            "name": { "type": "string", "description": "Provider business name" },
+            "rating": { "type": "number", "description": "Average rating (1-5)" },
+            "reviews_count": { "type": "integer", "description": "Number of reviews" },
+            "service_area": { "type": "string", "description": "Service coverage area" },
+            "availability_summary": { "type": "string", "description": "e.g., 'Available today', 'Next available: 2025-10-20'" },
+            "estimated_response_time": { "type": "string", "description": "e.g., '2 hours', 'Same day'" },
+            "base_service_fee": { "type": "number", "description": "Base service call fee" },
+            "currency": { "type": "string", "description": "Currency code, e.g., USD" },
+            "certifications": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "List of certifications/licenses"
+            },
+            "years_in_business": { "type": "integer" }
+          },
+          "required": ["provider_id", "name", "rating", "availability_summary"]
+        }
+      }
+    },
+    "get_provider_details": {
+      "description": "Get detailed information about a specific provider including full availability calendar, all certifications, insurance details, and pricing information.",
+      "parameters": {
+        "provider_id": {
+          "type": "string",
+          "description": "Unique provider identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "provider_id": { "type": "string" },
+          "name": { "type": "string" },
+          "rating": { "type": "number" },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rating": { "type": "number" },
+                "comment": { "type": "string" },
+                "date": { "type": "string" }
+              }
+            }
+          },
+          "service_areas": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "certifications": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "insurance": { "type": "boolean", "description": "Whether provider is insured" },
+          "years_in_business": { "type": "integer" },
+          "pricing_info": {
+            "type": "object",
+            "properties": {
+              "base_service_fee": { "type": "number" },
+              "hourly_rate": { "type": "number" },
+              "currency": { "type": "string" }
+            }
+          },
+          "availability_calendar": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "description": "ISO date" },
+                "available_slots": {
+                  "type": "array",
+                  "items": { "type": "string", "description": "Time windows, e.g., '09:00-12:00'" }
+                }
+              }
+            }
+          },
+          "contact_info": {
+            "type": "object",
+            "properties": {
+              "phone": { "type": "string" },
+              "email": { "type": "string" },
+              "website": { "type": "string" }
+            }
+          }
+        },
+        "required": ["provider_id", "name", "rating"]
+      }
+    },
+    "request_quote": {
+      "description": "Get price estimates (quotes) for a service request. Can request from a specific provider or get multiple quotes. Returns cost breakdown, available time slots, and warranty information.",
+      "parameters": {
+        "provider_id": {
+          "type": "string",
+          "description": "Specific provider identifier. If omitted, returns quotes from multiple providers.",
+          "required": false
+        },
+        "service_type": {
+          "type": "string",
+          "description": "Type of service: plumbing, electrical, or hvac",
+          "required": true,
+          "enum": ["plumbing", "electrical", "hvac"]
+        },
+        "service_description": {
+          "type": "string",
+          "description": "Detailed description of the service needed",
+          "required": true
+        },
+        "location": {
+          "type": "string",
+          "description": "Full service address",
+          "required": true
+        },
+        "urgency": {
+          "type": "string",
+          "description": "Urgency level: emergency, same_day, or routine",
+          "required": false,
+          "enum": ["emergency", "same_day", "routine"],
+          "default": "routine"
+        },
+        "preferred_date": {
+          "type": "string",
+          "description": "Preferred service date (YYYY-MM-DD)",
+          "required": false
+        },
+        "preferred_time_window": {
+          "type": "string",
+          "description": "Preferred time window, e.g., 'morning', 'afternoon', '09:00-12:00'",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of quotes (one per provider)",
+        "items": {
+          "type": "object",
+          "properties": {
+            "quote_id": { "type": "string", "description": "Unique quote identifier" },
+            "provider_id": { "type": "string" },
+            "provider_name": { "type": "string" },
+            "estimated_cost": { "type": "number", "description": "Total estimated cost" },
+            "cost_breakdown": {
+              "type": "object",
+              "properties": {
+                "service_fee": { "type": "number" },
+                "parts_cost": { "type": "number" },
+                "labor_cost": { "type": "number" },
+                "tax": { "type": "number" }
+              }
+            },
+            "currency": { "type": "string" },
+            "quote_valid_until": { "type": "string", "description": "ISO datetime when quote expires" },
+            "available_time_slots": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "date": { "type": "string", "description": "ISO date" },
+                  "time_window": { "type": "string", "description": "e.g., '09:00-12:00'" }
+                }
+              }
+            },
+            "estimated_duration": { "type": "string", "description": "e.g., '2 hours', '3-4 hours'" },
+            "warranty_info": {
+              "type": "object",
+              "properties": {
+                "parts_warranty": { "type": "string" },
+                "labor_warranty": { "type": "string" }
+              }
+            }
+          },
+          "required": ["quote_id", "provider_id", "provider_name", "estimated_cost", "currency"]
+        }
+      }
+    },
+    "schedule_service": {
+      "description": "Book a service appointment. Can use a quote_id from request_quote or provide provider_id and service details directly.",
+      "parameters": {
+        "quote_id": {
+          "type": "string",
+          "description": "Quote identifier from request_quote. If provided, uses quote details.",
+          "required": false
+        },
+        "provider_id": {
+          "type": "string",
+          "description": "Provider identifier. Required if quote_id not provided.",
+          "required": false
+        },
+        "service_type": {
+          "type": "string",
+          "description": "Type of service: plumbing, electrical, or hvac. Required if quote_id not provided.",
+          "required": false,
+          "enum": ["plumbing", "electrical", "hvac"]
+        },
+        "service_description": {
+          "type": "string",
+          "description": "Description of service needed. Required if quote_id not provided.",
+          "required": false
+        },
+        "location": {
+          "type": "string",
+          "description": "Full service address. Required if quote_id not provided.",
+          "required": false
+        },
+        "scheduled_date": {
+          "type": "string",
+          "description": "Scheduled service date (YYYY-MM-DD)",
+          "required": true
+        },
+        "scheduled_time_window": {
+          "type": "string",
+          "description": "Scheduled time window, e.g., '09:00-12:00', 'morning', 'afternoon'",
+          "required": true
+        },
+        "contact_info": {
+          "type": "object",
+          "description": "Customer contact information",
+          "required": true,
+          "properties": {
+            "name": { "type": "string", "required": true },
+            "phone": { "type": "string", "required": true },
+            "email": { "type": "string", "required": false }
+          }
+        },
+        "payment_method_id": {
+          "type": "string",
+          "description": "Saved payment method identifier. Optional - can be provided at service time.",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "service_id": { "type": "string", "description": "Unique service identifier" },
+          "confirmation_code": { "type": "string", "description": "Booking confirmation code" },
+          "provider_name": { "type": "string" },
+          "service_type": { "type": "string" },
+          "scheduled_datetime": { "type": "string", "description": "ISO datetime" },
+          "estimated_duration": { "type": "string" },
+          "estimated_cost": { "type": "number" },
+          "currency": { "type": "string" },
+          "service_status": {
+            "type": "string",
+            "enum": ["scheduled", "confirmed", "in_progress", "completed", "cancelled"],
+            "description": "Current service status"
+          },
+          "provider_contact_info": {
+            "type": "object",
+            "properties": {
+              "phone": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "cancellation_policy": {
+            "type": "object",
+            "properties": {
+              "cancellation_deadline": { "type": "string", "description": "ISO datetime" },
+              "cancellation_fee": { "type": "number" },
+              "refund_policy": { "type": "string" }
+            }
+          }
+        },
+        "required": ["service_id", "confirmation_code", "scheduled_datetime", "service_status"]
+      }
+    },
+    "find_service": {
+      "description": "Locate services by service_id, confirmation_code, email, phone, or date range. Works for past, present, and future services.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": false
+        },
+        "confirmation_code": {
+          "type": "string",
+          "description": "Booking confirmation code",
+          "required": false
+        },
+        "email": {
+          "type": "string",
+          "description": "Customer email address",
+          "required": false
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer phone number",
+          "required": false
+        },
+        "date_range": {
+          "type": "object",
+          "description": "Date range to search within",
+          "required": false,
+          "properties": {
+            "start_date": { "type": "string", "description": "ISO date" },
+            "end_date": { "type": "string", "description": "ISO date" }
+          }
+        },
+        "status": {
+          "type": "string",
+          "description": "Filter by status",
+          "required": false,
+          "enum": ["scheduled", "confirmed", "in_progress", "completed", "cancelled"]
+        },
+        "service_type": {
+          "type": "string",
+          "description": "Filter by service type",
+          "required": false,
+          "enum": ["plumbing", "electrical", "hvac"]
+        }
+      },
+      "returns": {
+        "type": "array",
+        "description": "List of matching services",
+        "items": {
+          "type": "object",
+          "properties": {
+            "service_id": { "type": "string" },
+            "confirmation_code": { "type": "string" },
+            "service_type": { "type": "string" },
+            "provider_name": { "type": "string" },
+            "scheduled_datetime": { "type": "string", "description": "ISO datetime" },
+            "status": { "type": "string" },
+            "location": { "type": "string" },
+            "estimated_cost": { "type": "number" },
+            "currency": { "type": "string" }
+          },
+          "required": ["service_id", "confirmation_code", "service_type", "status"]
+        }
+      }
+    },
+    "get_service_details": {
+      "description": "Get full details of a service including status, scheduled time, provider info, costs, policies, and refund information if applicable.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "service_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "service_type": { "type": "string" },
+          "service_description": { "type": "string" },
+          "provider_id": { "type": "string" },
+          "provider_name": { "type": "string" },
+          "scheduled_datetime": { "type": "string", "description": "ISO datetime" },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "confirmed", "in_progress", "completed", "cancelled"]
+          },
+          "location": { "type": "string" },
+          "contact_info": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "phone": { "type": "string" },
+              "email": { "type": "string" }
+            }
+          },
+          "estimated_cost": { "type": "number" },
+          "actual_cost": { "type": "number", "description": "Final cost if service completed" },
+          "currency": { "type": "string" },
+          "cancellation_policy": {
+            "type": "object",
+            "properties": {
+              "cancellation_deadline": { "type": "string", "description": "ISO datetime" },
+              "cancellation_fee": { "type": "number" },
+              "refund_policy": { "type": "string" }
+            }
+          },
+          "reschedule_policy": {
+            "type": "object",
+            "properties": {
+              "reschedule_deadline": { "type": "string", "description": "ISO datetime" },
+              "reschedule_fee": { "type": "number" }
+            }
+          },
+          "refund_info": {
+            "type": "object",
+            "description": "Refund information if refund was requested",
+            "properties": {
+              "refund_request_id": { "type": "string" },
+              "refund_status": {
+                "type": "string",
+                "enum": ["pending", "approved", "rejected", "processed"]
+              },
+              "requested_amount": { "type": "number" },
+              "approved_amount": { "type": "number" },
+              "refund_method": { "type": "string" },
+              "refund_timeline": { "type": "string" }
+            }
+          }
+        },
+        "required": ["service_id", "confirmation_code", "service_type", "status"]
+      }
+    },
+    "update_service": {
+      "description": "Update a scheduled service: reschedule to a new date/time or cancel the service.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": true
+        },
+        "action": {
+          "type": "string",
+          "description": "Action to perform: reschedule or cancel",
+          "required": true,
+          "enum": ["reschedule", "cancel"]
+        },
+        "new_date": {
+          "type": "string",
+          "description": "New service date (YYYY-MM-DD). Required if action is reschedule.",
+          "required": false
+        },
+        "new_time_window": {
+          "type": "string",
+          "description": "New time window. Required if action is reschedule.",
+          "required": false
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for reschedule or cancellation. Optional.",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "service_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "action": { "type": "string", "enum": ["rescheduled", "cancelled"] },
+          "updated_scheduled_datetime": {
+            "type": "string",
+            "description": "New scheduled datetime if rescheduled. ISO datetime."
+          },
+          "status": { "type": "string" },
+          "reschedule_fee": { "type": "number", "description": "Fee charged for reschedule, if applicable" },
+          "cancellation_fee": { "type": "number", "description": "Fee charged for cancellation, if applicable" },
+          "refund_amount": {
+            "type": "number",
+            "description": "Refund amount if cancelled and eligible for refund"
+          },
+          "refund_timeline": { "type": "string", "description": "Expected refund processing time" },
+          "currency": { "type": "string" }
+        },
+        "required": ["service_id", "action", "status"]
+      }
+    },
+    "get_invoice": {
+      "description": "Get invoice or receipt for a completed service. Returns detailed billing information including line items, payment details, and PDF download link.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": true
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "invoice_id": { "type": "string", "description": "Unique invoice identifier" },
+          "service_id": { "type": "string" },
+          "confirmation_code": { "type": "string" },
+          "provider_name": { "type": "string" },
+          "service_date": { "type": "string", "description": "ISO date" },
+          "service_type": { "type": "string" },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "quantity": { "type": "number" },
+                "unit_price": { "type": "number" },
+                "total": { "type": "number" }
+              },
+              "required": ["description", "total"]
+            }
+          },
+          "subtotal": { "type": "number" },
+          "tax": { "type": "number" },
+          "fees": { "type": "number", "description": "Additional fees" },
+          "total": { "type": "number" },
+          "currency": { "type": "string" },
+          "payment_method": { "type": "string", "description": "e.g., 'Credit Card ending in 1234'" },
+          "payment_status": {
+            "type": "string",
+            "enum": ["pending", "paid", "refunded", "partially_refunded"]
+          },
+          "paid_at": { "type": "string", "description": "ISO datetime when payment was processed" },
+          "invoice_pdf_url": { "type": "string", "description": "URL to download invoice PDF" }
+        },
+        "required": ["invoice_id", "service_id", "total", "currency", "payment_status"]
+      }
+    },
+    "get_refund_estimate": {
+      "description": "Get an estimate of refund amount for a service before requesting a refund. Shows refundable vs non-refundable amounts and any fees.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": true
+        },
+        "refund_reason": {
+          "type": "string",
+          "description": "Reason for refund request",
+          "required": true
+        },
+        "refund_type": {
+          "type": "string",
+          "description": "Type of refund: full or partial",
+          "required": true,
+          "enum": ["full", "partial"]
+        },
+        "partial_amount": {
+          "type": "number",
+          "description": "Requested refund amount if refund_type is partial",
+          "required": false
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "service_id": { "type": "string" },
+          "refund_estimate": { "type": "number", "description": "Estimated refund amount" },
+          "refundable_amount": { "type": "number", "description": "Amount eligible for refund" },
+          "non_refundable_amount": { "type": "number", "description": "Amount not eligible for refund" },
+          "refund_fees": { "type": "number", "description": "Fees deducted from refund, if any" },
+          "currency": { "type": "string" },
+          "refund_timeline": { "type": "string", "description": "e.g., '7-10 business days'" },
+          "refund_method": {
+            "type": "string",
+            "enum": ["original_payment", "store_credit"],
+            "description": "How refund will be processed"
+          },
+          "refund_policy": { "type": "string", "description": "Explanation of refund eligibility" }
+        },
+        "required": ["service_id", "refund_estimate", "currency"]
+      }
+    },
+    "request_refund": {
+      "description": "Submit a refund request for a service. Returns refund request ID and status.",
+      "parameters": {
+        "service_id": {
+          "type": "string",
+          "description": "Unique service identifier",
+          "required": true
+        },
+        "refund_reason": {
+          "type": "string",
+          "description": "Detailed reason for refund request",
+          "required": true
+        },
+        "refund_type": {
+          "type": "string",
+          "description": "Type of refund: full or partial",
+          "required": true,
+          "enum": ["full", "partial"]
+        },
+        "amount": {
+          "type": "number",
+          "description": "Requested refund amount. Required if refund_type is partial.",
+          "required": false
+        },
+        "contact_info": {
+          "type": "object",
+          "description": "Contact information for refund processing",
+          "required": true,
+          "properties": {
+            "email": { "type": "string", "required": true },
+            "phone": { "type": "string", "required": false }
+          }
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "refund_request_id": { "type": "string", "description": "Unique refund request identifier" },
+          "service_id": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"],
+            "description": "Initial refund request status"
+          },
+          "requested_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "estimated_timeline": { "type": "string", "description": "Expected processing time" },
+          "refund_method": { "type": "string", "description": "How refund will be processed" },
+          "message": { "type": "string", "description": "Additional information or next steps" }
+        },
+        "required": ["refund_request_id", "service_id", "status", "requested_amount"]
+      }
+    }
+  }
+}
+

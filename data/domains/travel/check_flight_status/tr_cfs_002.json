@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "domain": "travel",
+    "use_case": "check_flight_status",
+    "scenario_id": "tr_cfs_002"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "departure_date": "2025-11-25",
+        "origin": "Philadelphia",
+        "destination": "Chicago"
+      },
+      "preferences": {}
+    },
+    "success_criteria": {
+      "target_selector": {
+        "departure_date": "2025-11-25",
+        "origin": "Philadelphia",
+        "destination": "Chicago"
+      },
+      "action": "get_flight_status",
+      "notes": "Success if the assistant found the booking using find_booking, then checked the flight status using get_flight_status for the flight on 2025-11-25 from Philadelphia to Chicago, and communicated the delay information to the user."
+    },
+    "objective": "Check if my flight to Chicago is delayed."
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.invalid_input",
+        "instructions": "When asked for the confirmation code, initially provide a typo: say 'UA9K2M5' instead of 'UA9K2M4'. After the assistant indicates no booking found or asks for clarification, correct yourself and provide the correct confirmation code 'UA9K2M4'."
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "bookings": [
+          {
+            "booking_id": "BK-UA1234-20251125",
+            "confirmation_code": "UA9K2M4",
+            "booking_type": "flight",
+            "status": "confirmed",
+            "created_at": "2025-10-15T10:20:00Z",
+            "primary_passenger": {
+              "name": "Jennifer Walsh",
+              "email": "jennifer.walsh@example.com"
+            },
+            "summary": {
+              "departure_date": "2025-11-25",
+              "destination": "Chicago",
+              "total_price": 385.0,
+              "currency": "USD"
+            }
+          }
+        ],
+        "flight_statuses": [
+          {
+            "flight_number": "UA1234",
+            "airline": "United Airlines",
+            "date": "2025-11-25",
+            "status": "delayed",
+            "scheduled_departure": "2025-11-25T14:00:00Z",
+            "actual_departure": null,
+            "scheduled_arrival": "2025-11-25T15:45:00Z",
+            "actual_arrival": null,
+            "departure_gate": "C22",
+            "departure_terminal": "C",
+            "arrival_gate": "B15",
+            "arrival_terminal": "B",
+            "delay_reason": "Aircraft maintenance",
+            "delay_minutes": 45
+          }
+        ]
+      }
+    },
+    "injected_behaviors": []
+  },
+  "persona": "persona_046"
+}
+

@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "domain": "calendar_assistant",
+    "use_case": "reschedule_meeting",
+    "scenario_id": "ca_rm_004"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "meeting_title": "City Planning Committee",
+        "original_date": "2025-12-10",
+        "new_preferred_date": "2025-12-11"
+      },
+      "preferences": {
+        "preferred_day": "Thursday"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "meeting_title": "City Planning Committee",
+        "original_date": "2025-12-10"
+      },
+      "action": "update_meeting",
+      "notes": "Success if the assistant reschedules the City Planning Committee meeting from 2025-12-10 to 2025-12-11 via update_meeting."
+    },
+    "objective": "Reschedule the city planning committee meeting"
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "existing_meeting": {
+          "event_id": "EVT-013",
+          "title": "City Planning Committee",
+          "start_time": "2025-12-10T16:00:00Z",
+          "end_time": "2025-12-10T17:00:00Z",
+          "attendees": [
+            "tom.kowalski@madison.gov",
+            "lars.bergstrom@gmail.com"
+          ],
+          "location": "City Hall"
+        },
+        "available_slots": [
+          {
+            "start": "2025-12-11T16:00:00Z",
+            "end": "2025-12-11T17:00:00Z",
+            "all_available": true
+          }
+        ]
+      }
+    },
+    "injected_behaviors": [
+      {
+        "instructions": "When update_meeting is called, return an HTTP 500 server error on the first attempt. On retry, succeed normally.",
+        "type_id": "tool.timeout"
+      }
+    ]
+  },
+  "persona": "persona_006"
+}

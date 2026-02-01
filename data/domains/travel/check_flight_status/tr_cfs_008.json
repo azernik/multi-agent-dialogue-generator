@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "domain": "travel",
+    "use_case": "check_flight_status",
+    "scenario_id": "tr_cfs_008"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "flight_number": "DL2847",
+        "date": "2025-10-15"
+      },
+      "preferences": {}
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that the flight status service is temporarily unavailable due to a server error, and suggest reasonable alternatives (retry later, use the airline's website or app, or contact the airline directly).",
+    "success_criteria": {
+      "target_selector": {
+        "flight_number": "DL2847",
+        "date": "2025-10-15"
+      },
+      "action": "get_flight_status",
+      "notes": "This is an impossible scenario. Success means the assistant clearly explains that the flight status service is temporarily unavailable due to a server error and suggests reasonable alternatives (retry later, use airline website/app, or contact airline directly) as specified in fallback_behavior. The assistant should NOT claim to have retrieved flight status when the service is unavailable."
+    },
+    "objective": "Check the status of my flight DL2847 on October 15th. I'm traveling for a professional development conference."
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "bookings": [
+          {
+            "booking_id": "BK-DL2847-20251015",
+            "confirmation_code": "DL7K9M2",
+            "booking_type": "flight",
+            "status": "confirmed",
+            "created_at": "2025-09-20T14:30:00Z",
+            "primary_passenger": {
+              "name": "Jordan Reeves",
+              "email": "jordan.reeves@example.com"
+            },
+            "summary": {
+              "departure_date": "2025-10-15",
+              "destination": "San Diego",
+              "total_price": 425.0,
+              "currency": "USD"
+            }
+          }
+        ],
+        "flight_statuses": []
+      }
+    },
+    "injected_behaviors": [
+      {
+        "instructions": "When check_flight_status is called, always return an HTTP 500 server error indicating the service is temporarily unavailable, regardless of the flight number, date, or other parameters provided.",
+        "type_id": "tool.server_error"
+      }
+    ]
+  },
+  "persona": "persona_045"
+}

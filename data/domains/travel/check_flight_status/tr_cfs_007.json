@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "domain": "travel",
+    "use_case": "check_flight_status",
+    "scenario_id": "tr_cfs_007"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "flight_number": "AA9999",
+        "date": "2025-12-20"
+      },
+      "preferences": {}
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that the flight number AA9999 does not exist in the system for the specified date, and suggest reasonable alternatives (verify the flight number, check the date, or use a confirmation code via find_booking if available).",
+    "success_criteria": {
+      "target_selector": {
+        "flight_number": "AA9999",
+        "date": "2025-12-20"
+      },
+      "action": "get_flight_status",
+      "notes": "This is an impossible scenario. Success means the assistant clearly explains that flight number AA9999 does not exist for 2025-12-20 and suggests reasonable alternatives (verify the flight number, check the date, or use a confirmation code via find_booking) as specified in fallback_behavior. The assistant should NOT claim to have retrieved flight status for a non-existent flight."
+    },
+    "objective": "Check the status of my flight AA9999 on December 20th. I'm traveling for a museum conference."
+  },
+  "user_agent": {
+    "injected_behaviors": []
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "bookings": [],
+        "flight_statuses": []
+      }
+    },
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results",
+        "instructions": "For any get_flight_status calls with flight_number='AA9999' and date='2025-12-20', return an error indicating the flight does not exist. The flight number is invalid and does not match any scheduled flights."
+      }
+    ]
+  },
+  "persona": "persona_044"
+}
+

@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "domain": "home_services",
+    "use_case": "request_refund",
+    "scenario_id": "hs_rf_002"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "service_type": "hvac",
+        "service_date": "2025-10-15"
+      },
+      "preferences": {
+        "refund_reason": "unsatisfactory work"
+      }
+    },
+    "impossible": true,
+    "fallback_behavior": "Explain clearly that the refund window has expired (30 days from service completion) and the service completed on 2025-10-15 is outside this window. Suggest reasonable alternatives if available (contact provider directly, check warranty, or file a complaint).",
+    "success_criteria": {
+      "target_selector": {
+        "service_type": "hvac",
+        "service_date": "2025-10-15"
+      },
+      "action": "request_refund",
+      "notes": "This is an impossible scenario. Success means the assistant notified the user that the refund deadline has passed and a refund is no longer available."
+    },
+    "objective": "Request a refund for my HVAC service"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "instructions": "The user knows the approximate service date and service type, but doesn't know the exact service_id or confirmation_code.",
+        "type_id": "user.partial_information"
+      }
+    ]
+  },
+  "tool_agent": {
+    "context": {
+      "seed": {
+        "services": [
+          {
+            "service_id": "SRV-HVAC-002",
+            "confirmation_code": "HVAC-MNO345",
+            "service_type": "hvac",
+            "service_description": "Annual HVAC maintenance",
+            "provider_id": "HVAC-005",
+            "provider_name": "Climate Control Experts",
+            "scheduled_datetime": "2025-10-15T10:00:00Z",
+            "completed_datetime": "2025-10-15T14:00:00Z",
+            "status": "completed",
+            "location": "567 Riverfront Boulevard, New Orleans, LA 70112",
+            "contact_info": {
+              "name": "Keisha Brown",
+              "phone": "(504) 555-2931",
+              "email": "keisha.brown@usace.army.mil"
+            },
+            "estimated_cost": 150.00,
+            "actual_cost": 150.00,
+            "currency": "USD",
+            "payment_status": "paid",
+            "paid_at": "2025-10-15T14:30:00Z",
+            "refund_policy": {
+              "refund_window": "30 days from service completion",
+              "refund_deadline": "2025-11-14T14:00:00Z",
+              "refund_eligibility": "Full refund if service was unsatisfactory or not completed as described, within refund window"
+            }
+          }
+        ]
+      }
+    },
+    "injected_behaviors": [
+      {
+        "instructions": "When get_refund_estimate or request_refund is called for service_id SRV-HVAC-002, return an error indicating the refund window has expired. The service completed on 2025-10-15, and the refund deadline was 2025-11-14 (30 days from completion). Today's date is 2025-12-03, which is outside the refund window.",
+        "type_id": "tool.refund_window_expired"
+      }
+    ]
+  },
+  "persona": "persona_027"
+}
+

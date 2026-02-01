@@ -255,44 +255,23 @@ class ConversationRunner:
             # Build context and get assistant output for the current micro-step
             system_context = self.build_system_context(turn_number)
             
-            # Retry loop with syntax validation
-            max_retries = 3
-            system_response = None
-            micro_step_index = len(steps)
-            is_first_step = (micro_step_index == 0)
+            # Retry loop disabled - single attempt with syntax check logging only
+            system_response = self.system_agent.generate_response(system_context)
+            self.logger.info(f"system_agent response: {system_response}\n")
             
-            for retry_attempt in range(max_retries):
-                system_response = self.system_agent.generate_response(system_context)
-                self.logger.info(f"system_agent response: {system_response}\n")
-                
-                # Validate syntax
-                is_valid, errors = self._validate_assistant_response(
-                    system_response,
-                    turn_id,
-                    micro_step_index,
-                    is_first_step
-                )
-                
-                if is_valid:
-                    break
-                
-                # Log retry attempt with error details
+            # Log syntax errors for debugging, but do not retry
+            is_valid, errors = self._validate_assistant_response(
+                system_response,
+                turn_id,
+                len(steps),
+                (len(steps) == 0)
+            )
+            
+            if not is_valid:
                 error_names = ", ".join(errors) if errors else "unknown_error"
                 self.logger.warning(
-                    f"Retrying assistant message due to error {error_names}, turn {turn_id}.{micro_step_index + 1}"
+                    f"Syntax error(s) detected (ignoring): {error_names}, turn {turn_id}.{len(steps) + 1}"
                 )
-                
-                # If this is the last retry, log warning but use the response anyway
-                if retry_attempt == max_retries - 1:
-                    self.logger.warning(
-                        f"Max retries ({max_retries}) exceeded for turn {turn_id}.{micro_step_index + 1}, "
-                        f"proceeding with response despite errors: {error_names}"
-                    )
-                    break
-            
-            # Safety check: ensure system_response was set (should always be true)
-            if system_response is None:
-                raise RuntimeError(f"Failed to generate system response after {max_retries} retries")
             
             system_messages_raw.append(system_response)
             if self.has_tool_call(system_response):

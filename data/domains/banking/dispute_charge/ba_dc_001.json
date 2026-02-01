@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "dispute_charge",
+    "scenario_id": "ba_dc_001"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_account": "credit_card",
+        "merchant_query": "Best Buy",
+        "amount": 249.99,
+        "transaction_date": "November 2nd"
+      },
+      "preferences": {
+        "dispute_reason": "charged twice for same purchase"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "merchant_query": "Best Buy",
+        "amount": 249.99,
+        "transaction_date": "2025-11-02"
+      },
+      "action": "submit_dispute",
+      "notes": "Success if the assistant submits a dispute via submit_dispute for the Best Buy transaction of $249.99 on November 2nd (after finding it via list_recent_transactions, accounting for the user's initial date uncertainty)."
+    },
+    "objective": "Dispute a fraudulent or incorrect charge"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.uncertain_date",
+        "instructions": "Initially state the transaction date as November 3rd. When the assistant reports no match for that date but finds a transaction on November 2nd, realize that was the correct date."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results_suggest_alternative",
+        "instructions": "When searching for transactions on November 3rd with merchant Best Buy, return no results but indicate there is a matching transaction on November 2nd."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-001",
+            "account_type": "credit_card",
+            "nickname": "Rewards Card",
+            "masked_number": "****4321",
+            "currency": "USD"
+          }
+        ],
+        "transactions": [
+          {
+            "transaction_id": "TXN-001",
+            "account_id": "ACC-001",
+            "posted_date": "2025-11-02",
+            "amount": -249.99,
+            "currency": "USD",
+            "description": "Best Buy",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-004",
+            "account_id": "ACC-001",
+            "posted_date": "2025-11-02",
+            "amount": -249.99,
+            "currency": "USD",
+            "description": "Best Buy",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-002",
+            "account_id": "ACC-001",
+            "posted_date": "2025-11-01",
+            "amount": -45.67,
+            "currency": "USD",
+            "description": "Starbucks",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-003",
+            "account_id": "ACC-001",
+            "posted_date": "2025-10-30",
+            "amount": -89.23,
+            "currency": "USD",
+            "description": "Amazon",
+            "status": "posted"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_010"
+}

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 import json
-import os
+import sys
 from pathlib import Path
 
 
@@ -200,6 +200,7 @@ class ExampleScenario:
         if toolset_path:
             # Resolve toolset path relative to scenario file's directory
             toolset_file = (scenario_file.parent / toolset_path).resolve()
+            print(f"[DEBUG] Loading toolset from: {toolset_file}", file=sys.stderr)
             with open(toolset_file, 'r') as tf:
                 toolset_data = json.load(tf)
             if isinstance(toolset_data, dict) and 'tools' in toolset_data and isinstance(toolset_data['tools'], dict):
@@ -208,6 +209,8 @@ class ExampleScenario:
                 tools = toolset_data if isinstance(toolset_data, dict) else {}
         else:
             tools = scenario_data.get('tools', {})
+            
+        print(f"[DEBUG] Loaded {len(tools)} tools.", file=sys.stderr)
         
         # Load global behavior types catalog if available
         behavior_types_index: Dict[str, Any] = {}

@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import logging
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Tuple, Dict, List, Optional, Any
 from dotenv import load_dotenv
 
-from core import LLMClient, ConversationContext
+from core import LLMClient, HuggingFaceLLMClient, ConversationContext
 from agents import SystemAgent, UserAgent, ToolAgent
 from scenario import ExampleScenario, load_system_prompts, resolve_scenario_id, resolve_scenario_target, resolve_scenario_pattern
 from runner import ConversationRunner, ConversationResult
@@ -69,11 +70,12 @@ def _prepare_persona_context(
 
     return persona_context, task_override, persona_id
 
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments(args_list: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run multi-agent conversation simulation')
     parser.add_argument('targets', nargs='+', help='Scenario file paths or scenario IDs (e.g., ca_oe_005__persona_001)')
-    parser.add_argument('--model', default='gpt-5.1', help='LLM model to use')
+    parser.add_argument('--model', default='gpt-5.1', help='LLM model to use for system agent (assistant)')
+    parser.add_argument('--user-model', help='LLM model to use for user agent (defaults to --model if not specified)')
     parser.add_argument('--max-turns', type=int, default=20, help='Maximum conversation turns')
     parser.add_argument('--api-key', help='OpenAI API key (default: OPENAI_API_KEY env var)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose console output')
@@ -93,7 +95,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--eval-model', default='gpt-5.1', help='Model to use for evaluation (default: gpt-5.1)')
     parser.add_argument('--skip-faithfulness', action='store_true', help='Skip faithfulness evaluation when running --run-eval')
     parser.add_argument('--skip-role-confusion', action='store_true', help='Skip role confusion evaluation when running --run-eval')
-    return parser.parse_args()
+    parser.add_argument('--hf-model', help='HuggingFace model name/path (enables HF mode, e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
+    parser.add_argument('--hf-base-model', help='Base model name if using LoRA (e.g., Qwen/Qwen2.5-7B-Instruct)')
+    parser.add_argument('--hf-tokenizer', help='Tokenizer source (defaults to --hf-model). Use SFT model tokenizer for RL models (e.g., ajChakrarborty/custom-qwen2.5-7b-instruct-ft-1)')
+    parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization for HF models')
+    return parser.parse_args(args_list)
 
 def _resolve_outputs_root(example_path: str, cli_outputs_root: str | None) -> Path:
     """Resolve outputs root directory with CLI > env > default precedence."""
@@ -187,6 +193,10 @@ def setup_logging(
     agent_flow_file = run_dir / "agent_flow.log"
     
     # Configure logging
+    root = logging.getLogger()
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+        
     logging.basicConfig(
         level=logging.INFO,
         format='%(levelname)s:  %(message)s',
@@ -282,37 +292,38 @@ def load_scenario_and_prompts(example_path: str, args: argparse.Namespace) -> Tu
         
     except FileNotFoundError as e:
         print(f"Error: Could not find required files: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Could not find required files: {e}")
     except Exception as e:
         print(f"Error loading scenario: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Error loading scenario: {e}")
 
 def create_agents(scenario: ExampleScenario, 
                  system_prompts: Dict[str, str], 
-                 llm_client: LLMClient,
+                 system_llm_client: LLMClient,
+                 aux_llm_client: LLMClient,
                  flow_logger=None) -> Tuple[SystemAgent, UserAgent, ToolAgent]:
     """Create the three agents with appropriate configurations"""
     try:
-        # Create SystemAgent with raw tools JSON
+        # Create SystemAgent with designated system client (HF or OpenAI)
         system_agent = SystemAgent(
             system_prompts['system_agent'],
-            llm_client,
+            system_llm_client,
             scenario.tools
         )
         system_agent.flow_logger = flow_logger
         
-        # Create UserAgent with new user_agent JSON
+        # Create UserAgent with auxiliary client (always OpenAI/default)
         user_agent = UserAgent(
             system_prompts['user_agent'],
-            llm_client,
+            aux_llm_client,
             scenario.user_agent
         )
         user_agent.flow_logger = flow_logger
         
-        # Create ToolAgent with raw tools JSON
+        # Create ToolAgent with auxiliary client (always OpenAI/default)
         tool_agent = ToolAgent(
             system_prompts['tool_agent'],
-            llm_client,
+            aux_llm_client,
             scenario.tools
         )
         tool_agent.flow_logger = flow_logger
@@ -321,7 +332,7 @@ def create_agents(scenario: ExampleScenario,
         
     except Exception as e:
         print(f"Error creating agents: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Error creating agents: {e}")
 
 
 def attach_prompt_recorders(
@@ -819,6 +830,29 @@ def _infer_domain_id(example_path: str) -> Optional[str]:
         pass
     return None
 
+def _fix_missing_action_closing_tag(output_raw: str) -> str:
+    """Fix missing </action> closing tag in output_raw.
+    
+    If output_raw contains an opening <action> tag but no closing </action> tag,
+    append </action> to the end.
+    """
+    if not output_raw or not isinstance(output_raw, str):
+        return output_raw
+    
+    # Check if there's an opening <action> tag
+    has_opening_action = bool(re.search(r'<action\s+[^>]*>', output_raw))
+    
+    if has_opening_action:
+        # Check if there's a closing </action> tag
+        has_closing_action = '</action>' in output_raw
+        
+        if not has_closing_action:
+            print(f"ADDING CLOSING </action> TAG")
+            # Append the closing tag
+            return output_raw + '</action>'
+    
+    return output_raw
+
 def write_single_conversation_file(
     result: ConversationResult,
     scenario: ExampleScenario,
@@ -860,6 +894,12 @@ def write_single_conversation_file(
         user_text = t.get('user', '')
         assistant_obj = t.get('assistant', {}) or {}
         steps = assistant_obj.get('steps', []) or []
+        
+        # Fix missing </action> closing tags in steps
+        for step in steps:
+            if 'output_raw' in step and step['output_raw']:
+                step['output_raw'] = _fix_missing_action_closing_tag(step['output_raw'])
+        
         # User message
         messages.append({
             'turn_id': turn_id,
@@ -904,12 +944,32 @@ def write_single_conversation_file(
         json.dump(conversation_obj, f, indent=2)
     return str(conversation_file)
 
-def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
+def run_simulation(example_path: str, args: argparse.Namespace, system_llm_client: Optional[LLMClient] = None) -> Dict[str, Any]:
     """Run a single simulation for the given scenario path.
     
+    Args:
+        example_path: Path to scenario JSON
+        args: Parsed arguments
+        system_llm_client: Optional pre-loaded LLM client to reuse
+    
     Returns:
-        Exit code (0 for success, 1 for failure)
+        Dictionary containing run results:
+        {
+            "exit_code": int,
+            "success": bool,
+            "conversation_file": str,
+            "output_dir": str,
+            "eval_results": dict (optional),
+            "error": str (optional)
+        }
     """
+    result_info = {
+        "exit_code": 1,
+        "success": False,
+        "conversation_file": None,
+        "output_dir": None
+    }
+    
     try:
         # Resolve outputs root
         outputs_root = _resolve_outputs_root(example_path, args.outputs_root)
@@ -935,14 +995,49 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         logger = logging.getLogger(__name__)
         # Reduced verbosity - initialization messages only logged to file, not console
         
-        # Initialize LLM client
+        # Initialize Auxiliary LLM client (OpenAI) - Always required for User/Tool agents
         api_key = args.api_key or os.getenv('OPENAI_API_KEY')
         if not api_key:
             logger.error("OpenAI API key required")
             print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
-            sys.exit(1)
+            result_info["error"] = "OpenAI API key required"
+            return result_info
             
-        llm_client = LLMClient(model=args.model, api_key=api_key)
+        # Use --user-model if specified, otherwise use --model
+        user_model = args.user_model or args.model
+        aux_llm_client = LLMClient(model=user_model, api_key=api_key)
+        
+        # Initialize System LLM client (HF or OpenAI) if not provided
+        if system_llm_client:
+            # Use provided client
+            pass
+        elif args.hf_model:
+            # HuggingFace model mode
+            try:
+                system_llm_client = HuggingFaceLLMClient(
+                    model_name=args.hf_model,
+                    base_model=args.hf_base_model,
+                    tokenizer_name=args.hf_tokenizer,
+                    load_in_4bit=not args.no_4bit
+                )
+            except ImportError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                result_info["error"] = str(e)
+                return result_info
+            except Exception as e:
+                logger.error(f"Failed to load HuggingFace model: {e}")
+                print(f"Error: Failed to load HuggingFace model: {e}", file=sys.stderr)
+                result_info["error"] = str(e)
+                return result_info
+        else:
+            # OpenAI API mode (default)
+            system_llm_client = aux_llm_client
+            
+        # Determine model name for metadata
+        if args.hf_model:
+            model_name_for_metadata = args.hf_model
+        else:
+            model_name_for_metadata = args.model
         
         prompt_captures: Dict[str, Optional[Dict[str, Any]]] = {
             "system_agent": None,
@@ -953,7 +1048,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
         # Create agents; only open flow logger in debug mode
         if args.debug_transcripts:
             with open(agent_flow_file, 'w') as flow_logger:
-                system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, flow_logger)
+                system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, system_llm_client, aux_llm_client, flow_logger)
                 attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
                 runner = ConversationRunner(
                     scenario,
@@ -967,7 +1062,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
                 )
                 result = runner.run_conversation()
         else:
-            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, llm_client, None)
+            system_agent, user_agent, tool_agent = create_agents(scenario, system_prompts, system_llm_client, aux_llm_client, None)
             attach_prompt_recorders(system_agent, user_agent, tool_agent, prompt_captures)
             runner = ConversationRunner(
                 scenario,
@@ -1000,7 +1095,7 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             scenario=scenario,
             example_path=example_path,
             output_dir=run_dir,
-            model=args.model,
+            model=model_name_for_metadata,
             prompt_versions=prompt_versions,
             timestamp=timestamp,
             scenario_id=scenario_id,
@@ -1280,11 +1375,21 @@ def _run_single_simulation(example_path: str, args: argparse.Namespace) -> int:
             print(f"{conversation_path}", file=sys.stderr)
 
         # Exit with appropriate code
-        return 0 if result.success else 1
+        result_info["exit_code"] = 0 if result.success else 1
+        result_info["success"] = result.success
+        result_info["conversation_file"] = str(conversation_file)
+        result_info["output_dir"] = str(run_dir)
+        if args.run_eval:
+             result_info["eval_results"] = eval_output_data
+             result_info["eval_success"] = eval_overall_success
+             result_info["copied_to_valid"] = str(eval_copied_to_valid) if eval_copied_to_valid else None
+             
+        return result_info
         
     except Exception as e:
         print(f"Unexpected error running simulation: {e}", file=sys.stderr)
-        return 1
+        result_info["error"] = str(e)
+        return result_info
 
 
 def main():
@@ -1309,8 +1414,8 @@ def main():
         # Run simulation for each scenario
         exit_codes = []
         for scenario_path in scenario_paths:
-            exit_code = _run_single_simulation(str(scenario_path), args)
-            exit_codes.append(exit_code)
+            sim_result = run_simulation(str(scenario_path), args)
+            exit_codes.append(sim_result["exit_code"])
         
         # Exit with error if any simulation failed
         sys.exit(1 if any(code != 0 for code in exit_codes) else 0)
