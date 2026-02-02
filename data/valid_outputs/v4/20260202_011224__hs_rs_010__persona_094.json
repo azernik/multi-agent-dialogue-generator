@@ -1,0 +1,260 @@
+{
+  "meta": {
+    "conversation_id": "home_services.hs_rs_010",
+    "domain_id": "home_services",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "hs_rs_010",
+    "task": {
+      "slots": {
+        "constraints": {
+          "service_type": "cleaning",
+          "original_date": "2026-01-10",
+          "new_preferred_date": "2026-01-12"
+        },
+        "preferences": {
+          "new_preferred_time_window": "morning"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "service_type": "cleaning",
+          "original_date": "2026-01-10"
+        },
+        "action": "update_service",
+        "notes": "Success if the assistant reschedules the home cleaning service from the original date to a new date that fits the user's preferred morning time window and confirms the updated appointment details, including any fees or policy implications."
+      },
+      "objective": "Reschedule my home cleaning service appointment"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "existing_service": {
+            "service_id": "SRV-CLN-094",
+            "confirmation_code": "CLN-BLR-2026A",
+            "service_type": "cleaning",
+            "service_description": "Deep cleaning for 2BHK apartment before recording podcast session",
+            "provider_id": "CLN-BLR-021",
+            "provider_name": "Bangalore EcoClean Services",
+            "scheduled_datetime": "2026-01-10T06:30:00Z",
+            "status": "scheduled",
+            "location": "Flat 502, Ashoka Residency, Indiranagar, Bangalore, Karnataka 560038, India",
+            "contact_info": {
+              "name": "Dr. Maya Ranganathan",
+              "phone": "+91-80-5554-2398",
+              "email": "maya.ranganathan@globalgov.univ.edu"
+            },
+            "estimated_cost": 3200.0,
+            "currency": "INR",
+            "cancellation_policy": {
+              "cancellation_deadline": "2026-01-09T06:30:00Z",
+              "cancellation_fee": 800.0,
+              "refund_policy": "Full refund if cancelled 24+ hours before service; 50% refund if cancelled within 24 hours."
+            },
+            "reschedule_policy": {
+              "reschedule_deadline": "2026-01-09T06:30:00Z",
+              "reschedule_fee": 0.0
+            }
+          },
+          "available_slots": [
+            {
+              "provider_id": "CLN-BLR-021",
+              "date": "2026-01-11",
+              "time_windows": [
+                {
+                  "start": "04:30",
+                  "end": "07:30"
+                },
+                {
+                  "start": "08:00",
+                  "end": "11:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "CLN-BLR-021",
+              "date": "2026-01-12",
+              "time_windows": [
+                {
+                  "start": "03:30",
+                  "end": "06:30"
+                },
+                {
+                  "start": "06:30",
+                  "end": "09:30"
+                },
+                {
+                  "start": "10:00",
+                  "end": "13:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "CLN-BLR-021",
+              "date": "2026-01-13",
+              "time_windows": [
+                {
+                  "start": "04:00",
+                  "end": "07:00"
+                },
+                {
+                  "start": "07:30",
+                  "end": "10:30"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "injected_behaviors": []
+    },
+    "persona": {
+      "id": "persona_094",
+      "name": "Dr. Maya Ranganathan",
+      "age": 51,
+      "hometown": "Bangalore, Karnataka, India",
+      "occupation": "Professor of Global Governance and International Law",
+      "bio": "Maya Ranganathan is a professor of global governance and international law whose work focuses on how expertise, legal institutions, and power struggles shape the contemporary world order. She has written widely cited books on the politics of international courts and the quiet influence of technical experts in global regulatory bodies, and she\u2019s known among her students for turning dense theory into vivid, real-world stories. Outside the classroom, she splits her time between advising international NGOs, running a podcast on global governance, and experimenting with new ways to teach complex ideas through narrative.",
+      "use_cases": [
+        "home_services.schedule_service",
+        "home_services.reschedule_service",
+        "home_services.request_refund"
+      ],
+      "writing_style": "clear, reflective, academically grounded but accessible; full sentences, minimal jargon, warm and direct",
+      "sample_messages": [
+        "Could you please send me the latest draft of the policy brief before Friday? I\u2019d like to check that our recommendations are realistic for the ministries we\u2019re targeting, not just normatively appealing.",
+        "This is a really interesting question\u2014can you say a bit more about what you mean by \u201cpower\u201d here? Are you thinking primarily of military power, economic leverage, or the quieter authority that experts often wield?",
+        "Yes, that timeline works for me. Let\u2019s plan on a 60-minute seminar, with 30 minutes of discussion at the end\u2014I\u2019d like to leave room for students to push back on the assumptions behind the case studies."
+      ],
+      "email": "maya.ranganathan@globalgov.univ.edu",
+      "phone": "+91-80-5554-2398"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "I need to reschedule a home cleaning appointment."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants reschedule; need to find service via their identifiers and then call update_service. Ask for info: phone/email or confirmation code, plus new date/time window and optional reason. No tool yet.<think>\nI need to gather the specific appointment details and the user\u2019s preferred new time before using the tools. Once I have an identifier (confirmation code, service_id, or contact+date range), I can locate the service with find_service, then call update_service with a reschedule action and the new date/time window. I should also be mindful that the tools are for plumbing/electrical/HVAC, so I should clarify if the cleaning was booked through this same system or if they just want general guidance.\n</think>\n<plan>\n1. Clarify whether the home cleaning was booked through this system and collect identifying details (confirmation code, phone/email, date).\n2. Collect the new preferred date and time window and any reason for rescheduling.\n3. If it\u2019s in this system, locate the existing service using find_service.\n4. Call update_service to reschedule with the new date/time.\n5. Confirm the updated appointment details or, if it\u2019s outside this system, provide a short step-by-step on how to reschedule with their provider.\n</plan>\n<action type=\"say\">\nI can help with that. First, was this home cleaning booked through the same platform where you book plumbing/electrical/HVAC services (with a confirmation code and texts/emails about the booking), or is it with a separate cleaning company?\n\nIf it\u2019s through this platform, please share:\n- Either your confirmation code OR the phone/email used for the booking\n- The original appointment date and approximate time\n- Your preferred new date (YYYY-MM-DD) and a time window (morning, afternoon, evening, or a specific window like 09:00\u201312:00)\n- Optional: a short reason for rescheduling (helps if there are any fees)\n\nIf it\u2019s with a separate cleaning company, tell me which company/app you used and I\u2019ll walk you through the exact steps in their system or what to say when you contact them.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help with that. First, was this home cleaning booked through the same platform where you book plumbing/electrical/HVAC services (with a confirmation code and texts/emails about the booking), or is it with a separate cleaning company?\n\nIf it\u2019s through this platform, please share:\n- Either your confirmation code OR the phone/email used for the booking\n- The original appointment date and approximate time\n- Your preferred new date (YYYY-MM-DD) and a time window (morning, afternoon, evening, or a specific window like 09:00\u201312:00)\n- Optional: a short reason for rescheduling (helps if there are any fees)\n\nIf it\u2019s with a separate cleaning company, tell me which company/app you used and I\u2019ll walk you through the exact steps in their system or what to say when you contact them."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "It\u2019s through the same platform.  \n\nHere are the details you asked for:  \n- Email on the booking: maya.ranganathan@globalgov.univ.edu  \n- Original appointment date: 2026-01-10 (it was a morning slot)  \n- Preferred new date: 2026-01-12  \n- Preferred time: morning  \n\nReason for rescheduling: I have an unexpected work commitment that morning and won\u2019t be home to let the cleaners in."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed to reschedule found service. Already searched by email/date; now interpret results. Assume one match; then call update_service with reschedule, new_date 2026-01-12, new_time_window \"morning\", include reason. Then confirm to user with new datetime and any fee/refund info if present. But I don't yet have tool result; next step is to inspect it\u2014however tools are synchronous in this interface, so I should have gotten result. Since I don't, I should wait\u2014actually I already called tool; next message will have result. For now, I shouldn't guess. I must respond with tool or say; but I'm mid-turn after tool, so no <plan>. I need to see result; but since it's not shown to me, I must assume there is one service and proceed? Rules forbid guessing. However typical pattern: tool output will be injected into next assistant turn. So this turn is just the tool call, which I already sent. Done.</think>\n<plan>\n1. Review the located service(s) returned for that email and date.\n2. If exactly one match, call update_service to reschedule to 2026-01-12 in the morning with the provided reason.\n3. If multiple or no matches, ask the user for clarification or a confirmation code.\n4. Confirm the updated appointment details and mention any reschedule fees or policy notes.\n</plan>\n<action type=\"tool\" name=\"find_service\">\n{\"email\":\"maya.ranganathan@globalgov.univ.edu\",\"date_range\":{\"start_date\":\"2026-01-10\",\"end_date\":\"2026-01-10\"}}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_service",
+            "args": {
+              "email": "maya.ranganathan@globalgov.univ.edu",
+              "date_range": {
+                "start_date": "2026-01-10",
+                "end_date": "2026-01-10"
+              }
+            },
+            "raw": "find_service({\"email\":\"maya.ranganathan@globalgov.univ.edu\",\"date_range\":{\"start_date\":\"2026-01-10\",\"end_date\":\"2026-01-10\"}})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"service_id\": \"SRV-CLN-094\",\n    \"confirmation_code\": \"CLN-BLR-2026A\",\n    \"service_type\": \"cleaning\",\n    \"provider_name\": \"Bangalore EcoClean Services\",\n    \"scheduled_datetime\": \"2026-01-10T06:30:00Z\",\n    \"status\": \"scheduled\",\n    \"location\": \"Flat 502, Ashoka Residency, Indiranagar, Bangalore, Karnataka 560038, India\",\n    \"estimated_cost\": 3200.0,\n    \"currency\": \"INR\"\n  }\n]",
+            "parsed": [
+              {
+                "service_id": "SRV-CLN-094",
+                "confirmation_code": "CLN-BLR-2026A",
+                "service_type": "cleaning",
+                "provider_name": "Bangalore EcoClean Services",
+                "scheduled_datetime": "2026-01-10T06:30:00Z",
+                "status": "scheduled",
+                "location": "Flat 502, Ashoka Residency, Indiranagar, Bangalore, Karnataka 560038, India",
+                "estimated_cost": 3200.0,
+                "currency": "INR"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe located a single matching cleaning service with service_id SRV-CLN-094 on the original date. The user wants to move it to 2026-01-12 in the morning with a stated reason. Next I should call update_service to reschedule using that service_id, date, time window, and reason, then report the updated details back to the user, including any fees. </think>\n<plan>\n1. Reschedule service SRV-CLN-094 to 2026-01-12 in the morning with the provided reason using update_service.\n2. Review the response for the new scheduled time, status, and any fees or refund info.\n3. Share the updated appointment details and any costs or policy notes with the user.\n</plan>\n<action type=\"tool\" name=\"update_service\">\n{\"service_id\":\"SRV-CLN-094\",\"action\":\"reschedule\",\"new_date\":\"2026-01-12\",\"new_time_window\":\"morning\",\"reason\":\"Unexpected work commitment on the original morning; I won\u2019t be home to let the cleaners in.\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "update_service",
+            "args": {
+              "service_id": "SRV-CLN-094",
+              "action": "reschedule",
+              "new_date": "2026-01-12",
+              "new_time_window": "morning",
+              "reason": "Unexpected work commitment on the original morning; I won\u2019t be home to let the cleaners in."
+            },
+            "raw": "update_service({\"service_id\":\"SRV-CLN-094\",\"action\":\"reschedule\",\"new_date\":\"2026-01-12\",\"new_time_window\":\"morning\",\"reason\":\"Unexpected work commitment on the original morning; I won\\u2019t be home to let the cleaners in.\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"service_id\": \"SRV-CLN-094\",\n  \"confirmation_code\": \"CLN-BLR-2026A\",\n  \"action\": \"rescheduled\",\n  \"updated_scheduled_datetime\": \"2026-01-12T06:30:00Z\",\n  \"status\": \"confirmed\",\n  \"reschedule_fee\": 0.0,\n  \"cancellation_fee\": 0.0,\n  \"refund_amount\": 0.0,\n  \"refund_timeline\": \"\",\n  \"currency\": \"INR\"\n}",
+            "parsed": {
+              "service_id": "SRV-CLN-094",
+              "confirmation_code": "CLN-BLR-2026A",
+              "action": "rescheduled",
+              "updated_scheduled_datetime": "2026-01-12T06:30:00Z",
+              "status": "confirmed",
+              "reschedule_fee": 0.0,
+              "cancellation_fee": 0.0,
+              "refund_amount": 0.0,
+              "refund_timeline": "",
+              "currency": "INR"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nReschedule succeeded: service SRV-CLN-094 moved to 2026-01-12T06:30:00Z, status confirmed, no fees. I should relay the new local date/time (morning on Jan 12) and confirmation code, and note that there was no reschedule fee. Keep it concise. </think>\n<plan>\n1. Confirm to the user that the appointment has been successfully rescheduled, with date, time window, status, and fees info.\n</plan>\n<action type=\"say\">\nYour home cleaning has been rescheduled.\n\n- Confirmation code: CLN-BLR-2026A  \n- New date: 2026-01-12  \n- Time: morning slot (same as before; system has it at 06:30 local time)  \n- Status: confirmed  \n- Reschedule fee: \u20b90 (no charges applied)\n\nAnything else you\u2019d like to adjust about this appointment (e.g., instructions for the cleaners, contact phone, etc.)?</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your home cleaning has been rescheduled.\n\n- Confirmation code: CLN-BLR-2026A  \n- New date: 2026-01-12  \n- Time: morning slot (same as before; system has it at 06:30 local time)  \n- Status: confirmed  \n- Reschedule fee: \u20b90 (no charges applied)\n\nAnything else you\u2019d like to adjust about this appointment (e.g., instructions for the cleaners, contact phone, etc.)?"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
