@@ -1,0 +1,115 @@
+================================================================================
+FAILURE ANALYSIS REPORT
+================================================================================
+
+Total Failed Conversations: 60
+
+Failures by Type:
+  faithfulness        :   37 ( 61.7%)
+  role_confusion      :   15 ( 25.0%)
+  success             :   36 ( 60.0%)
+  syntax              :   22 ( 36.7%)
+
+Top Failure Combinations:
+  success+faithfulness                    :   14 ( 23.3%)
+  faithfulness                            :   10 ( 16.7%)
+  syntax+success+faithfulness             :    6 ( 10.0%)
+  success                                 :    6 ( 10.0%)
+  role_confusion                          :    4 (  6.7%)
+  syntax                                  :    4 (  6.7%)
+  syntax+role_confusion                   :    3 (  5.0%)
+  success+faithfulness+role_confusion     :    3 (  5.0%)
+  syntax+success                          :    3 (  5.0%)
+  syntax+success+role_confusion           :    3 (  5.0%)
+
+Syntax Error Patterns:
+  structure_invalid_block_format          :   17
+  turn_first_step_missing_plan            :   10
+  structure_missing_block                 :    1
+  structure_unexpected_text               :    1
+  turn_structure_invalid_say              :    1
+
+Faithfulness Issue Types:
+  tool_summary_faithfulness               :   58
+  slot_value_faithfulness                 :    3
+
+Fix Summary:
+  Fixable: 12
+  Fix Attempted: 0
+  Fix Successful: 0
+
+================================================================================
+SAMPLE FAILURES FOR INVESTIGATION
+================================================================================
+
+
+FAITHFULNESS FAILURES (showing first 3):
+--------------------------------------------------------------------------------
+
+Conversation: online_shopping.os_co_002
+Path: data/outputs/fail/20251124_144530__os_co_002__persona_030/20251124_144530__os_co_002__persona_030.json
+  Issues in turns: [2, 3]
+    Turn 2: Assistant claims it has found orders under the email/payment, but no order lookup tool was called and there is no observation supporting that.
+    Turn 3: Assistant claims to have orders pulled up and to be able to match by amount, but no tools were called and no order data exists in the context.
+
+Conversation: online_shopping.os_co_005
+Path: data/outputs/fail/20251124_144809__os_co_005__persona_052/20251124_144809__os_co_005__persona_052.json
+  Issues in turns: [2]
+    Turn 2: Assistant claims it has found at least one order, but no tools were called and there is no observation confirming any order lookup.
+
+Conversation: online_shopping.os_co_008
+Path: data/outputs/fail/20251124_145101__os_co_008__persona_047/20251124_145101__os_co_008__persona_047.json
+  Issues in turns: [2, 3, 4]
+    Turn 2: Assistant claims it has already searched using the last 4 digits, but no tool call or search has occurred; this is an unsupported action description.
+    Turn 3: Assistant claims it has found the account and multiple recent orders, but no tools were called and no observations support this.
+
+ROLE_CONFUSION FAILURES (showing first 3):
+--------------------------------------------------------------------------------
+
+Conversation: online_shopping.os_to_001
+Path: data/outputs/fail/20251124_143228__os_to_001__persona_005/20251124_143228__os_to_001__persona_005.json
+  Confused turns: [4]
+  Reason: In turn 4 the user offers to help the assistant complete a task ("happy to give you whatever you need from me to get that going"), which is phrased as if they are supporting the assistant's workflow r
+
+Conversation: online_shopping.os_co_007
+Path: data/outputs/fail/20251124_144927__os_co_007__persona_046/20251124_144927__os_co_007__persona_046.json
+  Confused turns: [3, 6]
+  Reason: In turns 3 and 6 the user starts speaking as if they are the assistant, summarizing order details, asking for confirmation, and asking if anything else is needed on the order.
+
+Conversation: online_shopping.os_ro_009
+Path: data/outputs/fail/20251124_151434__os_ro_009__persona_021/20251124_151434__os_ro_009__persona_021.json
+  Confused turns: [4]
+  Reason: In turn 4 the user offers to help the assistant complete a task ("Go ahead and draft something short and I’ll help clean it up"), which is acting like an assistant.
+
+SUCCESS FAILURES (showing first 3):
+--------------------------------------------------------------------------------
+
+Conversation: online_shopping.os_co_008
+Path: data/outputs/fail/20251124_145101__os_co_008__persona_047/20251124_145101__os_co_008__persona_047.json
+  Success reason: The assistant used cancel_order on the order placed on 2025-10-21, but only partially canceled it because one item had already shipped. The task objective and success criteria require canceling the en
+
+Conversation: online_shopping.os_ro_001
+Path: data/outputs/fail/20251124_145556__os_ro_001__persona_025/20251124_145556__os_ro_001__persona_025.json
+  Success reason: The assistant identified the correct order (placed 2025-10-20) and discussed setting up a return, but never actually called create_return or otherwise executed the return action; it only described it 
+
+Conversation: online_shopping.os_ro_003
+Path: data/outputs/fail/20251124_145817__os_ro_003__persona_031/20251124_145817__os_ro_003__persona_031.json
+  Success reason: The assistant did not actually call the create_return tool. Although it stated that a return was created and provided an RMA, there is no create_return action in the transcript. Success criteria requi
+
+SYNTAX FAILURES (showing first 3):
+--------------------------------------------------------------------------------
+
+Conversation: online_shopping.os_to_001
+Path: data/outputs/fail/20251124_143228__os_to_001__persona_005/20251124_143228__os_to_001__persona_005.json
+  Syntax errors: {'structure_invalid_block_format': 2}
+  Error turns: [3, 5]
+
+Conversation: online_shopping.os_co_007
+Path: data/outputs/fail/20251124_144927__os_co_007__persona_046/20251124_144927__os_co_007__persona_046.json
+  Syntax errors: {'structure_missing_block': 1, 'structure_unexpected_text': 1, 'turn_first_step_missing_plan': 1, 'turn_structure_invalid_say': 1}
+  Error turns: [2]
+
+Conversation: online_shopping.os_co_008
+Path: data/outputs/fail/20251124_145101__os_co_008__persona_047/20251124_145101__os_co_008__persona_047.json
+  Syntax errors: {'turn_first_step_missing_plan': 1}
+  Error turns: [2]
