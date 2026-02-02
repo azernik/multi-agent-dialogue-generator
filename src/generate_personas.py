@@ -57,7 +57,12 @@ AVAILABLE_USE_CASES = [
     "travel.book_hotel",
     "travel.cancel_booking",
     "travel.change_flight",
-    "travel.check_flight_status"
+    "travel.check_flight_status", 
+
+    # Home Services
+    "home_services.schedule_service",
+    "home_services.request_refund",
+    "home_services.schedule_service"
 ]
 
 

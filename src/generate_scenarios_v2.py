@@ -104,8 +104,21 @@ USE_CASE_REGISTRY = {
         "travel", "check_flight_status", "tr_fs",
         "tr_fs_001__persona_001.json"  
     ),
+    
+    # Home Services (3 use cases)
+    "home_services.schedule_service": (
+        "home_services", "schedule_service", "hs_ss",
+        "hs_ss_001.json"
+    ),
+    "home_services.reschedule_service": (
+        "home_services", "reschedule_service", "hs_rs",
+        "hs_rs_001.json"
+    ),
+    "home_services.request_refund": (
+        "home_services", "request_refund", "hs_rf", 
+        "hs_rf_001.json"
+    )
 }
-
 
 SCENARIO_GENERATION_PROMPT = """You are generating a realistic task scenario for a multi-agent dialogue simulation.
 
