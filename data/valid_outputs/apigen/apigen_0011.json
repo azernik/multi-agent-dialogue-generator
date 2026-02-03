@@ -1,0 +1,502 @@
+{
+  "meta": {
+    "conversation_id": "apigen_0011",
+    "prompt_versions": {
+      "system_agent": "v3"
+    }
+  },
+  "config": {
+    "scenario_name": "apigen_apigen_0011",
+    "tools": [
+      {
+        "name": "book_reservation",
+        "description": "Book a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "origin": {
+              "type": "string",
+              "description": "The IATA code for the origin city, such as 'SFO'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The IATA code for the destination city, such as 'JFK'."
+            },
+            "flight_type": {
+              "type": "string",
+              "enum": [
+                "one_way",
+                "round_trip"
+              ]
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            },
+            "payment_methods": {
+              "type": "array",
+              "description": "An array of objects containing details about each payment method.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "payment_id": {
+                    "type": "string",
+                    "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "The amount to be paid."
+                  }
+                },
+                "required": [
+                  "payment_id",
+                  "amount"
+                ]
+              }
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The number of non-free baggage items included in the reservation."
+            },
+            "insurance": {
+              "type": "string",
+              "enum": [
+                "yes",
+                "no"
+              ]
+            }
+          },
+          "required": [
+            "user_id",
+            "origin",
+            "destination",
+            "flight_type",
+            "cabin",
+            "flights",
+            "passengers",
+            "payment_methods",
+            "total_baggages",
+            "nonfree_baggages",
+            "insurance"
+          ]
+        }
+      },
+      {
+        "name": "calculate",
+        "description": "Calculate the result of a mathematical expression.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "The mathematical expression to calculate, such as '2 + 2'. The expression can contain numbers, operators (+, -, *, /), parentheses, and spaces."
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        }
+      },
+      {
+        "name": "cancel_reservation",
+        "description": "Cancel the whole reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_reservation_details",
+        "description": "Get the details of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation id, such as '8JX2WO'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_user_details",
+        "description": "Get the details of an user.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The user id, such as 'sara_doe_496'."
+            }
+          },
+          "required": [
+            "user_id"
+          ]
+        }
+      },
+      {
+        "name": "list_all_airports",
+        "description": "List all airports and their cities.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "search_direct_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-01-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "search_onestop_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "send_certificate",
+        "description": "Send a certificate to a user. Be careful!",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "amount": {
+              "type": "number",
+              "description": "Certificate amount to send."
+            }
+          },
+          "required": [
+            "user_id",
+            "amount"
+          ]
+        }
+      },
+      {
+        "name": "think",
+        "description": "Use this tool to think and perform reasoning before calling an API. It will not obtain new information or change the database, but just append the thought to the log.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thought": {
+              "type": "string",
+              "description": "The step by step thought process."
+            }
+          },
+          "required": [
+            "thought"
+          ]
+        }
+      },
+      {
+        "name": "transfer_to_human_agents",
+        "description": "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "A summary of the user's issue."
+            }
+          },
+          "required": [
+            "summary"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "description": "Update the baggage information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The updated total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The updated number of non-free baggage items included in the reservation."
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "total_baggages",
+            "nonfree_baggages",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "description": "Update the flight information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight in the ENTIRE new reservation. Even if the a flight segment is not changed, it should still be included in the array.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "cabin",
+            "flights",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_passengers",
+        "description": "Update the passenger information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            }
+          },
+          "required": [
+            "reservation_id",
+            "passengers"
+          ]
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hello! I just completed a flight from JFK to SFO under reservation ID Y1BFSP. I am a Gold member and I am interested in understanding potential compensations or benefits linked to my membership, especially ones related to delays or cancellations, even though they didn't actually happen on this trip."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user is a Gold member who completed a flight without issues and is asking generally about compensations or benefits tied to their membership, specifically around delays or cancellations. I have the airline policy that defines when certificates can be offered and in what amounts, and I know no delay/cancellation occurred on this trip. I should explain clearly what compensations are available to Gold members in those disruption scenarios, emphasize that they only apply when disruptions actually occur, and clarify that they don\u2019t apply retroactively to this uneventful trip, while inviting further questions.\n</think>\n<plan>\n1. Restate that the user is a Gold member and that special compensations apply in disruption scenarios.\n2. Summarize compensation rules for cancelled flights (eligibility and $100 \u00d7 passengers).\n3. Summarize compensation rules for delayed flights when the user chooses to change/cancel (eligibility and $50 \u00d7 passengers).\n4. Clarify that since the recent JFK\u2013SFO flight had no delays or cancellations, these specific compensations do not apply to that trip.\n5. Invite the user to ask about any other membership-related benefits or specific scenarios.\n</plan>\n<action type=\"say\">\nSince you are a Gold member, you are eligible for certain compensations or benefits in the event of flight delays or cancellations. Here are the potential compensations:\n\n1. **Cancelled Flights**: If a flight in your reservation is cancelled by the airline, you can receive a certificate as a gesture of goodwill. The amount is $100 times the number of passengers in the reservation.\n\n2. **Delayed Flights**: If a flight in your reservation is delayed and you wish to change or cancel the reservation, you can receive a certificate as a gesture of goodwill. The amount is $50 times the number of passengers in the reservation.\n\nThese compensations are only applicable if the flight is actually delayed or cancelled. Since your recent flight from JFK to SFO was completed without such issues, these compensations do not apply to this trip. However, it's good to know these benefits for any future travel disruptions. If you have any other questions or need assistance, feel free to ask!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Thank you for the information. Can I retrieve these details in the future so that I can understand them better at my own pace? Also, can I ask someone about the specifics of my membership utilities and compensations in case I encounter issues in future flights?"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user is asking for an explanation of the prior assistant response, which advised them to use the airline\u2019s website or customer service to review membership benefits and compensations. I know from the domain policy that I, as the airline agent, must not invent additional policies beyond what\u2019s specified and should transfer to a human only if needed, but here I\u2019m only explaining why the previous answer made sense. I will clarify in my reasoning that the assistant pointed the user to persistent, official sources (website, customer service) so they can review details later and ask questions in the future, which aligns with the user\u2019s desire to retrieve and understand information at their own pace and to talk to someone if issues arise. Since this is a meta task, I don\u2019t need to call tools; I just need to outline the thought process and a simple plan.\n</think>\n<plan>\n1. Restate internally what the user asked (future retrieval of details and ability to ask someone later).\n2. Explain that the assistant\u2019s response directs the user to official, persistent resources (website, customer service) where information can be revisited anytime.\n3. Explain that the response also confirms the user can contact human agents in the future for specific questions about membership utilities and compensations.\n</plan>\n<action type=\"say\">\nYou can always refer to your airline's official website or contact their customer service for detailed information about your membership benefits and compensations. They typically provide comprehensive guides and FAQs that outline the specifics of membership utilities, including compensations for delays or cancellations.\n\nIf you encounter any issues with future flights, you can also reach out to a customer service representative or a human agent for personalized assistance and clarification regarding your membership benefits. They will be able to provide you with the most accurate and up-to-date information.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "That sounds good. I appreciate your guidance in helping me understand my benefits as a Gold member better, especially the compensation policies for future travel disruptions. Thank you for your assistance."
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has finished a prior conversation where they asked about Gold member benefits and compensation policies, and the current assistant response is a brief closing message thanking them and inviting future questions. The user\u2019s last message expresses appreciation and reiterates interest in understanding benefits, but does not request new actions or information. Given this, the assistant reasonably decides to respond with a concise, polite closing that keeps the door open for future queries, without introducing new policy details or tools, since the user\u2019s goal (information and reassurance) has effectively been met.\n</think>\n<plan>\n1. Acknowledge the user\u2019s appreciation in a concise, polite manner.\n2. Reassure the user they can return with future questions or concerns about their membership or flights.\n3. Close the interaction without invoking any tools, as no further actions or data lookups are requested.\n</plan>\n<action type=\"say\">\nYou're welcome! I'm glad I could help you understand your benefits as a Gold member. If you have any more questions or need assistance in the future, feel free to reach out. Safe travels and enjoy your future flights!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    }
+  ]
+}

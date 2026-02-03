@@ -1,0 +1,536 @@
+{
+  "meta": {
+    "conversation_id": "apigen_0037",
+    "prompt_versions": {
+      "system_agent": "v3"
+    }
+  },
+  "config": {
+    "scenario_name": "apigen_apigen_0037",
+    "tools": [
+      {
+        "name": "book_reservation",
+        "description": "Book a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "origin": {
+              "type": "string",
+              "description": "The IATA code for the origin city, such as 'SFO'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The IATA code for the destination city, such as 'JFK'."
+            },
+            "flight_type": {
+              "type": "string",
+              "enum": [
+                "one_way",
+                "round_trip"
+              ]
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            },
+            "payment_methods": {
+              "type": "array",
+              "description": "An array of objects containing details about each payment method.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "payment_id": {
+                    "type": "string",
+                    "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "The amount to be paid."
+                  }
+                },
+                "required": [
+                  "payment_id",
+                  "amount"
+                ]
+              }
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The number of non-free baggage items included in the reservation."
+            },
+            "insurance": {
+              "type": "string",
+              "enum": [
+                "yes",
+                "no"
+              ]
+            }
+          },
+          "required": [
+            "user_id",
+            "origin",
+            "destination",
+            "flight_type",
+            "cabin",
+            "flights",
+            "passengers",
+            "payment_methods",
+            "total_baggages",
+            "nonfree_baggages",
+            "insurance"
+          ]
+        }
+      },
+      {
+        "name": "calculate",
+        "description": "Calculate the result of a mathematical expression.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "The mathematical expression to calculate, such as '2 + 2'. The expression can contain numbers, operators (+, -, *, /), parentheses, and spaces."
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        }
+      },
+      {
+        "name": "cancel_reservation",
+        "description": "Cancel the whole reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_reservation_details",
+        "description": "Get the details of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation id, such as '8JX2WO'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_user_details",
+        "description": "Get the details of an user.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The user id, such as 'sara_doe_496'."
+            }
+          },
+          "required": [
+            "user_id"
+          ]
+        }
+      },
+      {
+        "name": "list_all_airports",
+        "description": "List all airports and their cities.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "search_direct_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-01-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "search_onestop_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "send_certificate",
+        "description": "Send a certificate to a user. Be careful!",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "amount": {
+              "type": "number",
+              "description": "Certificate amount to send."
+            }
+          },
+          "required": [
+            "user_id",
+            "amount"
+          ]
+        }
+      },
+      {
+        "name": "think",
+        "description": "Use this tool to think and perform reasoning before calling an API. It will not obtain new information or change the database, but just append the thought to the log.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thought": {
+              "type": "string",
+              "description": "The step by step thought process."
+            }
+          },
+          "required": [
+            "thought"
+          ]
+        }
+      },
+      {
+        "name": "transfer_to_human_agents",
+        "description": "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "A summary of the user's issue."
+            }
+          },
+          "required": [
+            "summary"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "description": "Update the baggage information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The updated total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The updated number of non-free baggage items included in the reservation."
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "total_baggages",
+            "nonfree_baggages",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "description": "Update the flight information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight in the ENTIRE new reservation. Even if the a flight segment is not changed, it should still be included in the array.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "cabin",
+            "flights",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_passengers",
+        "description": "Update the passenger information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            }
+          },
+          "required": [
+            "reservation_id",
+            "passengers"
+          ]
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hello, I need to make a correction to the date of birth for one of the passengers in our reservation. The reservation ID is P9YQCF and the passenger's name is Noah Silva."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to correct the date of birth for a specific passenger, Noah Silva, on reservation P9YQCF. To update passenger information, the assistant must eventually call the update_reservation_passengers tool, but before that, it needs the new, correct DOB value. The assistant therefore asks the user to provide the correct date of birth so it can proceed with the required update once explicit confirmation is obtained.\n</think>\n<plan>\n1. Ask the user for the correct date of birth for passenger Noah Silva in reservation P9YQCF.\n2. Once the user provides the DOB, restate the intended update (changing Noah Silva\u2019s DOB on reservation P9YQCF) and ask for explicit confirmation to proceed.\n3. After receiving confirmation, call get_reservation_details to retrieve the current passenger list for reservation P9YQCF.\n4. Construct an updated passengers array with Noah Silva\u2019s corrected DOB while keeping all other passenger details unchanged.\n5. Call update_reservation_passengers with the reservation ID P9YQCF and the updated passengers array.\n6. Confirm to the user that Noah Silva\u2019s date of birth has been successfully updated in the reservation.\n</plan>\n<action type=\"say\">\nPlease provide the correct date of birth for Noah Silva, and I'll assist you with updating the reservation.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "I'm sorry, but the correct birth date was not specified in my request instructions. It seems I made an oversight. Let's proceed to the next part of my request. I'm considering the possibility of cancelling the business class flights in the same reservation. Could you give some information about any penalties that may occur?"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user asked about penalties for cancelling business class flights in an existing reservation and provided the reservation ID and context that they are only \u201cconsidering\u201d cancellation. The assistant\u2019s response correctly applied the policy that business flights can always be cancelled and that refunds go back to the original payment methods in 5\u20137 business days, and then requested the required cancellation reason if the user chooses to proceed. The assistant did not yet perform any tool calls or changes, which is appropriate because the user has not confirmed they want to cancel, and only informational guidance was needed at this stage.\n</think>\n<plan>\n1. Clarify whether the user wants to proceed with cancelling the reservation and, if so, collect the required cancellation reason.\n2. Once the user explicitly confirms and provides a reason, verify that no flown segments exist (by calling get_reservation_details if needed).\n3. If eligible, call cancel_reservation with the provided reservation ID.\n4. Confirm the successful cancellation and summarize the refund timeline back to the user.\n</plan>\n<action type=\"say\">\nFor business class flights, you can cancel the reservation without any penalties. The refund will be processed to the original payment methods within 5 to 7 business days. \n\nIf you decide to proceed with the cancellation, please let me know the reason for cancellation, and I can assist you further.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "Thank you for the information. Right now, I'm still considering whether to cancel because my circumstances have changed. Prior to this, could you guide me on how to proceed with updating Noah Silva's date of birth in our reservation?"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to correct a passenger\u2019s date of birth in an existing reservation and is asking how to proceed. Under the airline policy, modifying passenger information requires the reservation ID (already provided earlier) and the updated passenger details, including the correct DOB, before calling the update_reservation_passengers tool. The current assistant response focuses on asking for the missing DOB so that, once provided and after explicit confirmation, the assistant can perform the allowed update on the reservation.\n</think>\n<plan>\n1. Ask the user to provide the correct date of birth for passenger Noah Silva in the format YYYY-MM-DD.\n2. Once the user provides the DOB, restate the intended action (update Noah Silva\u2019s DOB in reservation P9YQCF) and ask for explicit confirmation to proceed.\n3. After receiving confirmation, call the update_reservation_passengers tool with the reservation ID P9YQCF and the updated passenger list including the corrected DOB.\n4. Confirm to the user that the DOB has been updated successfully or report any tool errors if they occur.\n</plan>\n<action type=\"say\">\nTo update Noah Silva's date of birth in your reservation, please provide the correct date of birth. Once I have that information, I can proceed with updating the reservation for you.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 4,
+      "role": "user",
+      "output_raw": "I apologize for any misunderstanding, but I think I can't provide the correct birth date at this moment. Instead, could you walk me through the steps should I need to physically come into the office or do it on my own online? My main priority for now is updating Noah's passenger details."
+    },
+    {
+      "turn_id": 4,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to update a passenger\u2019s date of birth but cannot provide the correct DOB now and is asking for general guidance on how to do it in person or online. As the airline agent, I am constrained to the provided tools and policies, which do not include giving external procedural details beyond what\u2019s in the tools or user context, but the \u201ccurrent assistant response\u201d already did that and I\u2019m now explaining its reasoning. I should clarify that the assistant chose to give generic online and in-person steps because the user explicitly asked for how to proceed without actually performing any database updates, and no tool call was needed since no concrete DOB or update request was provided.\n</think>\n<plan>\n1. Acknowledge that the user cannot provide the correct DOB now and that no change will be made at this time.\n2. Explain that, within this platform, an update would require the correct DOB and then a tool call to update_reservation_passengers, after listing the action details and getting explicit confirmation.\n3. Clarify that, outside this platform, users typically update passenger details via their online account or by visiting an office, which is why the assistant described generic website/app steps and the option to speak with an in-person agent.\n4. Indicate that once the user has the correct DOB and wants to proceed here, the assistant will gather the updated passenger info and then call update_reservation_passengers after confirmation.\n</plan>\n<action type=\"say\">\nI understand. Unfortunately, I can only assist with updating passenger details directly through this platform. If you prefer to update Noah Silva's date of birth on your own, you can typically do so by logging into your airline account on the airline's website or mobile app. Here are the general steps you might follow:\n\n1. **Log In**: Access your account using your credentials.\n2. **Manage Reservations**: Navigate to the \"Manage Reservations\" or \"My Trips\" section.\n3. **Select Reservation**: Find and select the reservation with ID P9YQCF.\n4. **Edit Passenger Details**: Look for an option to edit or update passenger information.\n5. **Update Date of Birth**: Enter the correct date of birth for Noah Silva.\n6. **Save Changes**: Confirm and save the changes.\n\nIf you prefer to visit an office, you can speak with an airline representative who can assist you with updating the passenger details. Be sure to bring any necessary identification or documentation related to the reservation.\n\nIf you need further assistance or decide to proceed with the update through this platform, feel free to reach out again.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 5,
+      "role": "user",
+      "output_raw": "Thank you for the detailed steps to update the date of birth. I will try this. I might get back to you regarding the cancellation of business class flights, once I'm more decided. Thank you once again for your help."
+    },
+    {
+      "turn_id": 5,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has finished a prior interaction where they asked about updating a passenger\u2019s date of birth and potential cancellation penalties, and the assistant has already provided the requested procedural information. The latest user message is essentially a closing note, saying they will try the steps and might return later about cancellation. The assistant\u2019s current response is a brief, polite closure that acknowledges the user\u2019s plan and leaves the door open for future questions, which is appropriate since no further action or tool use is requested.\n</think>\n<plan>\n1. Acknowledge that the user will attempt the provided steps on their own.\n2. Invite the user to return if they need further assistance with cancellations or other issues.\n3. Close the conversation politely since no additional actions or information are currently requested.\n</plan>\n<action type=\"say\">\nYou're welcome! Feel free to reach out if you have any more questions or need assistance with the cancellation or any other matter. Have a great day!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    }
+  ]
+}

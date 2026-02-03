@@ -1,0 +1,587 @@
+{
+  "meta": {
+    "conversation_id": "apigen_0093",
+    "prompt_versions": {
+      "system_agent": "v3"
+    }
+  },
+  "config": {
+    "scenario_name": "apigen_apigen_0093",
+    "tools": [
+      {
+        "name": "book_reservation",
+        "description": "Book a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "origin": {
+              "type": "string",
+              "description": "The IATA code for the origin city, such as 'SFO'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The IATA code for the destination city, such as 'JFK'."
+            },
+            "flight_type": {
+              "type": "string",
+              "enum": [
+                "one_way",
+                "round_trip"
+              ]
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            },
+            "payment_methods": {
+              "type": "array",
+              "description": "An array of objects containing details about each payment method.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "payment_id": {
+                    "type": "string",
+                    "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "The amount to be paid."
+                  }
+                },
+                "required": [
+                  "payment_id",
+                  "amount"
+                ]
+              }
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The number of non-free baggage items included in the reservation."
+            },
+            "insurance": {
+              "type": "string",
+              "enum": [
+                "yes",
+                "no"
+              ]
+            }
+          },
+          "required": [
+            "user_id",
+            "origin",
+            "destination",
+            "flight_type",
+            "cabin",
+            "flights",
+            "passengers",
+            "payment_methods",
+            "total_baggages",
+            "nonfree_baggages",
+            "insurance"
+          ]
+        }
+      },
+      {
+        "name": "calculate",
+        "description": "Calculate the result of a mathematical expression.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "The mathematical expression to calculate, such as '2 + 2'. The expression can contain numbers, operators (+, -, *, /), parentheses, and spaces."
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        }
+      },
+      {
+        "name": "cancel_reservation",
+        "description": "Cancel the whole reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_reservation_details",
+        "description": "Get the details of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation id, such as '8JX2WO'."
+            }
+          },
+          "required": [
+            "reservation_id"
+          ]
+        }
+      },
+      {
+        "name": "get_user_details",
+        "description": "Get the details of an user.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The user id, such as 'sara_doe_496'."
+            }
+          },
+          "required": [
+            "user_id"
+          ]
+        }
+      },
+      {
+        "name": "list_all_airports",
+        "description": "List all airports and their cities.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "search_direct_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-01-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "search_onestop_flight",
+        "description": "Search direct flights between two cities on a specific date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "description": "The origin city airport in three letters, such as 'JFK'."
+            },
+            "destination": {
+              "type": "string",
+              "description": "The destination city airport in three letters, such as 'LAX'."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "date"
+          ]
+        }
+      },
+      {
+        "name": "send_certificate",
+        "description": "Send a certificate to a user. Be careful!",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "type": "string",
+              "description": "The ID of the user to book the reservation, such as 'sara_doe_496'."
+            },
+            "amount": {
+              "type": "number",
+              "description": "Certificate amount to send."
+            }
+          },
+          "required": [
+            "user_id",
+            "amount"
+          ]
+        }
+      },
+      {
+        "name": "think",
+        "description": "Use this tool to think and perform reasoning before calling an API. It will not obtain new information or change the database, but just append the thought to the log.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thought": {
+              "type": "string",
+              "description": "The step by step thought process."
+            }
+          },
+          "required": [
+            "thought"
+          ]
+        }
+      },
+      {
+        "name": "transfer_to_human_agents",
+        "description": "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "A summary of the user's issue."
+            }
+          },
+          "required": [
+            "summary"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_baggages",
+        "description": "Update the baggage information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "total_baggages": {
+              "type": "integer",
+              "description": "The updated total number of baggage items included in the reservation."
+            },
+            "nonfree_baggages": {
+              "type": "integer",
+              "description": "The updated number of non-free baggage items included in the reservation."
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "total_baggages",
+            "nonfree_baggages",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_flights",
+        "description": "Update the flight information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "cabin": {
+              "type": "string",
+              "enum": [
+                "basic_economy",
+                "economy",
+                "business"
+              ]
+            },
+            "flights": {
+              "type": "array",
+              "description": "An array of objects containing details about each piece of flight in the ENTIRE new reservation. Even if the a flight segment is not changed, it should still be included in the array.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "flight_number": {
+                    "type": "string",
+                    "description": "Flight number, such as 'HAT001'."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "The date for the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
+                  }
+                },
+                "required": [
+                  "flight_number",
+                  "date"
+                ]
+              }
+            },
+            "payment_id": {
+              "type": "string",
+              "description": "The payment id stored in user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'."
+            }
+          },
+          "required": [
+            "reservation_id",
+            "cabin",
+            "flights",
+            "payment_id"
+          ]
+        }
+      },
+      {
+        "name": "update_reservation_passengers",
+        "description": "Update the passenger information of a reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reservation_id": {
+              "type": "string",
+              "description": "The reservation ID, such as 'ZFA04Y'."
+            },
+            "passengers": {
+              "type": "array",
+              "description": "An array of objects containing details about each passenger.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the passenger, such as 'Noah'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the passenger, such as 'Brown'."
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "The date of birth of the passenger in the format 'YYYY-MM-DD', such as '1990-01-01'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "dob"
+                ]
+              }
+            }
+          },
+          "required": [
+            "reservation_id",
+            "passengers"
+          ]
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hello! I need to make some changes to a reservation. The reservation is under the name Chen Sanchez. The reservation code is 'WNVCCD'."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to modify an existing reservation and has provided the passenger name and reservation code. As the airline agent, I must follow the modify-flight workflow, which requires obtaining the user ID and then the reservation ID before making any changes. The current assistant response correctly asks for the user ID first, since tools and policies rely on that identifier to safely access and modify the reservation.\n</think>\n<plan>\n1. Ask the user to provide the user ID associated with reservation WNVCCD.\n2. Once the user ID is provided, ask what specific changes they want to make (flights, cabin, baggage, passengers).\n3. Request any additional required details (e.g., new dates/routes, cabin class, baggage count, payment/refund method).\n4. Summarize the exact update action(s) that will be taken and ask the user for explicit confirmation to proceed.\n5. After confirmation, call the appropriate reservation tool(s) to apply the requested changes.\n6. Confirm the successful update to the user and present the updated reservation details.\n</plan>\n<action type=\"say\">\nI can help you with that. Could you please provide the user ID associated with the reservation?\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "I'm sorry, but I don't have the user ID. Could we proceed with the changes using the reservation code and the name?"
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to modify an existing reservation and has provided the passenger name and reservation code, but not the user ID. According to the airline agent policy, modifying a reservation requires obtaining the user ID first. Since I cannot bypass this requirement or access additional identifying information without the user ID, I must inform the user that I cannot proceed and that they need to retrieve the user ID or contact customer support, which is what the current assistant response conveys.\n</think>\n<plan>\n1. Restate that a user ID is mandatory for any reservation modifications per policy.\n2. Ask the user to look for the user ID in their account, confirmation email, or prior communications.\n3. If the user cannot locate the user ID, direct them to contact customer support/human agent for identity verification and further assistance.\n</plan>\n<action type=\"say\">\nUnfortunately, I need the user ID to proceed with any modifications to the reservation. Could you please check if you have access to the user ID? If not, you might need to contact customer support for further assistance.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "I see. I will reach out to Chen and ask him to provide the User ID. Thank you for your help."
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has provided a conversation history and a specific assistant response that needs to be explained. The prior interaction shows the user trying to modify a reservation without a user ID, then agreeing to obtain the user ID, and the assistant closing with a polite, open-ended offer of future help. I need to explain why that closing response is appropriate given the airline policy constraints (needing user ID before modifications) and the user\u2019s stated plan to get the ID, and then outline the steps I would take if the user returns with the required information.\n</think>\n<plan>\n1. Note that, per policy, reservation changes require a user ID, so the assistant could not proceed further at that time.\n2. Explain that the assistant\u2019s response acknowledges the user\u2019s plan to obtain the user ID and keeps the channel open for future assistance.\n3. Indicate that once the user returns with the user ID, the assistant would then collect required modification details and use the appropriate tools to process changes.\n</plan>\n<action type=\"say\">\nYou're welcome! If you have any more questions or need further assistance once you have the user ID, feel free to reach out. Have a great day!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 4,
+      "role": "user",
+      "output_raw": "Actually, I already have additional information about the changes that we want to make. Can I provide you with those now, and then we can finalize the changes once we have the User ID?"
+    },
+    {
+      "turn_id": 4,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user is asking whether they can share change details now and finalize later once they obtain the user ID. Under the airline policy, I cannot modify a reservation without the user ID, but I can collect information in advance because that does not trigger any tool calls or database updates. I therefore decide to acknowledge that they can provide details now and clarify that actual changes will only occur after we have the user ID, which aligns with the requirement to obtain user ID before modifying flights.\n</think>\n<plan>\n1. Acknowledge that the user can provide the details of the desired changes now.\n2. Clarify that no actual modifications will be made until the user ID is provided.\n3. Once the user later supplies the user ID and confirms they are ready, gather any remaining required information (e.g., what type of modification, payment/refund method).\n4. Call the appropriate reservation tools to implement the requested changes after listing the action details and obtaining explicit confirmation.\n</plan>\n<action type=\"say\">\nSure, you can provide the details of the changes you'd like to make. Once you have the user ID, we can proceed with finalizing the changes.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 5,
+      "role": "user",
+      "output_raw": "Great. We would like to change the May 17th to 18th flights to earlier options if available. Also, the return flight from JFK to SFO should be around May 24th or 25th, and it should be in business class. Can you check the availability for these changes?"
+    },
+    {
+      "turn_id": 5,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user wants to modify an existing reservation (WNVCCD) by changing specific flight dates and cabin class, and is asking if they can at least check availability now and finalize later once they have the user ID. Under the airline agent policy, modifying flights requires the user ID and reservation ID, and I must ensure rules about changeability (e.g., basic economy restrictions) using reservation details. I should explain that I need the user ID to pull the reservation via tools, then search for flights matching the requested dates and cabin, but cannot proceed with any actual modification until that information is provided.\n</think>\n<plan>\n1. Explain that to check availability in the context of this specific reservation, I must first retrieve the reservation details using the user ID and reservation code.\n2. Clarify that once the user provides the user ID, I will call the reservation-details tool to confirm fare type, current flights, and eligibility for changes.\n3. After confirming eligibility, use the flight search tools to look for earlier options on May 18 and business-class return flights around May 24\u201325 between JFK and SFO.\n4. Present the matching flight options and, after the user selects one and confirms, proceed with a modification tool call to update the reservation.\n</plan>\n<action type=\"say\">\nTo assist you with checking the availability for these changes, I'll need to first verify the current details of the reservation. Once I have the user ID, I can retrieve the reservation details and proceed with searching for available flights that match your criteria. Please let me know once you have the user ID, and we can continue from there.\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 6,
+      "role": "user",
+      "output_raw": "Understood. Once I get the User ID from Chen, I will contact you again to proceed with these changes. Thank you!"
+    },
+    {
+      "turn_id": 6,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user had previously been informed that a user ID is required to proceed with modifying a reservation. In this final message, the user is simply acknowledging that they will return once they have the user ID and is thanking the assistant. The assistant decides there is nothing further to process or any tools to call, so it responds briefly, confirming that the user can return later and offering a polite closing.\n</think>\n<plan>\n1. Acknowledge that no further action can be taken without the user ID.\n2. Invite the user to return with the user ID when ready.\n3. Close the interaction politely.\n</plan>\n<action type=\"say\">\nYou're welcome! Feel free to reach out once you have the user ID, and I'll be happy to assist you with the changes. Have a great day!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 7,
+      "role": "user",
+      "output_raw": "One more thing, any additional fees resulting from these changes should be charged to Chen's gift card. Is that possible?"
+    },
+    {
+      "turn_id": 7,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user is asking whether it is possible to charge any additional fees for future reservation changes to Chen\u2019s gift card. From the tools and policy, I know that payments for modifications must use a payment method already stored in the user profile, and that gift cards are valid options. The existing assistant response confirms that this is possible, with the condition that the gift card is in Chen\u2019s profile, and invites the user to return once they have the user ID so we can proceed according to the modify-flight rules. I will outline a brief plan focused on what will happen once the user returns with the user ID and wants to proceed with changes and payment via gift card.\n</think>\n<plan>\n1. Ask the user to provide Chen\u2019s user ID and reconfirm the reservation ID WNVCCD and desired changes (earlier May 18 flights and business-class return around May 24\u201325 JFK\u2013SFO).\n2. Use get_reservation_details to verify the existing itinerary, cabin class, trip type, and fare type (to ensure it is not basic economy for flight changes).\n3. Search for suitable alternative flights on the requested dates using search_direct_flight and/or search_onestop_flight, keeping origin, destination, and trip type unchanged.\n4. Present the available options, including any fare differences and confirm that additional charges should go to a specific gift card stored in Chen\u2019s profile.\n5. After explicit user confirmation, call update_reservation_flights with the selected new flights, cabin class, and the chosen gift card payment_id to finalize the changes.\n</plan>\n<action type=\"say\">\nYes, once we have the user ID and confirm the reservation details, we can proceed with the changes and use Chen's gift card for any additional fees. Just make sure the gift card is already stored in Chen's user profile. Let me know when you're ready to proceed!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 8,
+      "role": "user",
+      "output_raw": "I will take care of that. Thanks again for your competent assistance. I will reach out to you soon."
+    },
+    {
+      "turn_id": 8,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nThe user has concluded the interaction by thanking the assistant and indicating they will return later with the required user ID and payment details. The assistant\u2019s last response simply acknowledges this and closes the conversation politely without taking any booking or modification actions, which aligns with policy since changes require user ID and explicit confirmation. The assistant is deciding not to ask further questions or use tools because the user has clearly deferred action to a future time and no additional assistance is being requested now.\n</think>\n<plan>\n1. Wait for the user to return with the user ID and specific payment method details (gift card ID) before proceeding.\n2. Once the user returns, restate the requested changes (date changes and cabin upgrade) and verify they still apply.\n3. Obtain explicit confirmation to proceed with searching and modifying flights.\n4. Call the appropriate tools to retrieve reservation details, search for new flights, and then update the reservation flights and payment as requested.\n</plan>\n<action type=\"say\">\nYou're welcome! Don't hesitate to reach out when you're ready to proceed. Have a wonderful day!\n</action>",
+          "action_structured": null,
+          "observation": null
+        }
+      ]
+    }
+  ]
+}

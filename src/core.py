@@ -423,7 +423,6 @@ class LLMClient:
             api_params["reasoning"] = {"effort": "none"}
             api_params["text"] = {"verbosity": "low"}
         
-        # Remove 'temperature' from api_params if model is gpt-5-mini
         if self.model == "gpt-5-mini":
             if "temperature" in api_params:
                 del api_params["temperature"]
@@ -433,6 +432,10 @@ class LLMClient:
             # Check if responses API is available
             if not hasattr(self.client, 'responses'):
                 raise AttributeError("Responses API not available")
+            
+            # Responses API doesn't support max_tokens/max_completion_tokens, remove if present
+            api_params.pop("max_tokens", None)
+            api_params.pop("max_completion_tokens", None)
             
             # Debug: log temperature if present
             if 'temperature' in api_params:
@@ -482,10 +485,15 @@ class LLMClient:
             # Fallback to old chat completions API if responses API not available or fails
             # This allows graceful degradation if Responses API is not yet available
             try:
+                fallback_kwargs = kwargs.copy()
+                # Convert max_tokens to max_completion_tokens for GPT-5 models
+                if self.model in ["gpt-5.1", "gpt-5-mini"] and "max_tokens" in fallback_kwargs:
+                    fallback_kwargs["max_completion_tokens"] = fallback_kwargs.pop("max_tokens")
+                
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
-                    **kwargs
+                    **fallback_kwargs
                 )
                 return response.choices[0].message.content
             except Exception as fallback_error:

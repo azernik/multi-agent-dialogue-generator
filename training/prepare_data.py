@@ -197,25 +197,35 @@ def main():
         try:
             conv_data = load_conversation(json_file)
             
-            # Resolve Scenario
+            # Resolve Scenario and Tools
+            # Check if tools are already in config (APIGen format)
+            tools = conv_data.get('config', {}).get('tools')
             scenario_name = conv_data.get('config', {}).get('scenario_name')
-            if not scenario_name:
-                extracted = extract_scenario_id_from_filename(json_file.name)
-                scenario_name = extracted.split('__')[-1] if extracted else None
+            
+            if not tools:
+                # Fallback to scenario resolution (for main dataset conversations)
                 if not scenario_name:
-                    print(f"Skipping {json_file.name}: Could not extract scenario ID")
+                    extracted = extract_scenario_id_from_filename(json_file.name)
+                    scenario_name = extracted.split('__')[-1] if extracted else None
+                    if not scenario_name:
+                        print(f"Skipping {json_file.name}: Could not extract scenario ID and no tools in config")
+                        stats["failed"] += 1
+                        continue
+                
+                try:
+                    scenario_path = resolve_scenario_id(scenario_name)
+                    scenario = ExampleScenario.load(scenario_path)
+                    tools = scenario.tools
+                except Exception as e:
+                    print(f"Warning: Could not resolve scenario '{scenario_name}' for {json_file.name}: {e}")
                     stats["failed"] += 1
                     continue
-            
-            # Load Tools
-            try:
-                scenario_path = resolve_scenario_id(scenario_name)
-                scenario = ExampleScenario.load(scenario_path)
-                tools = scenario.tools
-            except Exception as e:
-                print(f"Warning: Could not resolve scenario '{scenario_name}' for {json_file.name}: {e}")
-                stats["failed"] += 1
-                continue
+            else:
+                # APIGen format: tools in config, scenario_name is optional
+                if not scenario_name:
+                    # Extract from filename or use conversation_id
+                    extracted = extract_scenario_id_from_filename(json_file.name)
+                    scenario_name = extracted.split('__')[-1] if extracted else conv_data.get('meta', {}).get('conversation_id', 'unknown')
                 
             # Extract Metadata
             metadata = extract_metadata(conv_data, tools, scenario_name)

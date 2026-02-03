@@ -84,6 +84,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Skip role confusion evaluation (default is to run it unless --syntax-only).",
     )
     parser.add_argument(
+        "--skip-success",
+        action="store_true",
+        help="Skip success evaluation (default is to run it unless --syntax-only).",
+    )
+    parser.add_argument(
         "--role-confusion-model",
         default=None,
         help="OpenAI model to use for role confusion judge (default: reuse --model).",
@@ -104,7 +109,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         syntax_result = evaluate_conversation(artifact)
 
         success_payload = None
-        if not args.syntax_only:
+        if not args.syntax_only and not args.skip_success:
             try:
                 success_eval = evaluate_success(
                     conversation_path,
