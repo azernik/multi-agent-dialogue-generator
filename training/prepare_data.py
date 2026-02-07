@@ -151,7 +151,6 @@ def create_samples_from_conversation(
 def main():
     parser = argparse.ArgumentParser(description="Prepare SFT dataset from conversation logs")
     parser.add_argument("--input_dir", type=str, default="data/valid_outputs/v2", help="Directory containing conversation JSONs (default: data/valid_outputs/v2)")
-    parser.add_argument("--extra_test_dir", type=str, default="data/valid_outputs/v3", help="Extra directory whose conversations are all added to test split (default: data/valid_outputs/v3)")
     parser.add_argument("--output_dir", type=str, default="training/data", help="Output directory for jsonl files")
     args = parser.parse_args()
     
@@ -192,8 +191,6 @@ def main():
         "test_convs": 0,
         "impossible_train": 0,
         "impossible_test": 0,
-        "extra_test_convs": 0,
-        "extra_test_skipped": 0,
     }
     
     for json_file in json_files:
@@ -308,77 +305,30 @@ def main():
     stats["test_convs"] = len(test_items)
     stats["processed"] = len(scan_results)
 
-    # Add all conversations from extra_test_dir (e.g. v3) to test set
-    extra_test_path = Path(args.extra_test_dir) if args.extra_test_dir else None
-    extra_test_scenario_ids_only = set()  # scenario IDs to add to test_split.json even when scenario file missing
-    if extra_test_path and extra_test_path.exists():
-        extra_json_files = list(extra_test_path.glob("**/*.json"))
-        print(f"Adding {len(extra_json_files)} conversations from {extra_test_path} to test split...")
-        extra_test_items = []
-        skipped = []  # (filename, reason)
-        for json_file in extra_json_files:
-            try:
-                conv_data = load_conversation(json_file)
-                scenario_name = conv_data.get('config', {}).get('scenario_name')
-                if not scenario_name:
-                    extracted = extract_scenario_id_from_filename(json_file.name)
-                    scenario_name = extracted.split('__')[-1] if extracted else None
-                if not scenario_name:
-                    skipped.append((json_file.name, "could not get scenario_name from config or filename"))
-                    continue
-                try:
-                    scenario_path = resolve_scenario_id(scenario_name)
-                    scenario = ExampleScenario.load(scenario_path)
-                    tools = scenario.tools
-                except Exception as e:
-                    skipped.append((json_file.name, f"resolve/load scenario failed: {e}"))
-                    extra_test_scenario_ids_only.add(scenario_name)  # still add to test_split.json
-                    continue
-                metadata = extract_metadata(conv_data, tools, scenario_name)
-                extra_test_items.append({
-                    "path": json_file,
-                    "data": conv_data,
-                    "tools": tools,
-                    "metadata": metadata,
-                    "scenario_name": scenario_name
-                })
-            except Exception as e:
-                skipped.append((json_file.name, f"load/parse error: {e}"))
-                continue
-        test_items.extend(extra_test_items)
-        stats["test_convs"] += len(extra_test_items)
-        stats["extra_test_convs"] = len(extra_test_items)
-        stats["extra_test_skipped"] = len(extra_json_files) - len(extra_test_items)
-        print(f"  Added {len(extra_test_items)} conversations ({len(skipped)} skipped).")
-        if extra_test_scenario_ids_only:
-            print(f"  {len(extra_test_scenario_ids_only)} skipped scenario IDs will still be added to test_split.json (scenario file missing).")
-        if skipped:
-            print(f"  Skipped files:")
-            for name, reason in skipped:
-                print(f"    - {name}: {reason}")
-
     # Pass 3: Generate Samples
     train_samples = []
     test_samples = []
-    test_scenario_ids = set()
-    
+
     print(f"Generating samples...")
-    
+
     for item in train_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         train_samples.extend(samples)
         
+    # Preserve insertion order so new test conversations appear at the end of test_split.json
+    test_scenario_ids = []
+    test_scenario_ids_seen = set()
     for item in test_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         test_samples.extend(samples)
-        test_scenario_ids.add(item["scenario_name"])
-
-    # Include scenario IDs from extra_test_dir that were skipped (no scenario file) so they still appear in test_split.json
-    test_scenario_ids |= extra_test_scenario_ids_only
+        sid = item["scenario_name"]
+        if sid not in test_scenario_ids_seen:
+            test_scenario_ids_seen.add(sid)
+            test_scenario_ids.append(sid)
 
     # Save outputs
     train_file = output_dir / "sft_train.jsonl"
@@ -397,16 +347,12 @@ def main():
             
     print(f"Writing test split scenario IDs to {split_file}")
     with open(split_file, 'w') as f:
-        json.dump(sorted(list(test_scenario_ids)), f, indent=2)
+        json.dump(test_scenario_ids, f, indent=2)
         
     print("\n=== Statistics ===")
-    print(f"Input dir (train+test split): {stats['processed']} conversations, {stats['failed']} failed")
+    print(f"Total Conversations Processed: {stats['processed']} ({stats['failed']} failed)")
     print(f"Train Conversations: {stats['train_convs']}")
-    v2_test = stats['test_convs'] - stats.get('extra_test_convs', 0)
-    print(f"Test (from input dir): {v2_test}")
-    if stats.get('extra_test_convs', 0):
-        print(f"Test (from extra_test_dir, all added to test): {stats['extra_test_convs']} added, {stats.get('extra_test_skipped', 0)} skipped")
-    print(f"Total Test Conversations: {stats['test_convs']} ({100 * stats['test_convs'] / (stats['train_convs'] + stats['test_convs']):.1f}% of all)")
+    print(f"Test Conversations: {stats['test_convs']} ({100 * stats['test_convs'] / (stats['train_convs'] + stats['test_convs']):.1f}% of all)")
     print(f"Impossible Scenarios Split: {stats['impossible_train']} Train / {stats['impossible_test']} Test")
 
 if __name__ == "__main__":
