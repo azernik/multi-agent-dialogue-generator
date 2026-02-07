@@ -190,7 +190,7 @@ def main():
         "train_convs": 0,
         "test_convs": 0,
         "impossible_train": 0,
-        "impossible_test": 0
+        "impossible_test": 0,
     }
     
     for json_file in json_files:
@@ -304,26 +304,31 @@ def main():
     stats["train_convs"] = len(train_items)
     stats["test_convs"] = len(test_items)
     stats["processed"] = len(scan_results)
-    
+
     # Pass 3: Generate Samples
     train_samples = []
     test_samples = []
-    test_scenario_ids = set()
-    
+
     print(f"Generating samples...")
-    
+
     for item in train_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         train_samples.extend(samples)
         
+    # Preserve insertion order so new test conversations appear at the end of test_split.json
+    test_scenario_ids = []
+    test_scenario_ids_seen = set()
     for item in test_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         test_samples.extend(samples)
-        test_scenario_ids.add(item["scenario_name"])
+        sid = item["scenario_name"]
+        if sid not in test_scenario_ids_seen:
+            test_scenario_ids_seen.add(sid)
+            test_scenario_ids.append(sid)
 
     # Save outputs
     train_file = output_dir / "sft_train.jsonl"
@@ -342,13 +347,12 @@ def main():
             
     print(f"Writing test split scenario IDs to {split_file}")
     with open(split_file, 'w') as f:
-        json.dump(sorted(list(test_scenario_ids)), f, indent=2)
+        json.dump(test_scenario_ids, f, indent=2)
         
     print("\n=== Statistics ===")
-    print(f"Total Conversations Processed: {stats['processed']}")
-    print(f"Failed Files: {stats['failed']}")
+    print(f"Total Conversations Processed: {stats['processed']} ({stats['failed']} failed)")
     print(f"Train Conversations: {stats['train_convs']}")
-    print(f"Test Conversations:  {stats['test_convs']} ({stats['test_convs'] / (stats['train_convs']+stats['test_convs']) * 100:.1f}%)")
+    print(f"Test Conversations: {stats['test_convs']} ({100 * stats['test_convs'] / (stats['train_convs'] + stats['test_convs']):.1f}% of all)")
     print(f"Impossible Scenarios Split: {stats['impossible_train']} Train / {stats['impossible_test']} Test")
 
 if __name__ == "__main__":

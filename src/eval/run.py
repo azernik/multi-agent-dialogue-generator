@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Iterable, Iterator, List, Optional
 
@@ -9,6 +10,14 @@ from eval.syntax import evaluate_conversation, load_conversation_artifact
 from eval.success import evaluate_success
 from eval.faithfulness import evaluate_faithfulness
 from eval.role_confusion import evaluate_role_confusion
+
+
+def _save_eval_result(output: dict, conversation_path: Path) -> Path:
+    """Save evaluation result to eval.json in the same directory as the conversation."""
+    eval_path = conversation_path.parent / "eval.json"
+    with open(eval_path, "w") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+    return eval_path
 
 
 def _iter_conversation_files(targets: Iterable[str], recursive: bool) -> Iterator[Path]:
@@ -92,6 +101,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--role-confusion-api-key",
         dest="role_confusion_api_key",
         help="API key for role confusion judge (default: reuse success API key).",
+    )
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save evaluation results to eval.json in the same directory as each conversation file.",
     )
     args = parser.parse_args(argv)
 
@@ -189,6 +203,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             "faithfulness": faithfulness_payload,
             "role_confusion": role_confusion_payload,
         }
+
+        # Save to eval.json if --save flag is set
+        if args.save:
+            eval_path = _save_eval_result(output, conversation_path)
+            print(f"Saved: {eval_path}", file=sys.stderr)
 
         if args.jsonl:
             print(json.dumps(output, ensure_ascii=False))

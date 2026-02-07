@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "domain": "banking",
+    "use_case": "dispute_charge",
+    "scenario_id": "ba_003"
+  },
+  "domain_ref": {
+    "toolset_path": "../tools.json"
+  },
+  "task": {
+    "slots": {
+      "constraints": {
+        "target_account": "credit_card",
+        "merchant_query": "STEAM PURCHASE",
+        "amount": 59.99,
+        "transaction_date": "January 18th"
+      },
+      "preferences": {
+        "dispute_reason": "unauthorized game purchase; card may have been used on shared dev machine"
+      }
+    },
+    "success_criteria": {
+      "target_selector": {
+        "merchant_query": "STEAM PURCHASE",
+        "amount": 59.99,
+        "transaction_date": "2026-01-17"
+      },
+      "action": "submit_dispute",
+      "notes": "Success if the assistant submits a dispute via submit_dispute for the STEAM PURCHASE transaction of $59.99 CAD on January 17th (after resolving the user's initial date confusion)."
+    },
+    "objective": "Dispute a fraudulent or incorrect charge"
+  },
+  "user_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "user.uncertain_date",
+        "instructions": "Marcus is juggling multiple builds and late-night playtests, so he’s fuzzy on dates. He will initially state the transaction date as January 18th. When the assistant reports no matching STEAM PURCHASE on that date but finds one on January 17th for the same amount, he will realize that the 17th was the night he was at a coffee shop in Vancouver and confirm that is the correct date to dispute."
+      }
+    ]
+  },
+  "tool_agent": {
+    "injected_behaviors": [
+      {
+        "type_id": "tool.no_results_suggest_alternative",
+        "instructions": "When searching for transactions on January 18th with merchant STEAM PURCHASE, return no results but indicate there is a matching transaction on January 17th for the same amount on the same credit card."
+      }
+    ],
+    "context": {
+      "seed": {
+        "accounts": [
+          {
+            "account_id": "ACC-CA-001",
+            "account_type": "credit_card",
+            "nickname": "Indie Dev Rewards Visa",
+            "masked_number": "****1482",
+            "currency": "CAD"
+          }
+        ],
+        "transactions": [
+          {
+            "transaction_id": "TXN-CA-101",
+            "account_id": "ACC-CA-001",
+            "posted_date": "2026-01-17",
+            "amount": -59.99,
+            "currency": "CAD",
+            "description": "STEAM PURCHASE",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-CA-102",
+            "account_id": "ACC-CA-001",
+            "posted_date": "2026-01-17",
+            "amount": -8.75,
+            "currency": "CAD",
+            "description": "TIM HORTONS VANCOUVER BC",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-CA-103",
+            "account_id": "ACC-CA-001",
+            "posted_date": "2025-12-29",
+            "amount": -14.2,
+            "currency": "CAD",
+            "description": "NEMESIS COFFEE GASTOWN BC",
+            "status": "posted"
+          },
+          {
+            "transaction_id": "TXN-CA-104",
+            "account_id": "ACC-CA-001",
+            "posted_date": "2025-12-27",
+            "amount": -42.39,
+            "currency": "CAD",
+            "description": "STEAM PURCHASE",
+            "status": "posted"
+          }
+        ]
+      }
+    }
+  },
+  "persona": "persona_068"
+}

@@ -1,0 +1,348 @@
+{
+  "meta": {
+    "conversation_id": "home_services.hs_rs_001",
+    "domain_id": "home_services",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "hs_rs_001",
+    "task": {
+      "slots": {
+        "constraints": {
+          "service_type": "house_cleaning",
+          "original_date": "2026-01-09",
+          "new_preferred_date": "2026-01-12"
+        },
+        "preferences": {
+          "new_preferred_time_window": "late_morning"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "service_type": "house_cleaning",
+          "original_date": "2026-01-09"
+        },
+        "action": "update_service",
+        "notes": "Success if the assistant reschedules the recurring house cleaning from the original Friday morning slot to a new date that fits the user's teaching schedule and confirms the updated appointment details, including time window and any fee changes."
+      },
+      "objective": "Reschedule my house cleaning service appointment"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "existing_service": {
+            "service_id": "SRV-CLN-2048",
+            "confirmation_code": "CLN-EUG456",
+            "service_type": "house_cleaning",
+            "service_description": "Bi-weekly whole-home cleaning for 3-bedroom house",
+            "provider_id": "CLN-OR-012",
+            "provider_name": "Willamette Green Home Cleaning",
+            "scheduled_datetime": "2026-01-09T17:00:00Z",
+            "status": "scheduled",
+            "location": "1487 Alder Street, Eugene, OR 97403",
+            "contact_info": {
+              "name": "Dr. Melissa K. Andrade",
+              "phone": "+1-541-555-2873",
+              "email": "mandrade@uoregon.edu"
+            },
+            "estimated_cost": 145.0,
+            "currency": "USD",
+            "cancellation_policy": {
+              "cancellation_deadline": "2026-01-08T17:00:00Z",
+              "cancellation_fee": 35.0,
+              "refund_policy": "Full refund if cancelled 24+ hours before service; 50% refund if cancelled within 24 hours."
+            },
+            "reschedule_policy": {
+              "reschedule_deadline": "2026-01-08T17:00:00Z",
+              "reschedule_fee": 0.0
+            }
+          },
+          "available_slots": [
+            {
+              "provider_id": "CLN-OR-012",
+              "date": "2026-01-12",
+              "time_windows": [
+                {
+                  "start": "17:00",
+                  "end": "19:00"
+                },
+                {
+                  "start": "18:00",
+                  "end": "20:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "CLN-OR-012",
+              "date": "2026-01-13",
+              "time_windows": [
+                {
+                  "start": "17:00",
+                  "end": "19:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "CLN-OR-012",
+              "date": "2026-01-16",
+              "time_windows": [
+                {
+                  "start": "16:00",
+                  "end": "18:00"
+                },
+                {
+                  "start": "17:00",
+                  "end": "19:00"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "injected_behaviors": []
+    },
+    "persona": {
+      "id": "persona_082",
+      "name": "Dr. Melissa K. Andrade",
+      "age": 39,
+      "hometown": "Eugene, Oregon, USA",
+      "occupation": "Assistant Professor of Public Health Nutrition",
+      "bio": "Melissa Andrade is a public health nutrition researcher at the University of Oregon who studies how water consumption shapes preschoolers\u2019 food choices, especially in childcare and Head Start settings. She spends a lot of time in classrooms observing snack time, talking with teachers and parents, and translating her findings into simple, practical recommendations. Outside of work, she\u2019s an avid runner and home cook who loves testing kid-friendly recipes on her own two children.",
+      "use_cases": [
+        "home_services.schedule_service",
+        "home_services.reschedule_service"
+      ],
+      "writing_style": "warm, professional-academic, clear and organized, occasional parenthetical asides, friendly but precise",
+      "sample_messages": [
+        "Hi there, could you send over the final snack-time observation sheets from the Friendly Frog Preschool site? I want to double-check our coding for the water vs. juice exposure before I lock the analysis file.",
+        "This looks great overall. My only suggestion is to soften the language in the discussion where we talk about causality\u2014maybe rephrase to emphasize \"association\" and note the limitations of self-reported intake.",
+        "Quick question: are you okay if we include the photo of the classroom water station (with all faces blurred, of course) in the conference poster, or would you prefer we stick to graphics only?"
+      ],
+      "email": "mandrade@uoregon.edu",
+      "phone": "+1-541-555-2873"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hi there\u2014could you help me reschedule my house cleaning appointment?"
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed more info: this system is for home services (plumbing/electrical/HVAC), not cleaning. No cleaning tools. I should clarify what platform and get details, or explain limitation and ask for confirmation code etc. But must still move toward using tools: here they only manage certain services; I can still help conceptually without tools. Ask clarifying Qs and state I may not directly modify booking if it\u2019s outside supported categories. </think>\n<plan>\n1. Ask what service/platform the appointment is with and request identifying details (confirmation code, email/phone, date).\n2. Explain what kinds of services I can directly reschedule via tools (plumbing/electrical/HVAC) vs where I can just guide them.\n3. Once clarified, either use the find_service/update_service tools (if applicable) or give tailored step-by-step instructions for their provider/app.\n</plan>\n<action type=\"say\">\nI can help you with that.\n\nFirst, a quick clarification: in this system I can directly look up and reschedule certain home services (plumbing, electrical, HVAC). House cleaning isn\u2019t one of the service types I can modify directly, but I can still guide you step-by-step\u2014or, if your \u201chouse cleaning\u201d was booked through a home-services app under one of those categories, I might still be able to change it.\n\nCould you tell me:\n1) How you booked the cleaning (e.g., specific app/website/company)?\n2) The current appointment date and time?\n3) Your confirmation code and the email or phone number on the booking (if you\u2019re comfortable sharing)?\n4) When you\u2019d like to reschedule it to (date and preferred time window: morning/afternoon/evening)?\n\nWith that, I can either:\n- Walk you through the exact steps in their app/website or via email/phone script, and\n- Help you check/calculate any potential fees or policy issues based on what they show you.\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can help you with that.\n\nFirst, a quick clarification: in this system I can directly look up and reschedule certain home services (plumbing, electrical, HVAC). House cleaning isn\u2019t one of the service types I can modify directly, but I can still guide you step-by-step\u2014or, if your \u201chouse cleaning\u201d was booked through a home-services app under one of those categories, I might still be able to change it.\n\nCould you tell me:\n1) How you booked the cleaning (e.g., specific app/website/company)?\n2) The current appointment date and time?\n3) Your confirmation code and the email or phone number on the booking (if you\u2019re comfortable sharing)?\n4) When you\u2019d like to reschedule it to (date and preferred time window: morning/afternoon/evening)?\n\nWith that, I can either:\n- Walk you through the exact steps in their app/website or via email/phone script, and\n- Help you check/calculate any potential fees or policy issues based on what they show you."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Thanks\u2014that context is helpful.\n\nHere\u2019s what I can share:\n1) I booked it directly with a local house-cleaning company (not through a big app like TaskRabbit or similar).  \n2) The appointment is currently scheduled for January 9, 2026.  \n3) The email on the booking is mandrade@uoregon.edu, phone is +1-541-555-2873.  \n4) I\u2019d like to move it to January 12, 2026, ideally in the late morning."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNo tools for cleaning; user wants help rescheduling with small local company. I should give them concise, concrete wording for email, text, and phone, plus quick tips re policy/fees and timing. Oververbose=1 so keep it short. </think>\n<plan>\n1. Provide ready-to-send email and text templates using their dates and contact info.\n2. Provide a short phone script if they prefer to call.\n3. Suggest what to check (confirmation, fees, policy) and how to phrase flexibility on time.\n</plan>\n<action type=\"say\">\nGot it\u2014that\u2019s enough to draft what you need. Here are concise options you can copy/paste or adapt.\n\nEmail to the cleaning company\nSubject: Request to Reschedule January 9 Cleaning Appointment\n\nHi [Company Name],\n\nI have a house cleaning appointment scheduled for January 9, 2026 under the name [Your Full Name], email mandrade@uoregon.edu, and phone +1-541-555-2873.\n\nI\u2019d like to reschedule this appointment to January 12, 2026, preferably in the late morning (around 10\u201312). If that time isn\u2019t available, I\u2019m happy to consider other late-morning or early-afternoon slots that day.\n\nPlease let me know if this change is possible and whether there are any rescheduling fees or policy details I should be aware of.\n\nThank you,  \n[Your Full Name]  \n+1-541-555-2873\n\nText message version\nHi, this is [Your Full Name]. I have a house cleaning appointment booked for Jan 9, 2026 under email mandrade@uoregon.edu. Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? Let me know what times you have available that day and if there are any reschedule fees. Thanks!\n\nPhone script\n\u201cHi, my name is [Your Full Name]. I have a house cleaning appointment scheduled for January 9, 2026 under the email address mandrade@uoregon.edu and phone number 541-555-2873. I\u2019d like to see if I can reschedule it to January 12, 2026, ideally in the late morning, around 10 to 12.  \n\nCould you tell me:\n- What times you have available on January 12?  \n- Whether there are any rescheduling fees or policy issues I should know about?\u201d\n\nIf you tell me the company\u2019s name and how formal they are, I can tighten this language to match their style.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Got it\u2014that\u2019s enough to draft what you need. Here are concise options you can copy/paste or adapt.\n\nEmail to the cleaning company\nSubject: Request to Reschedule January 9 Cleaning Appointment\n\nHi [Company Name],\n\nI have a house cleaning appointment scheduled for January 9, 2026 under the name [Your Full Name], email mandrade@uoregon.edu, and phone +1-541-555-2873.\n\nI\u2019d like to reschedule this appointment to January 12, 2026, preferably in the late morning (around 10\u201312). If that time isn\u2019t available, I\u2019m happy to consider other late-morning or early-afternoon slots that day.\n\nPlease let me know if this change is possible and whether there are any rescheduling fees or policy details I should be aware of.\n\nThank you,  \n[Your Full Name]  \n+1-541-555-2873\n\nText message version\nHi, this is [Your Full Name]. I have a house cleaning appointment booked for Jan 9, 2026 under email mandrade@uoregon.edu. Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? Let me know what times you have available that day and if there are any reschedule fees. Thanks!\n\nPhone script\n\u201cHi, my name is [Your Full Name]. I have a house cleaning appointment scheduled for January 9, 2026 under the email address mandrade@uoregon.edu and phone number 541-555-2873. I\u2019d like to see if I can reschedule it to January 12, 2026, ideally in the late morning, around 10 to 12.  \n\nCould you tell me:\n- What times you have available on January 12?  \n- Whether there are any rescheduling fees or policy issues I should know about?\u201d\n\nIf you tell me the company\u2019s name and how formal they are, I can tighten this language to match their style."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "role": "user",
+      "output_raw": "This is helpful, thank you.\n\nSince you booked directly with a local company and I can\u2019t access their system myself, I\u2019ll need to lean on you for one detail so I can tailor this properly:\n\nWhat\u2019s the company\u2019s name, and do you usually communicate with them more by email, text, or phone?"
+    },
+    {
+      "turn_id": 3,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nI accidentally echoed my own earlier style; user hasn\u2019t answered yet. I need to correct that and instead wait for their info. Ask succinctly for company name and preferred channel. </think>\n<plan>\n1. Ask the user for the cleaning company\u2019s name and how they usually communicate with them.\n2. Once they reply, tailor one or two polished messages/scripts matching that style.\n3. Offer a brief checklist of what to confirm once the company responds.\n</plan>\n<action type=\"say\">\nTo tailor this more precisely, I need a bit of info from you:\n\n1) What\u2019s the cleaning company\u2019s name?  \n2) Do you usually communicate with them by email, text, or phone (and which you prefer this time)?\n\nOnce I know that, I\u2019ll rewrite the message/script in a style that fits them.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "To tailor this more precisely, I need a bit of info from you:\n\n1) What\u2019s the cleaning company\u2019s name?  \n2) Do you usually communicate with them by email, text, or phone (and which you prefer this time)?\n\nOnce I know that, I\u2019ll rewrite the message/script in a style that fits them."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 4,
+      "role": "user",
+      "output_raw": "Sure thing. The company is FreshStart Home Cleaning, and I usually text with them."
+    },
+    {
+      "turn_id": 4,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed concise, text-style reschedule message tailored to FreshStart, include all details user gave and request Jan 12 late morning. Oververbose low, so just provide final text plus maybe optional follow-up line. No tools. </think>\n<plan>\n1. Draft a ready-to-send SMS tailored to FreshStart with all necessary details.\n2. Add one short optional follow-up text the user can send if they don\u2019t hear back.\n3. Confirm that\u2019s all they need or ask if they want a variation. \n</plan>\n<action type=\"say\">\nHere\u2019s a text you can send to FreshStart:\n\n\u201cHi, this is [Your Name]. I have a house cleaning appointment with you on Jan 9, 2026 (under email mandrade@uoregon.edu, phone 541-555-2873). Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? If that\u2019s not available, any late-morning slot that day could work. Please let me know what you have open and if there are any reschedule fees. Thanks!\u201d\n\nIf you\u2019d like, tell me your name and I\u2019ll drop it in so it\u2019s fully ready to send.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s a text you can send to FreshStart:\n\n\u201cHi, this is [Your Name]. I have a house cleaning appointment with you on Jan 9, 2026 (under email mandrade@uoregon.edu, phone 541-555-2873). Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? If that\u2019s not available, any late-morning slot that day could work. Please let me know what you have open and if there are any reschedule fees. Thanks!\u201d\n\nIf you\u2019d like, tell me your name and I\u2019ll drop it in so it\u2019s fully ready to send."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 5,
+      "role": "user",
+      "output_raw": "Yes, please go ahead and plug in my name and make it ready to send."
+    },
+    {
+      "turn_id": 5,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser wants final ready-to-send text with their name. Need to ask their name or infer from email \u201cmandrade@uoregon.edu\u201d (maybe \u201cMaria Andrade\u201d or similar) but shouldn\u2019t guess. Ask their name briefly. </think>\n<plan>\n1. Ask the user to confirm the exact name they want to use in the text.\n2. Once provided, return a single, copy-ready SMS with that name included.\n</plan>\n<action type=\"say\">\nWhat name would you like to use in the text (first and last, or just first)? Once you tell me, I\u2019ll paste a fully ready-to-send message with your name filled in.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "What name would you like to use in the text (first and last, or just first)? Once you tell me, I\u2019ll paste a fully ready-to-send message with your name filled in."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 6,
+      "role": "user",
+      "output_raw": "Let\u2019s use your full name so it\u2019s clear for them.\n\nHere\u2019s a ready-to-send text for FreshStart Home Cleaning:\n\n\u201cHi, this is Melissa Andrade. I have a house cleaning appointment with you on Jan 9, 2026 (under email mandrade@uoregon.edu, phone 541-555-2873). Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? If that\u2019s not available, any late-morning slot that day could work. Please let me know what you have open and if there are any reschedule fees. Thanks!\u201d\n\nOnce they reply with options, feel free to paste their response here and I can help you craft a quick follow-up if needed."
+    },
+    {
+      "turn_id": 6,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser mistakenly wrote the reply they wanted me to give. I should just give the ready-to-send text with name filled, concise. No tools. </think>\n<plan>\n1. Provide the final, copy-ready SMS using the name Melissa Andrade.\n</plan>\n<action type=\"say\">\nHere\u2019s your ready-to-send text for FreshStart Home Cleaning:\n\n\u201cHi, this is Melissa Andrade. I have a house cleaning appointment with you on Jan 9, 2026 (under email mandrade@uoregon.edu, phone 541-555-2873). Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? If that\u2019s not available, any late-morning slot that day could work. Please let me know what you have open and if there are any reschedule fees. Thanks!\u201d</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s your ready-to-send text for FreshStart Home Cleaning:\n\n\u201cHi, this is Melissa Andrade. I have a house cleaning appointment with you on Jan 9, 2026 (under email mandrade@uoregon.edu, phone 541-555-2873). Could I please reschedule it to Jan 12, 2026 in the late morning (around 10\u201312)? If that\u2019s not available, any late-morning slot that day could work. Please let me know what you have open and if there are any reschedule fees. Thanks!\u201d"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 7,
+      "role": "user",
+      "output_raw": "Perfect, I\u2019ve sent that text to FreshStart."
+    },
+    {
+      "turn_id": 7,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser has sent the text; now we wait for response. I should let them know next step and offer help crafting reply once they hear back, keeping it brief. </think>\n<plan>\n1. Acknowledge progress and explain next step (wait for provider\u2019s reply).\n2. Offer to help craft a response once they share what FreshStart says.\n</plan>\n<action type=\"say\">\nNice\u2014that\u2019s exactly what was needed.\n\nNext step is just to wait for FreshStart\u2019s reply with their available times and any mention of fees or policy. When you hear back, paste their message here and I can help you:\n\n- Pick the best time slot, and  \n- Draft a quick confirmation reply that locks in the new appointment.\n\nI\u2019ll be ready when their response comes in.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Nice\u2014that\u2019s exactly what was needed.\n\nNext step is just to wait for FreshStart\u2019s reply with their available times and any mention of fees or policy. When you hear back, paste their message here and I can help you:\n\n- Pick the best time slot, and  \n- Draft a quick confirmation reply that locks in the new appointment.\n\nI\u2019ll be ready when their response comes in."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 8,
+      "role": "user",
+      "output_raw": "They just replied:\n\n\u201cHi Melissa! We can move your cleaning from Jan 9 to Monday Jan 12 at either 10:00 a.m. or 11:30 a.m., no reschedule fee. Let us know which time you prefer and we\u2019ll update your booking. \u2013 FreshStart\u201d\n\nI\u2019d prefer 10:00 a.m. Could you draft a concise text I can send back to confirm that time and make sure they explicitly confirm the new date/time?"
+    },
+    {
+      "turn_id": 8,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed concise confirmation text choosing 10:00 and asking them to confirm new date/time. No tools. </think>\n<plan>\n1. Provide a short, copy-ready SMS confirming 10:00 a.m. and requesting explicit confirmation. \n</plan>\n<action type=\"say\">\nHere\u2019s a concise reply you can send:\n\n\u201cThanks! Let\u2019s go with 10:00 a.m. on Monday, Jan 12. Please confirm that my appointment is now set for Jan 12 at 10:00 a.m. \u2013 Melissa\u201d</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s a concise reply you can send:\n\n\u201cThanks! Let\u2019s go with 10:00 a.m. on Monday, Jan 12. Please confirm that my appointment is now set for Jan 12 at 10:00 a.m. \u2013 Melissa\u201d"
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 9,
+      "role": "user",
+      "output_raw": "Great, thank you. I just sent this:\n\n\u201cThanks! Let\u2019s go with 10:00 a.m. on Monday, Jan 12. Please confirm that my appointment is now set for Jan 12 at 10:00 a.m. \u2013 Melissa\u201d\n\nI\u2019ll let you know as soon as they confirm the updated booking."
+    },
+    {
+      "turn_id": 9,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nUser has sent confirmation and will return later; I should acknowledge and say what we\u2019ll do when they\u2019re back, briefly. </think>\n<plan>\n1. Let the user know I\u2019ll be ready to help interpret/record the confirmation when it arrives.\n</plan>\n<action type=\"say\">\nSounds good. When they reply, paste their confirmation here and I can help you double-check the details (date, time, any notes) and, if you\u2019d like, draft a final \u201cgreat, see you then\u201d message.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Sounds good. When they reply, paste their confirmation here and I can help you double-check the details (date, time, any notes) and, if you\u2019d like, draft a final \u201cgreat, see you then\u201d message."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 10,
+      "role": "user",
+      "output_raw": "They just replied:\n\n\u201cGot it, Melissa \u2014 you\u2019re now confirmed for Monday Jan 12 at 10:00 a.m. We\u2019ll see you then! \u2013 FreshStart\u201d\n\nCould you help me draft a short, friendly acknowledgment text back to them, and then I think we\u2019re all set?  \n\n(And yes, the new date/time works perfectly for me.)"
+    },
+    {
+      "turn_id": 10,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed brief friendly acknowledgment text. Then done. No tools. </think>\n<plan>\n1. Provide a short, friendly, copy-ready acknowledgment text confirming all set.\n</plan>\n<action type=\"say\">\nHere\u2019s a short reply you can send:\n\n\u201cPerfect, thank you for confirming! See you on Monday, Jan 12 at 10:00 a.m. \u2013 Melissa\u201d</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Here\u2019s a short reply you can send:\n\n\u201cPerfect, thank you for confirming! See you on Monday, Jan 12 at 10:00 a.m. \u2013 Melissa\u201d"
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 11,
+    "had_tool_calls": false
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}
