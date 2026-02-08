@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "conversation_id": "home_services.hs_rs_013",
+    "domain_id": "home_services",
+    "toolset_id": null,
+    "model": "gpt-5.1",
+    "prompt_versions": {
+      "system_agent": "v3",
+      "user_agent": "v1",
+      "tool_agent": "v1"
+    },
+    "seed": null,
+    "simulator_version": "0.1.0"
+  },
+  "config": {
+    "scenario_name": "hs_rs_013",
+    "task": {
+      "slots": {
+        "constraints": {
+          "service_type": "appliance_repair",
+          "original_date": "2026-01-18",
+          "new_preferred_date": "2026-01-19"
+        },
+        "preferences": {
+          "new_preferred_time_window": "evening"
+        }
+      },
+      "success_criteria": {
+        "target_selector": {
+          "service_type": "appliance_repair",
+          "original_date": "2026-01-18"
+        },
+        "action": "update_service",
+        "notes": "Success if the assistant reschedules the washing machine repair from the original date to a new date matching the user's preferred time window and confirms the updated appointment details via the contact information on file."
+      },
+      "objective": "Reschedule my washing machine repair appointment"
+    },
+    "user_agent_config": {
+      "injected_behaviors": []
+    },
+    "tool_agent_config": {
+      "context": {
+        "seed": {
+          "existing_service": {
+            "service_id": "SRV-APP-4321",
+            "confirmation_code": "APP-PUNE-9876",
+            "service_type": "appliance_repair",
+            "service_description": "Front-load washing machine drum noise diagnosis and repair",
+            "provider_id": "HS-PUNE-012",
+            "provider_name": "Pune HomeCare Services",
+            "scheduled_datetime": "2026-01-18T09:30:00Z",
+            "status": "scheduled",
+            "location": "Flat 704, Ganesham Residency, Pimple Saudagar, Pune, Maharashtra 411027, India",
+            "contact_info": {
+              "name": "Rohan Mehta",
+              "phone": "+91-20-5554-8932",
+              "email": "rohan.mehta.engineer@gmail.com"
+            },
+            "estimated_cost": 1500.0,
+            "currency": "INR",
+            "cancellation_policy": {
+              "cancellation_deadline": "2026-01-17T09:30:00Z",
+              "cancellation_fee": 300.0,
+              "refund_policy": "Full refund of service fee if cancelled 24+ hours before the scheduled time; after that, a visit charge of \u20b9300 is retained."
+            },
+            "reschedule_policy": {
+              "reschedule_deadline": "2026-01-17T09:30:00Z",
+              "reschedule_fee": 0.0
+            }
+          },
+          "available_slots": [
+            {
+              "provider_id": "HS-PUNE-012",
+              "date": "2026-01-19",
+              "time_windows": [
+                {
+                  "start": "11:00",
+                  "end": "13:00"
+                },
+                {
+                  "start": "14:00",
+                  "end": "17:00"
+                },
+                {
+                  "start": "17:30",
+                  "end": "20:00"
+                }
+              ]
+            },
+            {
+              "provider_id": "HS-PUNE-012",
+              "date": "2026-01-20",
+              "time_windows": [
+                {
+                  "start": "08:30",
+                  "end": "11:30"
+                },
+                {
+                  "start": "18:00",
+                  "end": "20:30"
+                }
+              ]
+            },
+            {
+              "provider_id": "HS-PUNE-012",
+              "date": "2026-01-22",
+              "time_windows": [
+                {
+                  "start": "10:00",
+                  "end": "12:30"
+                },
+                {
+                  "start": "16:00",
+                  "end": "19:00"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "injected_behaviors": []
+    },
+    "persona": {
+      "id": "persona_098",
+      "name": "Rohan Mehta",
+      "age": 32,
+      "hometown": "Pune, Maharashtra, India",
+      "occupation": "Mechanical design engineer",
+      "bio": "Rohan Mehta is a mechanical design engineer who spends his days working on industrial machinery and his evenings trying to really understand the physics behind what he builds. Lately he\u2019s become obsessed with the relationship between work, power, and energy, and keeps a small notebook where he rewrites definitions, derives formulas, and logs example problems. He\u2019s patient, asks a lot of follow-up questions, and genuinely appreciates when someone points out where his intuition is off.",
+      "use_cases": [
+        "home_services.reschedule_service",
+        "home_services.request_refund"
+      ],
+      "writing_style": "friendly, conversational, fairly clear and organized, occasional technical terms, asks follow-up questions",
+      "sample_messages": [
+        "I\u2019ve always heard that \u2018work\u2019 in physics is force times distance, but I get confused when the force isn\u2019t in the same direction as the motion. Could you walk me through a concrete example with numbers, maybe something like pushing a box up a ramp?",
+        "So if I\u2019m understanding correctly, power is basically how fast I\u2019m doing work, not how much total work I do, right? Just want to double-check that my mental picture is correct before I move on to more problems.",
+        "Thanks, that explanation helped a lot. Can you give me 3\u20134 practice questions that mix up work, power, and energy, and then we can go over where I\u2019m making mistakes?"
+      ],
+      "email": "rohan.mehta.engineer@gmail.com",
+      "phone": "+91-20-5554-8932"
+    }
+  },
+  "messages": [
+    {
+      "turn_id": 1,
+      "role": "user",
+      "output_raw": "Hey, I need to reschedule a washing machine repair appointment."
+    },
+    {
+      "turn_id": 1,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nNeed details to find and reschedule existing service using tools. Ask for identifiers and new date/time, plus optional reason. Keep concise. Then will use find_service and update_service once info provided. </think>\n<plan>\n1. Ask for the details needed to locate the existing appointment.\n2. Ask for the new preferred date/time window and reason (optional).\n3. Once provided, locate the service with find_service.\n4. Reschedule it using update_service.\n5. Confirm the updated appointment details to the user.\n</plan>\n<action type=\"say\">\nI can handle that. To reschedule your repair, I need a few details:\n\n1) How should I look up the appointment?  \n   - Confirmation code, or  \n   - Service ID (if you have it), or  \n   - Your email or phone number used for the booking  \n\n2) What new time do you want?  \n   - New date (YYYY-MM-DD)  \n   - Preferred time window (e.g., \u201c09:00-12:00\u201d, \u201cafternoon\u201d, \u201cafter 5 pm\u201d)  \n\n3) (Optional) Reason for rescheduling?\n\nReply with:\n- One identifier (confirmation code / service ID / email / phone), and  \n- The new date + time window, and  \n- Reason (if you want it noted).\n</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "I can handle that. To reschedule your repair, I need a few details:\n\n1) How should I look up the appointment?  \n   - Confirmation code, or  \n   - Service ID (if you have it), or  \n   - Your email or phone number used for the booking  \n\n2) What new time do you want?  \n   - New date (YYYY-MM-DD)  \n   - Preferred time window (e.g., \u201c09:00-12:00\u201d, \u201cafternoon\u201d, \u201cafter 5 pm\u201d)  \n\n3) (Optional) Reason for rescheduling?\n\nReply with:\n- One identifier (confirmation code / service ID / email / phone), and  \n- The new date + time window, and  \n- Reason (if you want it noted)."
+          },
+          "observation": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "role": "user",
+      "output_raw": "Sure, here you go:\n\n- You can look it up with my email: rohan.mehta.engineer@gmail.com  \n- New date: 2026-01-19  \n- Preferred time window: evening  \n\nReason for rescheduling: I\u2019ve got a work commitment on the original day and won\u2019t be home in time."
+    },
+    {
+      "turn_id": 2,
+      "role": "assistant",
+      "steps": [
+        {
+          "step_index": 1,
+          "output_raw": "<think>\nWe found services; now pick correct one (likely upcoming washing machine repair) then call update_service with reschedule, new_date, new_time_window, reason. But I don't see tool output yet; need it first. </think>\n<plan>\n1. Retrieve all services linked to the provided email using find_service.\n2. Identify the washing machine repair appointment that needs rescheduling.\n3. Call update_service to reschedule to 2026-01-19 in the evening with the provided reason.\n4. Present the updated appointment details and any fees/policy notes to the user.\n</plan>\n<action type=\"tool\" name=\"find_service\">\n{\"email\":\"rohan.mehta.engineer@gmail.com\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "find_service",
+            "args": {
+              "email": "rohan.mehta.engineer@gmail.com"
+            },
+            "raw": "find_service({\"email\":\"rohan.mehta.engineer@gmail.com\"})"
+          },
+          "observation": {
+            "raw": "[\n  {\n    \"service_id\": \"SRV-APP-4321\",\n    \"confirmation_code\": \"APP-PUNE-9876\",\n    \"service_type\": \"appliance_repair\",\n    \"provider_name\": \"Pune HomeCare Services\",\n    \"scheduled_datetime\": \"2026-01-18T09:30:00Z\",\n    \"status\": \"scheduled\",\n    \"location\": \"Flat 704, Ganesham Residency, Pimple Saudagar, Pune, Maharashtra 411027, India\",\n    \"estimated_cost\": 1500.0,\n    \"currency\": \"INR\"\n  }\n]",
+            "parsed": [
+              {
+                "service_id": "SRV-APP-4321",
+                "confirmation_code": "APP-PUNE-9876",
+                "service_type": "appliance_repair",
+                "provider_name": "Pune HomeCare Services",
+                "scheduled_datetime": "2026-01-18T09:30:00Z",
+                "status": "scheduled",
+                "location": "Flat 704, Ganesham Residency, Pimple Saudagar, Pune, Maharashtra 411027, India",
+                "estimated_cost": 1500.0,
+                "currency": "INR"
+              }
+            ]
+          }
+        },
+        {
+          "step_index": 2,
+          "output_raw": "<think>\nWe have a single matching service (washing machine repair, appliance_repair) scheduled for 2026-01-18. User wants to move it to 2026-01-19, evening, with given reason. Next step is to call update_service with reschedule details and then report the result. </think>\n<plan>\n1. Reschedule service SRV-APP-4321 to 2026-01-19 in the evening with the provided reason using update_service.\n2. Share the updated appointment details, including any fees or changes in status, with the user.\n</plan>\n<action type=\"tool\" name=\"update_service\">\n{\"service_id\":\"SRV-APP-4321\",\"action\":\"reschedule\",\"new_date\":\"2026-01-19\",\"new_time_window\":\"evening\",\"reason\":\"I\u2019ve got a work commitment on the original day and won\u2019t be home in time.\"}\n</action>",
+          "action_structured": {
+            "type": "tool_call",
+            "name": "update_service",
+            "args": {
+              "service_id": "SRV-APP-4321",
+              "action": "reschedule",
+              "new_date": "2026-01-19",
+              "new_time_window": "evening",
+              "reason": "I\u2019ve got a work commitment on the original day and won\u2019t be home in time."
+            },
+            "raw": "update_service({\"service_id\":\"SRV-APP-4321\",\"action\":\"reschedule\",\"new_date\":\"2026-01-19\",\"new_time_window\":\"evening\",\"reason\":\"I\\u2019ve got a work commitment on the original day and won\\u2019t be home in time.\"})"
+          },
+          "observation": {
+            "raw": "{\n  \"service_id\": \"SRV-APP-4321\",\n  \"confirmation_code\": \"APP-PUNE-9876\",\n  \"action\": \"rescheduled\",\n  \"updated_scheduled_datetime\": \"2026-01-19T17:30:00Z\",\n  \"status\": \"confirmed\",\n  \"reschedule_fee\": 0.0,\n  \"cancellation_fee\": 0.0,\n  \"refund_amount\": 0.0,\n  \"refund_timeline\": \"\",\n  \"currency\": \"INR\"\n}",
+            "parsed": {
+              "service_id": "SRV-APP-4321",
+              "confirmation_code": "APP-PUNE-9876",
+              "action": "rescheduled",
+              "updated_scheduled_datetime": "2026-01-19T17:30:00Z",
+              "status": "confirmed",
+              "reschedule_fee": 0.0,
+              "cancellation_fee": 0.0,
+              "refund_amount": 0.0,
+              "refund_timeline": "",
+              "currency": "INR"
+            }
+          }
+        },
+        {
+          "step_index": 3,
+          "output_raw": "<think>\nReschedule succeeded with no fees. I should confirm new datetime, status, and no charges in a concise way and reference confirmation code and service id. </think>\n<plan>\n1. Notify the user that the appointment has been successfully rescheduled and summarize the key details.\n</plan>\n<action type=\"say\">\nYour washing machine repair appointment is rescheduled and confirmed.\n\nHere are the updated details:\n- Service ID: SRV-APP-4321  \n- Confirmation code: APP-PUNE-9876  \n- New date & time: 2026-01-19, evening (scheduled at 17:30, local time equivalent)  \n- Status: confirmed  \n- Reschedule fee: \u20b90 (no additional charges)\n\nYou don\u2019t need to do anything else. If you want, I can also add this to your calendar with these details.</action>",
+          "action_structured": {
+            "type": "say",
+            "text": "Your washing machine repair appointment is rescheduled and confirmed.\n\nHere are the updated details:\n- Service ID: SRV-APP-4321  \n- Confirmation code: APP-PUNE-9876  \n- New date & time: 2026-01-19, evening (scheduled at 17:30, local time equivalent)  \n- Status: confirmed  \n- Reschedule fee: \u20b90 (no additional charges)\n\nYou don\u2019t need to do anything else. If you want, I can also add this to your calendar with these details."
+          },
+          "observation": null
+        }
+      ]
+    }
+  ],
+  "outcome": {
+    "success": true,
+    "reason": "user_task_complete",
+    "total_turns": 3,
+    "had_tool_calls": true
+  },
+  "quality": {
+    "ok": true,
+    "reasons": []
+  }
+}

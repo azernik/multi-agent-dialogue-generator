@@ -190,42 +190,32 @@ def main():
         "train_convs": 0,
         "test_convs": 0,
         "impossible_train": 0,
-        "impossible_test": 0
+        "impossible_test": 0,
     }
     
     for json_file in json_files:
         try:
             conv_data = load_conversation(json_file)
             
-            # Resolve Scenario and Tools
-            # Check if tools are already in config (APIGen format)
-            tools = conv_data.get('config', {}).get('tools')
+            # Resolve Scenario
             scenario_name = conv_data.get('config', {}).get('scenario_name')
-            
-            if not tools:
-                # Fallback to scenario resolution (for main dataset conversations)
+            if not scenario_name:
+                extracted = extract_scenario_id_from_filename(json_file.name)
+                scenario_name = extracted.split('__')[-1] if extracted else None
                 if not scenario_name:
-                    extracted = extract_scenario_id_from_filename(json_file.name)
-                    scenario_name = extracted.split('__')[-1] if extracted else None
-                    if not scenario_name:
-                        print(f"Skipping {json_file.name}: Could not extract scenario ID and no tools in config")
-                        stats["failed"] += 1
-                        continue
-                
-                try:
-                    scenario_path = resolve_scenario_id(scenario_name)
-                    scenario = ExampleScenario.load(scenario_path)
-                    tools = scenario.tools
-                except Exception as e:
-                    print(f"Warning: Could not resolve scenario '{scenario_name}' for {json_file.name}: {e}")
+                    print(f"Skipping {json_file.name}: Could not extract scenario ID")
                     stats["failed"] += 1
                     continue
-            else:
-                # APIGen format: tools in config, scenario_name is optional
-                if not scenario_name:
-                    # Extract from filename or use conversation_id
-                    extracted = extract_scenario_id_from_filename(json_file.name)
-                    scenario_name = extracted.split('__')[-1] if extracted else conv_data.get('meta', {}).get('conversation_id', 'unknown')
+            
+            # Load Tools
+            try:
+                scenario_path = resolve_scenario_id(scenario_name)
+                scenario = ExampleScenario.load(scenario_path)
+                tools = scenario.tools
+            except Exception as e:
+                print(f"Warning: Could not resolve scenario '{scenario_name}' for {json_file.name}: {e}")
+                stats["failed"] += 1
+                continue
                 
             # Extract Metadata
             metadata = extract_metadata(conv_data, tools, scenario_name)
@@ -314,26 +304,31 @@ def main():
     stats["train_convs"] = len(train_items)
     stats["test_convs"] = len(test_items)
     stats["processed"] = len(scan_results)
-    
+
     # Pass 3: Generate Samples
     train_samples = []
     test_samples = []
-    test_scenario_ids = set()
-    
+
     print(f"Generating samples...")
-    
+
     for item in train_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         train_samples.extend(samples)
         
+    # Preserve insertion order so new test conversations appear at the end of test_split.json
+    test_scenario_ids = []
+    test_scenario_ids_seen = set()
     for item in test_items:
         prompt_version = item["data"].get('meta', {}).get('prompt_versions', {}).get('system_agent', 'v3')
         system_prompt = get_system_prompt(prompt_version)
         samples = create_samples_from_conversation(item["data"], system_prompt, item["tools"], item["metadata"])
         test_samples.extend(samples)
-        test_scenario_ids.add(item["scenario_name"])
+        sid = item["scenario_name"]
+        if sid not in test_scenario_ids_seen:
+            test_scenario_ids_seen.add(sid)
+            test_scenario_ids.append(sid)
 
     # Save outputs
     train_file = output_dir / "sft_train.jsonl"
@@ -352,13 +347,12 @@ def main():
             
     print(f"Writing test split scenario IDs to {split_file}")
     with open(split_file, 'w') as f:
-        json.dump(sorted(list(test_scenario_ids)), f, indent=2)
+        json.dump(test_scenario_ids, f, indent=2)
         
     print("\n=== Statistics ===")
-    print(f"Total Conversations Processed: {stats['processed']}")
-    print(f"Failed Files: {stats['failed']}")
+    print(f"Total Conversations Processed: {stats['processed']} ({stats['failed']} failed)")
     print(f"Train Conversations: {stats['train_convs']}")
-    print(f"Test Conversations:  {stats['test_convs']} ({stats['test_convs'] / (stats['train_convs']+stats['test_convs']) * 100:.1f}%)")
+    print(f"Test Conversations: {stats['test_convs']} ({100 * stats['test_convs'] / (stats['train_convs'] + stats['test_convs']):.1f}% of all)")
     print(f"Impossible Scenarios Split: {stats['impossible_train']} Train / {stats['impossible_test']} Test")
 
 if __name__ == "__main__":
