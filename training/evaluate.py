@@ -89,6 +89,7 @@ def main():
     parser.add_argument("--test_data", type=str, required=True, help="Path to test .jsonl")
     parser.add_argument("--base_model", type=str, required=True)
     parser.add_argument("--adapter_path", type=str, default=None)
+    parser.add_argument("--adapter_subfolder", type=str, default=None, help="Subfolder in HF adapter repo (e.g. checkpoint-17)")
     parser.add_argument("--output_file", type=str, default="eval_results.json")
     parser.add_argument("--predictions_file", type=str, default="eval_predictions.jsonl")
     parser.add_argument("--max_samples", type=int, default=None)
@@ -119,8 +120,12 @@ def main():
     )
     
     if args.adapter_path:
-        print(f"Loading adapter: {args.adapter_path}")
-        model = PeftModel.from_pretrained(model, args.adapter_path)
+        if args.adapter_subfolder:
+            print(f"Loading adapter: {args.adapter_path} (subfolder: {args.adapter_subfolder})")
+            model = PeftModel.from_pretrained(model, args.adapter_path, subfolder=args.adapter_subfolder)
+        else:
+            print(f"Loading adapter: {args.adapter_path}")
+            model = PeftModel.from_pretrained(model, args.adapter_path)
     
     model.eval()
     
