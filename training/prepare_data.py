@@ -4,7 +4,7 @@ import sys
 import os
 import hashlib
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 # Add src to python path
 repo_root = Path(__file__).resolve().parent.parent
@@ -12,6 +12,22 @@ sys.path.append(str(repo_root / "src"))
 
 from core import Message, MessageRole, convert_messages_to_hf_format, build_hf_prompt
 from scenario import resolve_scenario_id, ExampleScenario, extract_scenario_id_from_filename
+
+_system_prompts_cache: Dict[str, str] = {}
+
+def get_system_prompt(version: str, base_path: Optional[Path] = None) -> str:
+    """Load system prompt by version. base_path defaults to repo root."""
+    base = base_path or repo_root
+    if version in _system_prompts_cache:
+        return _system_prompts_cache[version]
+    prompt_path = base / "prompts" / "system_agent" / f"{version}.txt"
+    if not prompt_path.exists():
+        print(f"Warning: Prompt file {prompt_path} not found, falling back to v3.txt")
+        prompt_path = base / "prompts" / "system_agent" / "v3.txt"
+    with open(prompt_path, "r") as f:
+        content = f.read().strip()
+    _system_prompts_cache[version] = content
+    return content
 
 def load_conversation(file_path: Path) -> Dict[str, Any]:
     with open(file_path, 'r') as f:
@@ -70,7 +86,6 @@ def extract_metadata(conv_data: Dict[str, Any], tools: Dict[str, Any], scenario_
     config = conv_data.get('config', {})
     
     # 1. Impossible
-    # Check config first, fallback to checking scenario name if known
     is_impossible = config.get('task', {}).get('impossible', False)
     # Also check if it's at the top level of config (some versions)
     if not is_impossible:
@@ -156,25 +171,6 @@ def main():
     
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Cache for system prompts
-    system_prompts_cache = {}
-    
-    def get_system_prompt(version: str) -> str:
-        if version in system_prompts_cache:
-            return system_prompts_cache[version]
-        
-        # Try to find the prompt file
-        prompt_path = Path("prompts/system_agent") / f"{version}.txt"
-        if not prompt_path.exists():
-            # Fallback to v3 if specific version not found
-            print(f"Warning: Prompt file {prompt_path} not found, falling back to v3.txt")
-            prompt_path = Path("prompts/system_agent/v3.txt")
-            
-        with open(prompt_path, 'r') as f:
-            content = f.read().strip()
-            system_prompts_cache[version] = content
-            return content
 
     input_path = Path(args.input_dir)
     json_files = list(input_path.glob("**/*.json"))
