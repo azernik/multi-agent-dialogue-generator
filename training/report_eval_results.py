@@ -31,16 +31,27 @@ def is_success(record: dict) -> bool:
 
 def compute_metrics(records: list[dict]) -> dict:
     if not records:
-        return {"count": 0, "completeness_pct": 0.0, "success_pct": 0.0}
+        return {"count": 0, "completeness_pct": 0.0, "success_pct": 0.0, "type_match_pct": 0.0}
 
     n = len(records)
     completeness = sum(1 for r in records if r.get("metrics", {}).get("valid_syntax")) / n * 100
     success = sum(1 for r in records if is_success(r)) / n * 100
+    type_match = sum(1 for r in records if r.get("metrics", {}).get("type_match")) / n * 100
+    tool_records = [r for r in records if r.get("gold_type") == "tool"]
+    tool_n = len(tool_records)
+    if tool_n:
+        tool_name = sum(1 for r in tool_records if r.get("metrics", {}).get("name_match")) / tool_n * 100
+        tool_args = sum(1 for r in tool_records if r.get("metrics", {}).get("args_match")) / tool_n * 100
+    else:
+        tool_name = tool_args = None
 
     out = {
         "count": n,
         "completeness_pct": round(completeness, 2),
         "success_pct": round(success, 2),
+        "type_match_pct": round(type_match, 2),
+        "tool_name_match_pct": round(tool_name, 2) if tool_name is not None else None,
+        "tool_args_match_pct": round(tool_args, 2) if tool_args is not None else None,
     }
 
     domains = {}
@@ -98,7 +109,8 @@ def write_report(results: dict, output_path: Path, predictions_dir: str) -> None
         f"This report covers **{len(results)}** model(s). "
         f"**Conversation completeness** (well-formed outputs) averages **{avg_complete:.1f}%** across models. "
         f"**Conversation success** (correct action type and, for tools, correct name and arguments) is highest for **{best_model}** at **{best_success}%**. "
-        "Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns.",
+        "Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns. "
+        "When plots are enabled, see also: `completeness_and_success.png`, `success_leaderboard.png`, `completeness_vs_success_scatter.png`, `metric_funnel.png`, and `success_by_domain.png` (if multiple domains).",
         "",
         "---",
         "",
@@ -223,6 +235,84 @@ def plot_if_available(results: dict, output_dir: Path) -> None:
             plt.tight_layout()
             fig.savefig(output_dir / "success_by_domain.png", dpi=150, bbox_inches="tight")
             plt.close()
+
+    # Success leaderboard: horizontal bar, models sorted by success (best first)
+    sorted_models = sorted(results.keys(), key=lambda m: results[m]["success_pct"], reverse=True)
+    success_vals = [results[m]["success_pct"] for m in sorted_models]
+    fig, ax = plt.subplots(figsize=(max(6, len(sorted_models) * 0.35), max(4, len(sorted_models) * 0.25)))
+    y_pos = range(len(sorted_models))
+    bars = ax.barh(y_pos, success_vals, color="teal", alpha=0.85)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(sorted_models, fontsize=9)
+    ax.set_xlabel("Success (%)")
+    ax.set_title("Model leaderboard (by success rate)")
+    ax.set_xlim(0, 105)
+    ax.invert_yaxis()
+    for i, (bar, v) in enumerate(zip(bars, success_vals)):
+        ax.text(v + 1, i, f"{v:.1f}%", va="center", fontsize=8)
+    plt.tight_layout()
+    fig.savefig(output_dir / "success_leaderboard.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # Completeness vs success scatter: one point per model (optionally colored by category)
+    def _category(suffix: str) -> str:
+        if suffix.startswith("apigen_"):
+            return "APIGen"
+        if suffix.startswith("custom_"):
+            return "Custom"
+        if suffix.startswith("rl_"):
+            return "RL"
+        return "Other"
+
+    fig, ax = plt.subplots(figsize=(7, 6))
+    models = list(results.keys())
+    x = [results[m]["completeness_pct"] for m in models]
+    y = [results[m]["success_pct"] for m in models]
+    cats = [_category(m) for m in models]
+    colors = {"APIGen": "C0", "Custom": "C1", "RL": "C2", "Other": "gray"}
+    for cat in set(cats):
+        idx = [i for i, c in enumerate(cats) if c == cat]
+        ax.scatter(
+            [x[i] for i in idx],
+            [y[i] for i in idx],
+            c=colors.get(cat, "gray"),
+            label=cat,
+            s=80,
+            alpha=0.9,
+        )
+    for i, m in enumerate(models):
+        ax.annotate(m, (x[i], y[i]), xytext=(5, 5), textcoords="offset points", fontsize=7, alpha=0.9)
+    ax.set_xlabel("Completeness (%)")
+    ax.set_ylabel("Success (%)")
+    ax.set_title("Completeness vs success (by model)")
+    ax.legend()
+    ax.set_xlim(-5, 105)
+    ax.set_ylim(-5, 105)
+    ax.axhline(y=50, color="gray", linestyle="--", alpha=0.5)
+    ax.axvline(x=80, color="gray", linestyle="--", alpha=0.5)
+    plt.tight_layout()
+    fig.savefig(output_dir / "completeness_vs_success_scatter.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # Metric funnel: completeness -> type_match -> success (and optionally tool name/args)
+    metrics_to_plot = ["completeness_pct", "type_match_pct", "success_pct"]
+    labels_short = ["Completeness", "Type match", "Success"]
+    fig, ax = plt.subplots(figsize=(max(8, len(models) * 0.5), 5))
+    x = range(len(models))
+    w = 0.25
+    for i, (key, label) in enumerate(zip(metrics_to_plot, labels_short)):
+        vals = [results[m].get(key, 0) or 0 for m in models]
+        off = (i - 1) * w
+        ax.bar([xi + off for xi in x], vals, width=w, label=label)
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, rotation=45, ha="right")
+    ax.set_ylabel("Percentage")
+    ax.set_title("Metric funnel: completeness → type match → full success")
+    ax.legend()
+    ax.set_ylim(0, 105)
+    plt.tight_layout()
+    fig.savefig(output_dir / "metric_funnel.png", dpi=150, bbox_inches="tight")
+    plt.close()
 
 
 def main():

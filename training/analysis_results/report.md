@@ -4,7 +4,7 @@ Prediction files were read from: `training/models`
 
 ## Summary
 
-This report covers **9** model(s). **Conversation completeness** (well-formed outputs) averages **88.8%** across models. **Conversation success** (correct action type and, for tools, correct name and arguments) is highest for **14b_epoch1** at **50.35%**. Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns.
+This report covers **9** model(s). **Conversation completeness** (well-formed outputs) averages **88.8%** across models. **Conversation success** (correct action type and, for tools, correct name and arguments) is highest for **14b_epoch1** at **50.35%**. Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns. When plots are enabled, see also: `completeness_and_success.png`, `success_leaderboard.png`, `completeness_vs_success_scatter.png`, `metric_funnel.png`, and `success_by_domain.png` (if multiple domains).
 
 ---
 

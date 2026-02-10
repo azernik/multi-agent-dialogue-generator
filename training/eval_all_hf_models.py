@@ -13,6 +13,7 @@ from pathlib import Path
 # Model configurations: (base_model, hf_adapter_id, output_suffix, adapter_subfolder or None)
 # - APIGen: finetuned on APIGen dataset
 # - Custom dataset: finetuned on our own training data (conversations from valid_outputs)
+# - RL: reinforcement-learning finetuned (e.g. GRPO) on custom data
 MODELS = [
     # APIGen-finetuned (32B, 14B, 7B)
     ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-1", "apigen_32b_epoch1", None),
@@ -30,6 +31,9 @@ MODELS = [
     ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp85", "checkpoint-85"),
     # Custom dataset (our training data) - 7B checkpoint 33
     ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/capstone", "custom_7b_cp33", "qwen2.5-7b/checkpoint-33"),
+    # RL (reinforcement learning finetuned, e.g. GRPO)
+    ("Qwen/Qwen2.5-32B-Instruct", "ajChakrarborty/custom-data-qwen2.5-32b-instruct-ft-rl-1", "rl_32b", None),
+    ("Qwen/Qwen2.5-7B-Instruct", "ajChakrarborty/custom-data-qwen2.5-7b-instruct-ft-rl-2", "rl_7b", None),
 ]
 
 def main():
@@ -65,7 +69,7 @@ def main():
         type=str,
         nargs="+",
         default=None,
-        help="Specific model suffixes to evaluate (e.g. 'apigen_32b_epoch1' or 'custom_14b_cp17'). If not provided, evaluates all."
+        help="Specific model suffixes to evaluate (e.g. 'apigen_32b_epoch1', 'custom_14b_cp17', 'rl_32b'). If not provided, evaluates all."
     )
     args = parser.parse_args()
     
@@ -98,13 +102,16 @@ def main():
         print(f"  Adapter: {hf_adapter}" + (f" (subfolder: {adapter_subfolder})" if adapter_subfolder else ""))
         print("=" * 80)
         
-        # Output dirs: custom_dataset_* for our training-data models, apigen_* for APIGen models
+        # Output dirs: custom_dataset_*, apigen_*, rl_*
         if suffix.startswith("custom_"):
             size = "14B" if "14b" in suffix else "7B"
             model_output_dir = output_dir / f"custom_dataset_{size}"
         elif suffix.startswith("apigen_"):
             size = "32B" if "32b" in suffix else "14B" if "14b" in suffix else "7B"
             model_output_dir = output_dir / f"apigen_{size}"
+        elif suffix.startswith("rl_"):
+            size = "32B" if "32b" in suffix else "7B"
+            model_output_dir = output_dir / f"rl_{size}"
         else:
             model_output_dir = output_dir / f"model_{suffix}"
         
