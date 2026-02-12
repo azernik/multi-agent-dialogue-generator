@@ -4,7 +4,7 @@ Prediction files were read from: `training/models_apigen2`
 
 ## Summary
 
-This report covers **13** model(s). **Conversation completeness** (well-formed outputs) averages **89.2%** across models. **Conversation success** (correct action type and, for tools, correct name and arguments) is highest for **custom_14b_cp17** at **59.69%**. Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns. When plots are enabled, see also: `completeness_and_success.png`, `success_leaderboard.png`, `completeness_vs_success_scatter.png`, `metric_funnel.png`, and `success_by_domain.png` (if multiple domains).
+This report covers **15** model(s). **Conversation completeness** (well-formed outputs) averages **88.2%** across models. **Conversation success** (correct action type and, for tools, correct name and arguments) is highest for **rl_32b** at **65.83%**. Below you find per-model completeness and success, domain-wise analysis where metadata is available, and possible vs impossible scenario breakdowns. When plots are enabled, see also: `completeness_and_success.png`, `success_leaderboard.png`, `completeness_vs_success_scatter.png`, `metric_funnel.png`, and `success_by_domain.png` (if multiple domains).
 
 ---
 
@@ -27,6 +27,8 @@ This report covers **13** model(s). **Conversation completeness** (well-formed o
 | custom_14b_cp51 | 521 | 93.09 |
 | custom_14b_cp85 | 521 | 91.55 |
 | custom_7b_cp33 | 521 | 90.98 |
+| rl_32b | 521 | 91.55 |
+| rl_7b | 521 | 72.36 |
 
 ---
 
@@ -49,6 +51,8 @@ This report covers **13** model(s). **Conversation completeness** (well-formed o
 | custom_14b_cp51 | 521 | 55.85 |
 | custom_14b_cp85 | 521 | 54.13 |
 | custom_7b_cp33 | 521 | 48.18 |
+| rl_32b | 521 | 65.83 |
+| rl_7b | 521 | 45.3 |
 
 ---
 
@@ -197,6 +201,28 @@ This report covers **13** model(s). **Conversation completeness** (well-formed o
 | restaurant_booking | 92 | 88.04 | 58.7 |
 | travel | 4 | 100.0 | 75.0 |
 
+### rl_32b
+
+| Domain | Count | Completeness (%) | Success (%) |
+|--------|-------|------------------|-------------|
+| banking | 13 | 100.0 | 69.23 |
+| calendar_assistant | 70 | 100.0 | 62.86 |
+| home_services | 111 | 86.49 | 55.86 |
+| online_shopping | 231 | 90.48 | 64.94 |
+| restaurant_booking | 92 | 92.39 | 80.43 |
+| travel | 4 | 100.0 | 100.0 |
+
+### rl_7b
+
+| Domain | Count | Completeness (%) | Success (%) |
+|--------|-------|------------------|-------------|
+| banking | 13 | 92.31 | 46.15 |
+| calendar_assistant | 70 | 87.14 | 42.86 |
+| home_services | 111 | 62.16 | 36.04 |
+| online_shopping | 231 | 66.23 | 41.99 |
+| restaurant_booking | 92 | 84.78 | 65.22 |
+| travel | 4 | 100.0 | 75.0 |
+
 ---
 
 ## 4. Possible vs impossible scenarios
@@ -291,4 +317,18 @@ This report covers **13** model(s). **Conversation completeness** (well-formed o
 |------|-------|------------------|-------------|
 | possible | 490 | 90.61 | 47.55 |
 | impossible | 31 | 96.77 | 58.06 |
+
+### rl_32b
+
+| Type | Count | Completeness (%) | Success (%) |
+|------|-------|------------------|-------------|
+| possible | 490 | 91.22 | 66.12 |
+| impossible | 31 | 96.77 | 61.29 |
+
+### rl_7b
+
+| Type | Count | Completeness (%) | Success (%) |
+|------|-------|------------------|-------------|
+| possible | 490 | 71.84 | 45.31 |
+| impossible | 31 | 80.65 | 45.16 |
 

@@ -172,8 +172,14 @@ class HuggingFaceLLMClient:
                 device_map=self.device,
                 trust_remote_code=kwargs.get('trust_remote_code', True),
             )
-            # Resize embeddings to match tokenizer before loading LoRA
-            model.resize_token_embeddings(len(self.tokenizer))
+            # Resize embeddings to match adapter checkpoint (may differ from tokenizer
+            # if training added special tokens not saved to the tokenizer)
+            vocab_size = self._get_adapter_vocab_size(model_name)
+            if vocab_size:
+                print(f"[HF] Resizing embeddings to {vocab_size} (from adapter checkpoint)", file=sys.stderr, flush=True)
+                model.resize_token_embeddings(vocab_size)
+            else:
+                model.resize_token_embeddings(len(self.tokenizer))
             print(f"[HF] Loading LoRA adapter: {model_name}", file=sys.stderr, flush=True)
             # Load LoRA adapter
             self.model = PeftModel.from_pretrained(
@@ -194,11 +200,32 @@ class HuggingFaceLLMClient:
         
         self.model.eval()
         print(f"[HF] Model loaded successfully. Device: {next(self.model.parameters()).device}", file=sys.stderr, flush=True)
-    
+
+    @staticmethod
+    def _get_adapter_vocab_size(adapter_path):
+        """Peek at adapter weights to find the expected embedding vocab size."""
+        from huggingface_hub import hf_hub_download
+        for filename in ["adapter_model.safetensors", "adapter_model.bin"]:
+            try:
+                path = hf_hub_download(adapter_path, filename)
+                if filename.endswith(".safetensors"):
+                    from safetensors.torch import load_file
+                    state_dict = load_file(path)
+                else:
+                    import torch as _torch
+                    state_dict = _torch.load(path, map_location="cpu", weights_only=True)
+                for key, tensor in state_dict.items():
+                    if "embed_tokens" in key:
+                        return tensor.shape[0]
+                return None
+            except Exception:
+                continue
+        return None
+
     def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """
         Generate response using HuggingFace model.
-        
+
         Args:
             messages: List of message dicts with 'role' and 'content' keys
             **kwargs: Generation parameters (temperature, max_new_tokens, etc.)

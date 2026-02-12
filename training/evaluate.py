@@ -8,6 +8,8 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, StoppingCriteria, StoppingCriteriaList
 from peft import PeftModel
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file as load_safetensors
 
 # Add src to python path
 repo_root = Path(__file__).resolve().parent.parent
@@ -84,12 +86,32 @@ def compare_actions(gold: ParsedAction, pred: ParsedAction) -> dict:
         
     return metrics
 
+def _get_adapter_vocab_size(adapter_path, adapter_subfolder=None):
+    """Peek at adapter weights to find the expected embedding vocab size."""
+    subfolder = adapter_subfolder or ""
+    for filename in ["adapter_model.safetensors", "adapter_model.bin"]:
+        try:
+            path = hf_hub_download(adapter_path, filename, subfolder=subfolder)
+            if filename.endswith(".safetensors"):
+                state_dict = load_safetensors(path)
+            else:
+                state_dict = torch.load(path, map_location="cpu", weights_only=True)
+            for key, tensor in state_dict.items():
+                if "embed_tokens" in key:
+                    return tensor.shape[0]
+            return None  # adapter has no embedding weights
+        except Exception:
+            continue
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test_data", type=str, required=True, help="Path to test .jsonl")
     parser.add_argument("--base_model", type=str, required=True)
     parser.add_argument("--adapter_path", type=str, default=None)
     parser.add_argument("--adapter_subfolder", type=str, default=None, help="Subfolder in HF adapter repo (e.g. checkpoint-17)")
+    parser.add_argument("--tokenizer", type=str, default=None, help="Tokenizer source (defaults to base_model). Use adapter/SFT tokenizer for RL models.")
     parser.add_argument("--output_file", type=str, default="eval_results.json")
     parser.add_argument("--predictions_file", type=str, default="eval_predictions.jsonl")
     parser.add_argument("--max_samples", type=int, default=None)
@@ -111,7 +133,8 @@ def main():
         bnb_4bit_compute_dtype=torch.bfloat16
     )
     
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
+    tokenizer_source = args.tokenizer or args.base_model
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.base_model,
         quantization_config=bnb_config,
@@ -120,6 +143,14 @@ def main():
     )
     
     if args.adapter_path:
+        # Resize embeddings to match adapter checkpoint (may differ from tokenizer if
+        # training added special tokens that weren't saved to the tokenizer)
+        vocab_size = _get_adapter_vocab_size(args.adapter_path, args.adapter_subfolder)
+        if vocab_size:
+            print(f"Resizing embeddings to {vocab_size} (from adapter checkpoint)")
+            model.resize_token_embeddings(vocab_size)
+        else:
+            model.resize_token_embeddings(len(tokenizer))
         if args.adapter_subfolder:
             print(f"Loading adapter: {args.adapter_path} (subfolder: {args.adapter_subfolder})")
             model = PeftModel.from_pretrained(model, args.adapter_path, subfolder=args.adapter_subfolder)

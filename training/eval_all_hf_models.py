@@ -10,30 +10,30 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Model configurations: (base_model, hf_adapter_id, output_suffix, adapter_subfolder or None)
+# Model configurations: (base_model, hf_adapter_id, output_suffix, adapter_subfolder or None, tokenizer or None)
 # - APIGen: finetuned on APIGen dataset
 # - Custom dataset: finetuned on our own training data (conversations from valid_outputs)
 # - RL: reinforcement-learning finetuned (e.g. GRPO) on custom data
 MODELS = [
     # APIGen-finetuned (32B, 14B, 7B)
-    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-1", "apigen_32b_epoch1", None),
-    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-3", "apigen_32b_epoch3", None),
-    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-5", "apigen_32b_epoch5", None),
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-1", "apigen_14b_epoch1", None),
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-3", "apigen_14b_epoch3", None),
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-5", "apigen_14b_epoch5", None),
-    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-38", "apigen_7b_cp38", None),
-    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-114", "apigen_7b_cp114", None),
-    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-185", "apigen_7b_cp185", None),
+    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-1", "apigen_32b_epoch1", None, None),
+    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-3", "apigen_32b_epoch3", None, None),
+    ("Qwen/Qwen2.5-32B-Instruct", "ishikakulkarni/apigen-model-32b-epoch-5", "apigen_32b_epoch5", None, None),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-1", "apigen_14b_epoch1", None, None),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-3", "apigen_14b_epoch3", None, None),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/apigen-model-14b-epoch-5", "apigen_14b_epoch5", None, None),
+    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-38", "apigen_7b_cp38", None, None),
+    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-114", "apigen_7b_cp114", None, None),
+    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/apigen-model-7b-checkpoint-185", "apigen_7b_cp185", None, None),
     # Custom dataset (our training data) - 14B checkpoints 17, 51, 85
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp17", "checkpoint-17"),
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp51", "checkpoint-51"),
-    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp85", "checkpoint-85"),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp17", "checkpoint-17", None),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp51", "checkpoint-51", None),
+    ("Qwen/Qwen2.5-14B-Instruct", "ishikakulkarni/qwen2.5-14b-sft", "custom_14b_cp85", "checkpoint-85", None),
     # Custom dataset (our training data) - 7B checkpoint 33
-    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/capstone", "custom_7b_cp33", "qwen2.5-7b/checkpoint-33"),
-    # RL (reinforcement learning finetuned, e.g. GRPO)
-    ("Qwen/Qwen2.5-32B-Instruct", "ajChakrarborty/custom-data-qwen2.5-32b-instruct-ft-rl-1", "rl_32b", None),
-    ("Qwen/Qwen2.5-7B-Instruct", "ajChakrarborty/custom-data-qwen2.5-7b-instruct-ft-rl-2", "rl_7b", None),
+    ("Qwen/Qwen2.5-7B-Instruct", "ishikakulkarni/capstone", "custom_7b_cp33", "qwen2.5-7b/checkpoint-33", None),
+    # RL (reinforcement learning finetuned, e.g. GRPO) - use adapter tokenizer (has added special tokens)
+    ("Qwen/Qwen2.5-32B-Instruct", "ajChakrarborty/custom-data-qwen2.5-32b-instruct-ft-rl-1", "rl_32b", None, "ajChakrarborty/custom-data-qwen2.5-32b-instruct-ft-rl-1"),
+    ("Qwen/Qwen2.5-7B-Instruct", "ajChakrarborty/custom-data-qwen2.5-7b-instruct-ft-rl-2", "rl_7b", None, "ajChakrarborty/custom-data-qwen2.5-7b-instruct-ft-rl-2"),
 ]
 
 def main():
@@ -95,7 +95,7 @@ def main():
     print()
     
     # Evaluate each model
-    for base_model, hf_adapter, suffix, adapter_subfolder in models_to_eval:
+    for base_model, hf_adapter, suffix, adapter_subfolder, tokenizer in models_to_eval:
         print("=" * 80)
         print(f"Evaluating: {suffix}")
         print(f"  Base model: {base_model}")
@@ -132,7 +132,9 @@ def main():
         ]
         if adapter_subfolder:
             cmd.extend(["--adapter_subfolder", adapter_subfolder])
-        
+        if tokenizer:
+            cmd.extend(["--tokenizer", tokenizer])
+
         if args.max_samples:
             cmd.extend(["--max_samples", str(args.max_samples)])
         
